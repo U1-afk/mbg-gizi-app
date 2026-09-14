@@ -783,13 +783,14 @@ def get_clean_box_label(cls_name):
     return label_map.get(cls_name, cls_name.replace("_", " ").title())
 
 def get_box_color(cls_name):
-    if "nasi" in cls_name or "mie" in cls_name or cls_name == "makanan_pokok":
+    c_lower = str(cls_name).lower()
+    if any(k in c_lower for k in ["nasi", "mie", "karbo", "makanan_pokok", "pokok"]):
         return "#3b82f6"
-    elif any(k in cls_name for k in ["sayur", "tumis", "sop", "capcay"]):
+    elif any(k in c_lower for k in ["sayur", "tumis", "sop", "capcay", "buncis", "kangkung"]):
         return "#10b981"
-    elif any(k in cls_name for k in ["buah", "semangka", "jeruk", "kelengkeng", "salak", "anggur", "pisang"]):
+    elif any(k in c_lower for k in ["buah", "semangka", "jeruk", "kelengkeng", "salak", "anggur", "pisang"]):
         return "#f59e0b"
-    elif "susu" in cls_name:
+    elif "susu" in c_lower:
         return "#8b5cf6"
     else:
         return "#ef4444"
@@ -847,7 +848,13 @@ def classify_with_vlm(pil_image, api_key=None):
     Jika gagal / tanpa API key, mengembalikan None agar fallback otomatis ke Multi-Feature Visual Engine.
     """
     if not api_key:
-        api_key = os.environ.get("GEMINI_API_KEY", "")
+        try:
+            if hasattr(st, "secrets") and "GEMINI_API_KEY" in st.secrets:
+                api_key = str(st.secrets["GEMINI_API_KEY"]).strip()
+        except Exception:
+            pass
+    if not api_key:
+        api_key = os.environ.get("GEMINI_API_KEY", "").strip()
     
     if not api_key:
         return None
@@ -936,9 +943,33 @@ def detect_and_classify_meal(pil_image, vlm_enabled=False, vlm_api_key=None):
                 
                 item = {
                     "class": cls_name, "conf": round(conf, 3),
-                    "bbox": xyxy, "feat": feat
+                    "bbox": xyxy, "feat": feat,
+                    "area": (xyxy[2] - xyxy[0]) * (xyxy[3] - xyxy[1])
                 }
                 detected_boxes.append(item)
+
+    # NMS Deduplication untuk merapikan kotak yang tumpang tindih pada kompartemen yang sama
+    def calc_box_iou(b1, b2):
+        x1 = max(b1[0], b2[0])
+        y1 = max(b1[1], b2[1])
+        x2 = min(b1[2], b2[2])
+        y2 = min(b1[3], b2[3])
+        inter = max(0, x2 - x1) * max(0, y2 - y1)
+        a1 = (b1[2] - b1[0]) * (b1[3] - b1[1])
+        a2 = (b2[2] - b2[0]) * (b2[3] - b2[1])
+        return inter / float(a1 + a2 - inter) if (a1 + a2 - inter) > 0 else 0
+
+    filtered_boxes = []
+    detected_boxes.sort(key=lambda x: x["conf"], reverse=True)
+    for b in detected_boxes:
+        keep = True
+        for fb in filtered_boxes:
+            if b["class"] == fb["class"] and calc_box_iou(b["bbox"], fb["bbox"]) > 0.25:
+                keep = False
+                break
+        if keep:
+            filtered_boxes.append(b)
+    detected_boxes = filtered_boxes
 
     detected_classes = [b["class"] for b in detected_boxes]
     
@@ -962,44 +993,44 @@ def detect_and_classify_meal(pil_image, vlm_enabled=False, vlm_api_key=None):
     else:
         for b in detected_boxes:
             if b["class"] in ["nasi_putih", "makanan_pokok"]:
-                if b["feat"].get("mean_r", 0) > 160 and b["feat"].get("mean_g", 0) > 135 and b["feat"].get("mean_b", 0) < 60:
+                f = b["feat"]
+                if f.get("mean_r", 0) > 160 and f.get("mean_g", 0) > 135 and f.get("mean_b", 0) < 60:
                     def_karbo_idx = 1
                     break
+                elif f.get("brown", 0) > 0.30 and f.get("yellow", 0) > 0.20:
+                    def_karbo_idx = 2
+                    break
                     
-    # 2. Default Prohew
+    # 2. Default Prohew & Pronab
+    lauk_boxes = [b for b in detected_boxes if b["class"] in ["lauk", "ayam_goreng", "telur_ceplok", "semur_daging", "tahu_goreng", "tempe_goreng", "tempe_orek"]]
+    lauk_boxes.sort(key=lambda x: x.get("area", 0), reverse=True)
+    
     def_prohew_idx = 0
-    if "telur_ceplok" in detected_classes:
-        def_prohew_idx = 1
+    def_pronab_idx = 2 # Default tahu kotak
+    
+    has_egg = any(b["feat"].get("white", 0) > 0.12 and b["feat"].get("yellow", 0) > 0.08 for b in lauk_boxes)
+    has_dark_tempe = any(b["feat"].get("dark", 0) > 0.30 and b["feat"].get("brown", 0) > 0.40 for b in lauk_boxes)
+    
+    if has_egg or "telur_ceplok" in detected_classes:
+        def_prohew_idx = 1 # Telur ceplok
+        def_pronab_idx = 0 # Tempe goreng
     elif "semur_daging" in detected_classes:
-        def_prohew_idx = 3
+        def_prohew_idx = 3 # Semur daging
+        def_pronab_idx = 2 # Tahu kotak
     elif "udang_balado" in detected_classes:
-        def_prohew_idx = 4
+        def_prohew_idx = 4 # Udang balado
+        def_pronab_idx = 0 # Tempe goreng
     else:
-        for b in detected_boxes:
-            f = b["feat"]
-            if f.get("white", 0) > 0.15 and f.get("yellow", 0) > 0.08:
-                def_prohew_idx = 1
-                break
-
-    # 3. Default Pronab
-    def_pronab_idx = 0
-    if "tahu_goreng" in detected_classes:
-        def_pronab_idx = 2
-    elif "tempe_orek" in detected_classes:
-        def_pronab_idx = 1
-    else:
-        for b in detected_boxes:
-            if b["class"] in ["lauk", "tempe_goreng", "tahu_goreng"]:
-                f = b["feat"]
-                if f.get("red", 0) < 0.08 and f.get("yellow", 0) > 0.20:
-                    def_pronab_idx = 2
-                    break
-                elif f.get("dark", 0) > 0.30 and f.get("brown", 0) > 0.40:
-                    def_pronab_idx = 1
-                    break
+        def_prohew_idx = 0 # Ayam Goreng Lengkuas
+        if has_dark_tempe or "tempe_orek" in detected_classes:
+            def_pronab_idx = 1 # Tempe Orek
+        elif len(lauk_boxes) >= 2 and (lauk_boxes[1]["feat"].get("yellow", 0) > 0.12 or lauk_boxes[1]["feat"].get("tan", 0) < 0.20):
+            def_pronab_idx = 2 # Tahu Goreng Kotak
+        else:
+            def_pronab_idx = 2 # Tahu Goreng Kotak
 
     # 4. Default Sayur
-    def_sayur_idx = 0
+    def_sayur_idx = 2 # Default Sayur Capcay
     if "sayur_capcay" in detected_classes:
         def_sayur_idx = 2
     elif "tumis_jagung" in detected_classes:
@@ -1011,21 +1042,23 @@ def detect_and_classify_meal(pil_image, vlm_enabled=False, vlm_api_key=None):
             if b["class"] in ["sayur", "tumis_sayur_hijau"]:
                 f = b["feat"]
                 if f.get("green", 0) > 0.20:
-                    def_sayur_idx = 0
-                elif f.get("yellow", 0) > 0.30:
-                    def_sayur_idx = 3
+                    def_sayur_idx = 0 # Sayur hijau
+                elif f.get("orange", 0) > 0.35 or f.get("white", 0) > 0.12:
+                    def_sayur_idx = 2 # Sayur Capcay Wortel & Buncis
+                elif f.get("yellow", 0) > 0.30 and f.get("orange", 0) > 0.25:
+                    def_sayur_idx = 3 # Tumis Jagung Manis
                 else:
                     def_sayur_idx = 2
                 break
 
     # 5. Default Buah
-    def_buah_idx = 0
-    if "buah_pisang" in detected_classes:
+    def_buah_idx = 3 # Default Kelengkeng
+    if "buah_kelengkeng" in detected_classes:
+        def_buah_idx = 3
+    elif "buah_pisang" in detected_classes:
         def_buah_idx = 1
     elif "buah_jeruk" in detected_classes:
         def_buah_idx = 2
-    elif "buah_kelengkeng" in detected_classes:
-        def_buah_idx = 3
     elif "buah_anggur" in detected_classes:
         def_buah_idx = 4
     elif "buah_salak" in detected_classes:
@@ -1034,14 +1067,18 @@ def detect_and_classify_meal(pil_image, vlm_enabled=False, vlm_api_key=None):
         for b in detected_boxes:
             if "buah" in b["class"]:
                 f = b["feat"]
-                asp = f.get("aspect", 1.0)
-                if asp > 1.35 or asp < 0.70:
-                    def_buah_idx = 1
+                # Kelengkeng kulit coklat/tan
+                if f.get("tan", 0) > 0.22 or f.get("brown", 0) > 0.22:
+                    def_buah_idx = 3
                 elif f.get("red", 0) > 0.35:
-                    def_buah_idx = 0
-                elif f.get("orange", 0) > 0.25:
-                    def_buah_idx = 2
-                elif f.get("tan", 0) > 0.20 or f.get("brown", 0) > 0.20:
+                    def_buah_idx = 0 # Semangka
+                elif f.get("orange", 0) > 0.25 and f.get("tan", 0) < 0.22:
+                    def_buah_idx = 2 # Jeruk
+                elif f.get("dark", 0) > 0.30 and f.get("red", 0) > 0.20:
+                    def_buah_idx = 4 # Anggur
+                elif (f.get("aspect", 1.0) > 1.35 or f.get("aspect", 1.0) < 0.70 or f.get("yellow", 0) > 0.30) and f.get("tan", 0) < 0.22:
+                    def_buah_idx = 1 # Pisang
+                else:
                     def_buah_idx = 3
                 break
 
@@ -1057,12 +1094,59 @@ def detect_and_classify_meal(pil_image, vlm_enabled=False, vlm_api_key=None):
         def_buah_idx = find_food_index("buah", vlm_result.get("buah"))
         def_susu_idx = find_food_index("susu", vlm_result.get("susu"))
 
+    # Beri label terkalibrasi untuk setiap bounding box
+    lauk_assigned_count = 0
+    for b in detected_boxes:
+        cls = b["class"]
+        f = b.get("feat", {})
+        lbl = get_clean_box_label(cls)
+        
+        if cls == "makanan_pokok":
+            lbl = "Nasi Kuning" if def_karbo_idx == 1 else ("Mie Goreng" if def_karbo_idx == 2 else "Nasi Putih")
+        elif cls == "buah":
+            if def_buah_idx == 3:
+                lbl = "Kelengkeng"
+            elif def_buah_idx == 0:
+                lbl = "Semangka"
+            elif def_buah_idx == 2:
+                lbl = "Jeruk"
+            elif def_buah_idx == 1:
+                lbl = "Pisang"
+            elif def_buah_idx == 4:
+                lbl = "Anggur"
+            else:
+                lbl = "Buah"
+        elif cls == "sayur":
+            if def_sayur_idx == 0:
+                lbl = "Sayur Hijau"
+            elif def_sayur_idx == 3:
+                lbl = "Tumis Jagung"
+            elif def_sayur_idx == 4:
+                lbl = "Sayur Sop"
+            else:
+                lbl = "Sayur Capcay"
+        elif cls == "lauk":
+            if f.get("white", 0) > 0.12 and f.get("yellow", 0) > 0.08:
+                lbl = "Telur Ceplok"
+            elif f.get("dark", 0) > 0.30 and f.get("brown", 0) > 0.40:
+                lbl = "Tempe Orek"
+            else:
+                if lauk_assigned_count == 0:
+                    lbl = "Ayam Lengkuas"
+                    lauk_assigned_count += 1
+                else:
+                    lbl = "Tahu Kotak"
+        elif cls == "susu":
+            lbl = "Susu UHT"
+            
+        b["calibrated_label"] = lbl
+
     annotated_img = pil_image.copy()
     draw = ImageDraw.Draw(annotated_img)
 
     for b in detected_boxes:
-        c = get_box_color(b["class"])
-        lbl = get_clean_box_label(b["class"])
+        lbl = b.get("calibrated_label", get_clean_box_label(b["class"]))
+        c = get_box_color(lbl)
         x1, y1, x2, y2 = b["bbox"]
         draw.rectangle([x1, y1, x2, y2], outline=c, width=4)
         header_text = f" {lbl} ({int(b['conf']*100)}%) "
@@ -1216,17 +1300,40 @@ with tab_deteksi:
         is_hybrid_mode = ("Hybrid Cerdas" in vision_engine_choice)
         user_vlm_key = ""
         if is_hybrid_mode:
-            with st.expander("🔑 Kunci API Semantik (Opsional)", expanded=False):
+            default_key = st.session_state.get("saved_vlm_key", "")
+            if not default_key:
+                try:
+                    if hasattr(st, "secrets") and "GEMINI_API_KEY" in st.secrets:
+                        default_key = str(st.secrets["GEMINI_API_KEY"]).strip()
+                except Exception:
+                    pass
+            if not default_key:
+                default_key = os.environ.get("GEMINI_API_KEY", "").strip()
+
+            has_key = bool(default_key)
+            expander_title = "🔑 Kunci API Semantik (Terhubung ✅)" if has_key else "🔑 Kunci API Semantik (Opsional / Belum Diisi)"
+            with st.expander(expander_title, expanded=(not has_key)):
                 user_vlm_key = st.text_input(
                     "Google AI Studio / Gemini Key:",
-                    value=st.session_state.get("saved_vlm_key", ""),
+                    value=default_key,
                     type="password",
-                    placeholder="Masukkan API Key gratis (atau biarkan kosong untuk fallback visual cerdas)",
+                    placeholder="Masukkan API Key gratis (contoh: AIzaSy...)",
                     help="Dapatkan kunci API gratis di https://aistudio.google.com/app/apikey"
                 )
                 if user_vlm_key:
                     st.session_state["saved_vlm_key"] = user_vlm_key
-                st.caption("ℹ️ Jika dikosongkan, sistem cerdas akan otomatis menggunakan Mesin Visi Multi-Fitur Terkalibrasi.")
+                
+                if user_vlm_key:
+                    st.success("✅ Kunci API aktif! Penalaran semantik baki makanan akan diproses otomatis.")
+                else:
+                    st.markdown("""
+                    <div style="font-size:0.78rem; color:#475569; background:#f8fafc; border-left:3px solid #0ea5e9; padding:0.5rem 0.75rem; border-radius:4px; margin-top:0.3rem;">
+                        <b>Cara Mendapatkan API Key Gratis (1 Menit):</b><br/>
+                        1. Kunjungi <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:#0284c7; font-weight:700;">Google AI Studio</a> (Login akun Google).<br/>
+                        2. Klik <b>'Create API key'</b> lalu salin kodenya.<br/>
+                        3. Tempelkan ke kotak di atas. Atau biarkan kosong untuk fallback visi komputer lokal.
+                    </div>
+                    """, unsafe_allow_html=True)
         
         render_html("""
         <div class="glass-card">
