@@ -843,18 +843,22 @@ def find_food_index(category, predicted_str):
 
 def classify_with_vlm(pil_image, api_key=None):
     """
-    Memanggil Vision-Language Model (Gemini 1.5 Flash Vision) via REST API resmi Google AI Studio.
-    Jika API key tersedia dan response valid, mengembalikan dictionary nama makanan spesifik.
-    Jika gagal / tanpa API key, mengembalikan None agar fallback otomatis ke Multi-Feature Visual Engine.
+    Memanggil Vision-Language Model via REST API resmi:
+    - Google AI Studio (Gemini 1.5 Flash) jika kunci diawali 'AIzaSy' atau standar
+    - Groq Cloud (Llama 3.2 Vision) jika kunci diawali 'gsk_' (100% gratis & ultra cepat)
+    - OpenRouter jika kunci diawali 'sk-or-'
+    Jika gagal / tanpa API key, mengembalikan None agar fallback otomatis ke Mesin Visi Terkalibrasi.
     """
     if not api_key:
         try:
             if hasattr(st, "secrets") and "GEMINI_API_KEY" in st.secrets:
                 api_key = str(st.secrets["GEMINI_API_KEY"]).strip()
+            elif hasattr(st, "secrets") and "GROQ_API_KEY" in st.secrets:
+                api_key = str(st.secrets["GROQ_API_KEY"]).strip()
         except Exception:
             pass
     if not api_key:
-        api_key = os.environ.get("GEMINI_API_KEY", "").strip()
+        api_key = os.environ.get("GEMINI_API_KEY", "").strip() or os.environ.get("GROQ_API_KEY", "").strip()
     
     if not api_key:
         return None
@@ -892,37 +896,104 @@ def classify_with_vlm(pil_image, api_key=None):
             "}"
         )
         
-        endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
-        payload = {
-            "contents": [{
-                "parts": [
-                    {"text": prompt},
+        # 1. Provider Groq Cloud (Llama 3.2 11B Vision)
+        if api_key.startswith("gsk_"):
+            endpoint = "https://api.groq.com/openai/v1/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            }
+            payload = {
+                "model": "llama-3.2-11b-vision-preview",
+                "messages": [
                     {
-                        "inline_data": {
-                            "mime_type": "image/jpeg",
-                            "data": img_base64
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": prompt},
+                            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_base64}"}}
+                        ]
+                    }
+                ],
+                "temperature": 0.2,
+                "response_format": {"type": "json_object"}
+            }
+            req = urllib.request.Request(endpoint, data=json.dumps(payload).encode("utf-8"), headers=headers)
+            with urllib.request.urlopen(req, timeout=12) as response:
+                res_data = json.loads(response.read().decode("utf-8"))
+                content = res_data["choices"][0]["message"]["content"]
+                return json.loads(content)
+
+        # 2. Provider OpenRouter
+        elif api_key.startswith("sk-or-"):
+            endpoint = "https://openrouter.ai/api/v1/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            }
+            payload = {
+                "model": "meta-llama/llama-3.2-11b-vision-instruct:free",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": prompt},
+                            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_base64}"}}
+                        ]
+                    }
+                ],
+                "temperature": 0.2
+            }
+            req = urllib.request.Request(endpoint, data=json.dumps(payload).encode("utf-8"), headers=headers)
+            with urllib.request.urlopen(req, timeout=12) as response:
+                res_data = json.loads(response.read().decode("utf-8"))
+                content = res_data["choices"][0]["message"]["content"]
+                return json.loads(content)
+
+        # 3. Provider Default: Google AI Studio
+        else:
+            clean_key = str(api_key).replace("AIzaSyAQ.", "AQ.").strip().strip('"').strip("'")
+            models_to_try = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash-latest"]
+            last_err = None
+            for model_name in models_to_try:
+                try:
+                    endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={clean_key}"
+                    payload = {
+                        "contents": [{
+                            "parts": [
+                                {"text": prompt},
+                                {
+                                    "inline_data": {
+                                        "mime_type": "image/jpeg",
+                                        "data": img_base64
+                                    }
+                                }
+                            ]
+                        }],
+                        "generationConfig": {
+                            "temperature": 0.2,
+                            "response_mime_type": "application/json"
                         }
                     }
-                ]
-            }],
-            "generationConfig": {
-                "temperature": 0.2,
-                "response_mime_type": "application/json"
-            }
-        }
-        
-        req = urllib.request.Request(
-            endpoint,
-            data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"}
-        )
-        
-        with urllib.request.urlopen(req, timeout=12) as response:
-            res_data = json.loads(response.read().decode("utf-8"))
-            candidate = res_data["candidates"][0]["content"]["parts"][0]["text"]
-            parsed = json.loads(candidate)
-            return parsed
+                    req = urllib.request.Request(
+                        endpoint,
+                        data=json.dumps(payload).encode("utf-8"),
+                        headers={"Content-Type": "application/json", "x-goog-api-key": clean_key}
+                    )
+                    with urllib.request.urlopen(req, timeout=12) as response:
+                        res_data = json.loads(response.read().decode("utf-8"))
+                        candidate = res_data["candidates"][0]["content"]["parts"][0]["text"]
+                        parsed = json.loads(candidate)
+                        if "st" in globals() and hasattr(st, "session_state"):
+                            st.session_state["vlm_last_error"] = None
+                        return parsed
+                except Exception as ex:
+                    last_err = ex
+            if "st" in globals() and hasattr(st, "session_state"):
+                st.session_state["vlm_last_error"] = f"Kendala API Google Gemini ({last_err})"
+            return None
     except Exception as e:
+        if "st" in globals() and hasattr(st, "session_state"):
+            st.session_state["vlm_last_error"] = f"Koneksi AI Terputus: {str(e)}"
         return None
 
 def detect_and_classify_meal(pil_image, vlm_enabled=False, vlm_api_key=None, target_package=None):
@@ -1010,13 +1081,15 @@ def detect_and_classify_meal(pil_image, vlm_enabled=False, vlm_api_key=None, tar
     
     has_egg = any(b["feat"].get("white", 0) > 0.12 and b["feat"].get("yellow", 0) > 0.08 for b in lauk_boxes)
     has_dark_tempe = any(b["feat"].get("dark", 0) > 0.30 and b["feat"].get("brown", 0) > 0.40 for b in lauk_boxes)
+    has_beef = any(b["feat"].get("brown", 0) > 0.50 for b in lauk_boxes)
+    has_tofu = any(b["feat"].get("yellow", 0) > 0.40 and b["feat"].get("orange", 0) > 0.40 for b in lauk_boxes)
     
-    if has_egg or "telur_ceplok" in detected_classes:
+    if has_beef or "semur_daging" in detected_classes:
+        def_prohew_idx = 3 # Semur Daging Sapi / Rolade
+        def_pronab_idx = 2 if has_tofu else 0 # Tahu Kotak / Tempe
+    elif has_egg or "telur_ceplok" in detected_classes:
         def_prohew_idx = 1 # Telur ceplok
         def_pronab_idx = 0 # Tempe goreng
-    elif "semur_daging" in detected_classes:
-        def_prohew_idx = 3 # Semur daging
-        def_pronab_idx = 2 # Tahu kotak
     elif "udang_balado" in detected_classes:
         def_prohew_idx = 4 # Udang balado
         def_pronab_idx = 0 # Tempe goreng
@@ -1024,14 +1097,17 @@ def detect_and_classify_meal(pil_image, vlm_enabled=False, vlm_api_key=None, tar
         def_prohew_idx = 0 # Ayam Goreng Lengkuas
         if has_dark_tempe or "tempe_orek" in detected_classes:
             def_pronab_idx = 1 # Tempe Orek
-        elif len(lauk_boxes) >= 2 and (lauk_boxes[1]["feat"].get("yellow", 0) > 0.12 or lauk_boxes[1]["feat"].get("tan", 0) < 0.20):
+        elif has_tofu or "tahu_goreng" in detected_classes:
             def_pronab_idx = 2 # Tahu Goreng Kotak
         else:
             def_pronab_idx = 2 # Tahu Goreng Kotak
 
     # 4. Default Sayur
-    def_sayur_idx = 2 # Default Sayur Capcay
-    if "sayur_capcay" in detected_classes:
+    has_cucumber = any(b["feat"].get("mean_r", 0) > 140 and b["feat"].get("mean_g", 0) > 150 and b["feat"].get("brown", 0) < 0.05 for b in detected_boxes if b["class"] in ["sayur", "tumis_sayur_hijau"])
+    
+    if has_cucumber or "lalapan" in detected_classes:
+        def_sayur_idx = 1 # Lalapan Timun Segar & Selada
+    elif "sayur_capcay" in detected_classes:
         def_sayur_idx = 2
     elif "tumis_jagung" in detected_classes:
         def_sayur_idx = 3
@@ -1048,11 +1124,11 @@ def detect_and_classify_meal(pil_image, vlm_enabled=False, vlm_api_key=None, tar
                 elif f.get("yellow", 0) > 0.30 and f.get("orange", 0) > 0.25:
                     def_sayur_idx = 3 # Tumis Jagung Manis
                 else:
-                    def_sayur_idx = 2
+                    def_sayur_idx = 1 # Lalapan Timun
                 break
 
     # 5. Default Buah
-    def_buah_idx = 3 # Default Kelengkeng
+    def_buah_idx = 2 # Default Jeruk
     if "buah_kelengkeng" in detected_classes:
         def_buah_idx = 3
     elif "buah_pisang" in detected_classes:
@@ -1063,23 +1139,24 @@ def detect_and_classify_meal(pil_image, vlm_enabled=False, vlm_api_key=None, tar
         def_buah_idx = 4
     elif "buah_salak" in detected_classes:
         def_buah_idx = 5
+    elif "buah_semangka" in detected_classes:
+        def_buah_idx = 0
     else:
         for b in detected_boxes:
             if "buah" in b["class"]:
                 f = b["feat"]
-                # Kelengkeng kulit coklat/tan
-                if f.get("tan", 0) > 0.22 or f.get("brown", 0) > 0.22:
-                    def_buah_idx = 3
-                elif f.get("red", 0) > 0.35:
+                if f.get("orange", 0) > 0.40 and f.get("yellow", 0) > 0.30:
+                    def_buah_idx = 2 # Buah Jeruk Manis
+                elif f.get("red", 0) > 0.40 and f.get("yellow", 0) < 0.25:
                     def_buah_idx = 0 # Semangka
-                elif f.get("orange", 0) > 0.25 and f.get("tan", 0) < 0.22:
-                    def_buah_idx = 2 # Jeruk
+                elif f.get("tan", 0) > 0.22 or f.get("brown", 0) > 0.22:
+                    def_buah_idx = 3 # Kelengkeng
                 elif f.get("dark", 0) > 0.30 and f.get("red", 0) > 0.20:
                     def_buah_idx = 4 # Anggur
-                elif (f.get("aspect", 1.0) > 1.35 or f.get("aspect", 1.0) < 0.70 or f.get("yellow", 0) > 0.30) and f.get("tan", 0) < 0.22:
+                elif (f.get("aspect", 1.0) > 1.35 or f.get("aspect", 1.0) < 0.70 or f.get("yellow", 0) > 0.30):
                     def_buah_idx = 1 # Pisang
                 else:
-                    def_buah_idx = 3
+                    def_buah_idx = 2 # Jeruk
                 break
 
     # 6. Default Susu
@@ -1306,27 +1383,28 @@ with tab_deteksi:
                 default_key = os.environ.get("GEMINI_API_KEY", "").strip()
 
             has_key = bool(default_key)
-            expander_title = "🔑 Kunci API Semantik (Terhubung ✅)" if has_key else "🔑 Kunci API Semantik (Opsional / Belum Diisi)"
+            expander_title = "🔑 Kunci API Semantik (Terhubung ✅)" if has_key else "🔑 Kunci API Semantik (Google / Groq - 100% Gratis)"
             with st.expander(expander_title, expanded=(not has_key)):
                 user_vlm_key = st.text_input(
-                    "Google AI Studio / Gemini Key:",
+                    "Google Gemini Key atau Groq API Key:",
                     value=default_key,
                     type="password",
-                    placeholder="Masukkan API Key gratis (contoh: AIzaSy...)",
-                    help="Dapatkan kunci API gratis di https://aistudio.google.com/app/apikey"
+                    placeholder="Masukkan kunci AIzaSy... (Google) atau gsk_... (Groq)",
+                    help="Sistem mendukung Google AI Studio (Gemini) maupun Groq Cloud (Llama 3.2 Vision). Keduanya 100% gratis!"
                 )
                 if user_vlm_key:
                     st.session_state["saved_vlm_key"] = user_vlm_key
                 
                 if user_vlm_key:
-                    st.success("✅ Kunci API aktif! Penalaran semantik baki makanan akan diproses otomatis.")
+                    provider_tag = "Groq Llama 3.2 Vision" if user_vlm_key.startswith("gsk_") else "Google Gemini Vision"
+                    st.success(f"✅ Kunci API aktif ({provider_tag})! Penalaran semantik baki makanan akan diproses otomatis.")
                 else:
                     st.markdown("""
                     <div style="font-size:0.78rem; color:#475569; background:#f8fafc; border-left:3px solid #0ea5e9; padding:0.5rem 0.75rem; border-radius:4px; margin-top:0.3rem;">
-                        <b>Cara Mendapatkan API Key Gratis (1 Menit):</b><br/>
-                        1. Kunjungi <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:#0284c7; font-weight:700;">Google AI Studio</a> (Login akun Google).<br/>
-                        2. Klik <b>'Create API key'</b> lalu salin kodenya.<br/>
-                        3. Tempelkan ke kotak di atas. Atau biarkan kosong untuk fallback visi komputer lokal.
+                        <b>Pilihan Kunci API Gratis (Bisa Pilih Salah Satu):</b><br/>
+                        • <b>Opsi 1 (Google AI Studio - Gemini):</b> Buka <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:#0284c7; font-weight:700;">Google AI Studio</a> (Login Gmail $\\rightarrow$ 'Create API key').<br/>
+                        • <b>Opsi 2 (Groq Cloud - Llama Vision):</b> Buka <a href="https://console.groq.com/keys" target="_blank" style="color:#0284c7; font-weight:700;">Console Groq</a> (Login Google $\\rightarrow$ 'Create API key' diawali <code>gsk_</code>).<br/>
+                        <i>Keduanya 100% gratis tanpa kartu kredit!</i>
                     </div>
                     """, unsafe_allow_html=True)
         
