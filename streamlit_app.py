@@ -1421,7 +1421,8 @@ with tab_deteksi:
             "🥩 Paket 3: Nasi Putih + Semur Daging Sapi + Tempe Orek + Tumis Jagung + Semangka",
             "🍤 Paket 4: Nasi Putih + Udang Balado + Tempe Goreng + Sayur Capcay + Jeruk",
             "🍲 Paket 5: Nasi Putih + Ayam Suwir Kemangi + Tahu Kotak + Sayur Sop + Pisang",
-            "🍖 Paket 6: Nasi Putih + Rolade Daging Sapi + Perkedel + Tumis Sayur Hijau + Anggur"
+            "🍖 Paket 6: Nasi Putih + Rolade Daging Sapi + Perkedel + Tumis Sayur Hijau + Anggur",
+            "🍜 Paket 7: Mie Goreng + Pangsit/Tahu + Pakcoy/Sayur Hijau + Jeruk"
         ]
         selected_mbg_package = st.selectbox(
             "📋 Jadwal Menu Standar MBG (Siklus Harian):",
@@ -1437,6 +1438,7 @@ with tab_deteksi:
             "Paket 4": {"karbo": 0, "prohew": 4, "pronab": 0, "sayur": 2, "buah": 2, "susu": 0},
             "Paket 5": {"karbo": 0, "prohew": 2, "pronab": 2, "sayur": 4, "buah": 1, "susu": 0},
             "Paket 6": {"karbo": 0, "prohew": 3, "pronab": 3, "sayur": 0, "buah": 4, "susu": 0},
+            "Paket 7": {"karbo": 2, "prohew": 0, "pronab": 2, "sayur": 0, "buah": 2, "susu": 0},
         }
         
         active_package = None
@@ -1515,16 +1517,14 @@ with tab_deteksi:
             </div>
             """)
             
-            st.image(res["annotated_image"], caption="Visualisasi Deteksi Kompartemen Baki MBG", use_container_width=True)
-            
             # Interactive Verification Dropdowns
             render_html("""
-            <div class="glass-card" style="margin-top:1rem; padding:1.2rem;">
-                <div style="font-weight:700; font-size:0.95rem; color:#0f766e; margin-bottom:0.4rem;">
-                    <i class="fa-solid fa-list-check"></i> Verifikasi & Penyesuaian Menu Kompartemen
+            <div class="glass-card" style="margin-bottom:1rem; padding:1.1rem;">
+                <div style="font-weight:700; font-size:0.95rem; color:#0f766e; margin-bottom:0.3rem;">
+                    <i class="fa-solid fa-list-check"></i> Verifikasi & Penyesuaian Menu Kompartemen (Interaktif)
                 </div>
-                <div style="font-size:0.8rem; color:#64748b; margin-bottom:0.8rem;">
-                    AI otomatis mengisi pilihan awal di bawah. Anda dapat menyesuaikan item spesifik dengan 1 klik:
+                <div style="font-size:0.8rem; color:#64748b; margin-bottom:0.6rem;">
+                    Sistem mendeteksi item di bawah. Jika ada menu yang ingin Anda sesuaikan, cukup ubah dropdown di bawah dan <b>kotak pada foto baki akan langsung otomatis tersinkronisasi!</b>:
                 </div>
             </div>
             """)
@@ -1538,6 +1538,52 @@ with tab_deteksi:
                 cur_sayur_name = st.selectbox("🥦 Sayuran:", list(FOOD_LIBRARY["sayur"].keys()), index=res["default_indices"]["sayur"])
                 cur_buah_name = st.selectbox("🍉 Buah-buahan:", list(FOOD_LIBRARY["buah"].keys()), index=res["default_indices"]["buah"])
                 cur_susu_name = st.selectbox("🥛 Minuman / Susu:", list(FOOD_LIBRARY["susu"].keys()), index=res["default_indices"]["susu"])
+            
+            # Lukis ulang kotak foto baki sesuai pilihan aktif pengguna
+            active_labels = {
+                "makanan_pokok": cur_karbo_name.split("(")[0].strip(),
+                "prohew": cur_prohew_name.split("(")[0].strip(),
+                "pronab": cur_pronab_name.split("(")[0].strip(),
+                "sayur": cur_sayur_name.split("(")[0].strip(),
+                "buah": cur_buah_name.split("(")[0].strip(),
+                "susu": cur_susu_name.split("(")[0].strip()
+            }
+            
+            ann_img = input_image.copy()
+            draw = ImageDraw.Draw(ann_img)
+            lauk_c = 0
+            for b in res["boxes"]:
+                cls = b["class"]
+                if cls == "makanan_pokok":
+                    lbl = active_labels["makanan_pokok"]
+                elif cls == "buah":
+                    lbl = active_labels["buah"]
+                elif cls == "sayur":
+                    lbl = active_labels["sayur"]
+                elif cls == "lauk":
+                    if b.get("feat", {}).get("brown", 0) > 0.50:
+                        lbl = active_labels["prohew"]
+                    elif b.get("feat", {}).get("yellow", 0) > 0.40:
+                        lbl = active_labels["pronab"]
+                    elif lauk_c == 0:
+                        lbl = active_labels["prohew"]
+                        lauk_c += 1
+                    else:
+                        lbl = active_labels["pronab"]
+                elif cls == "susu":
+                    lbl = active_labels["susu"]
+                else:
+                    lbl = get_clean_box_label(cls)
+                    
+                c = get_box_color(lbl)
+                x1, y1, x2, y2 = b["bbox"]
+                draw.rectangle([x1, y1, x2, y2], outline=c, width=4)
+                header_text = f" {lbl} ({int(b['conf']*100)}%) "
+                text_w = len(header_text) * 8 + 10
+                draw.rectangle([x1, max(0, y1-24), x1 + text_w, y1], fill=c)
+                draw.text((x1 + 4, max(0, y1-21)), header_text, fill="white")
+                
+            st.image(ann_img, caption="Visualisasi Deteksi Kompartemen Baki MBG (Tersinkronisasi 100%)", use_container_width=True)
             
             # Hitung total nutrisi
             cur_karbo = FOOD_LIBRARY["karbo"][cur_karbo_name]
