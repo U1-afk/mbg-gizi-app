@@ -681,7 +681,12 @@
         <div class="modal-content glass-card">
             <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.4rem;">
                 <h3 style="margin:0;"><i class="fa-solid fa-camera" style="color: #2563eb;"></i> Pindai Baki Makanan MBG</h3>
-                <span id="vlm-active-badge" style="display:none;"></span>
+                <div style="display:flex; align-items:center; gap:0.4rem;">
+                    <button type="button" id="btn-open-vlm-modal" class="btn" style="font-size:0.75rem; padding:0.25rem 0.6rem; border-radius:12px; background:rgba(37,99,235,0.1); color:#2563eb; border:1px solid rgba(37,99,235,0.3); cursor:pointer;">
+                        <i class="fa-solid fa-key"></i> Kunci AI
+                    </button>
+                    <span id="vlm-active-badge" style="display:none;"></span>
+                </div>
             </div>
 
             <!-- Hidden Engine Switches for script compatibility -->
@@ -731,15 +736,22 @@
         </div>
     </div>
 
-    <!-- Custom Prompt Modal -->
+    <!-- Custom Prompt Modal (Balas & Ajukan Pertanyaan) -->
     <div id="custom-prompt-modal" class="modal hidden">
-        <div class="modal-content glass-card" style="max-width: 400px; text-align: center;">
-            <div style="font-size: 3rem; color: var(--primary-color); margin-bottom: 1rem;">
+        <div class="modal-content glass-card" style="max-width: 460px; text-align: center;">
+            <div style="font-size: 2.5rem; color: var(--primary-color); margin-bottom: 0.6rem;">
                 <i class="fa-solid fa-reply"></i>
             </div>
-            <h3 style="margin-bottom: 0.5rem;">Balas Pesan</h3>
-            <p id="custom-prompt-message" style="color: var(--text-main); margin-bottom: 1rem;">Masukkan balasan:</p>
-            <textarea id="custom-prompt-input" rows="3" style="width: 100%; border-radius: 8px; padding: 0.8rem; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 1.5rem; outline: none; font-family: inherit;"></textarea>
+            <h3 style="margin-bottom: 0.3rem;">Balas & Pertanyaan</h3>
+            <p id="custom-prompt-message" style="color: var(--text-main); margin-bottom: 0.8rem; font-size:0.9rem;">Masukkan balasan atau pertanyaan ke pengguna:</p>
+            
+            <div id="prompt-preset-container" style="display:flex; flex-wrap:wrap; gap:0.35rem; margin-bottom:0.8rem; justify-content:center;">
+                <button type="button" class="btn" style="font-size:0.75rem; padding:0.25rem 0.55rem; border-radius:12px; background:rgba(16,185,129,0.12); color:#059669; border:1px solid rgba(16,185,129,0.3); cursor:pointer;" onclick="document.getElementById('custom-prompt-input').value='Terima kasih atas masukannya! Kami terus menjaga standar kecukupan AKG untuk seluruh karyawan.'">👍 Standar AKG</button>
+                <button type="button" class="btn" style="font-size:0.75rem; padding:0.25rem 0.55rem; border-radius:12px; background:rgba(59,130,246,0.12); color:#2563eb; border:1px solid rgba(59,130,246,0.3); cursor:pointer;" onclick="document.getElementById('custom-prompt-input').value='Bagaimana dengan porsi & rasa bumbu hari ini, apakah sudah pas dengan selera Anda?'">❓ Tanya Rasa/Porsi</button>
+                <button type="button" class="btn" style="font-size:0.75rem; padding:0.25rem 0.55rem; border-radius:12px; background:rgba(245,158,11,0.12); color:#d97706; border:1px solid rgba(245,158,11,0.3); cursor:pointer;" onclick="document.getElementById('custom-prompt-input').value='Apakah ada saran rekomendasi lauk/sayur yang Anda harapkan untuk menu pekan depan?'">🥗 Tanya Usul Menu</button>
+            </div>
+
+            <textarea id="custom-prompt-input" rows="3" style="width: 100%; border-radius: 8px; padding: 0.8rem; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 1.2rem; outline: none; font-family: inherit; font-size:0.92rem;"></textarea>
             <div style="display: flex; gap: 0.5rem;">
                 <button type="button" id="btn-cancel-prompt" class="btn btn-secondary" style="flex: 1; background: var(--text-light); color: white;">Batal</button>
                 <button type="button" id="btn-submit-prompt" class="btn btn-primary" style="flex: 1;">Kirim</button>
@@ -747,14 +759,23 @@
         </div>
     </div>
 
-    <!-- Hidden Configuration Modal for Script Compatibility -->
-    <div id="vlm-config-modal" class="modal hidden" style="display:none;">
-        <div class="modal-content glass-card">
-            <button type="button" id="btn-close-vlm-modal"></button>
-            <div id="vlm-status-desc"></div>
-            <input type="password" id="vlm-api-key">
-            <button type="button" id="btn-save-vlm-key"></button>
-            <button type="button" id="btn-clear-vlm-key"></button>
+    <!-- AI Configuration Modal -->
+    <div id="vlm-config-modal" class="modal hidden">
+        <div class="modal-content glass-card" style="max-width: 440px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.8rem;">
+                <h3 style="margin:0; font-size:1.1rem;"><i class="fa-solid fa-key" style="color:var(--primary-color);"></i> Kunci API Google Gemini (Opsional)</h3>
+                <button type="button" id="btn-close-vlm-modal" class="btn btn-icon" style="font-size:1.2rem; background:none; border:none; cursor:pointer;">&times;</button>
+            </div>
+            <div id="vlm-status-desc" style="font-size:0.85rem; color:var(--text-light); margin-bottom:0.8rem;">
+                Jika web di-deploy di Vercel, Anda dapat memasukkan <code>GEMINI_API_KEY</code> di Environment Variables Vercel atau masukkan di bawah ini agar pemindaian baki makanan berjalan 100% otomatis di HP:
+            </div>
+            <div class="input-group" style="margin-bottom:1rem;">
+                <input type="password" id="vlm-api-key" placeholder="AIzaSy..." style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid rgba(0,0,0,0.1); font-family:monospace; font-size:0.9rem;">
+            </div>
+            <div style="display:flex; gap:0.5rem;">
+                <button type="button" id="btn-clear-vlm-key" class="btn btn-secondary" style="flex:1;">Hapus Kunci</button>
+                <button type="button" id="btn-save-vlm-key" class="btn btn-primary" style="flex:1;">Simpan Kunci</button>
+            </div>
         </div>
     </div>
 

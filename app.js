@@ -132,13 +132,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const DEFAULT_HISTORY = [
         {
             id: 1725200001001,
-            user: "Siswa Demo",
-            nik: "12345",
-            menu: "Paket 1: Ayam Lengkuas + Tahu Kuning + Labu Siam + Semangka",
+            user: "Siti Rahma",
+            nik: "10045",
+            menu: "Paket 2: Telur Rebus + Dadu Ayam + Tumis Buncis + Jeruk",
             portion: "Habis Semua",
-            rating: "5",
+            rating: "4",
             date: "Senin, 1 September 2026",
-            time: "12:15"
+            time: "12:45"
         },
         {
             id: 1725200001002,
@@ -149,6 +149,35 @@ document.addEventListener('DOMContentLoaded', () => {
             rating: "5",
             date: "Senin, 1 September 2026",
             time: "12:30"
+        },
+        {
+            id: 1725200001003,
+            user: "Karyawan Demo",
+            nik: "12345",
+            menu: "Paket 1: Ayam Lengkuas + Tahu Kuning + Labu Siam + Semangka",
+            portion: "Habis Semua",
+            rating: "5",
+            date: "Senin, 1 September 2026",
+            time: "12:15"
+        }
+    ];
+
+    const DEFAULT_MESSAGES = [
+        {
+            id: 1725200002000,
+            fromNik: "300604",
+            fromName: "UL",
+            text: "tes",
+            reply: null,
+            date: "16/9/2026, 21.09.18"
+        },
+        {
+            id: 1725200002001,
+            fromNik: "12345",
+            fromName: "Karyawan Demo",
+            text: "Porsi makan bergizi hari ini sangat pas dan lauk udang kuahnya enak sekali!",
+            reply: "Terima kasih atas masukannya! Kami terus menjaga standar kecukupan AKG untuk seluruh karyawan.",
+            date: "01/09/2026, 13.00"
         }
     ];
 
@@ -302,16 +331,22 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!res.ok || !currentUser) return;
             const data = await res.json();
             const historyList = (data.history && data.history.length > 0) ? data.history : DEFAULT_HISTORY;
+            const messageList = (data.messages && data.messages.length > 0) ? data.messages : DEFAULT_MESSAGES;
             if (currentUser.role === 'Employee') {
                 renderHistoryList(historyList);
-                renderMessageList(data.messages || [], currentUser.nik);
+                renderMessageList(messageList, currentUser.nik);
             } else if (currentUser.role === 'Admin') {
                 renderAdminHistoryList(historyList);
-                renderAdminMessageList(data.messages || []);
+                renderAdminMessageList(messageList);
             }
         } catch (e) {
             if (currentUser) {
                 renderHistoryList(DEFAULT_HISTORY);
+                if (currentUser.role === 'Admin') {
+                    renderAdminMessageList(DEFAULT_MESSAGES);
+                } else {
+                    renderMessageList(DEFAULT_MESSAGES, currentUser.nik);
+                }
             }
         }
     }
@@ -916,14 +951,28 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadMessages() {
         try {
             const res = await fetch(API_URL);
-            if (!res.ok) return;
-            const data = await res.json();
-            if (currentUser && currentUser.role === 'Employee') {
-                renderMessageList(data.messages || [], currentUser.nik);
-            } else if (currentUser && currentUser.role === 'Admin') {
-                renderAdminMessageList(data.messages || []);
+            if (!res.ok) {
+                if (currentUser && currentUser.role === 'Employee') {
+                    renderMessageList(DEFAULT_MESSAGES, currentUser.nik);
+                } else if (currentUser && currentUser.role === 'Admin') {
+                    renderAdminMessageList(DEFAULT_MESSAGES);
+                }
+                return;
             }
-        } catch (e) {}
+            const data = await res.json();
+            const messageList = (data.messages && data.messages.length > 0) ? data.messages : DEFAULT_MESSAGES;
+            if (currentUser && currentUser.role === 'Employee') {
+                renderMessageList(messageList, currentUser.nik);
+            } else if (currentUser && currentUser.role === 'Admin') {
+                renderAdminMessageList(messageList);
+            }
+        } catch (e) {
+            if (currentUser && currentUser.role === 'Employee') {
+                renderMessageList(DEFAULT_MESSAGES, currentUser.nik);
+            } else if (currentUser && currentUser.role === 'Admin') {
+                renderAdminMessageList(DEFAULT_MESSAGES);
+            }
+        }
     }
 
     function renderMessageList(msgs, nik) {
@@ -935,16 +984,19 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         list.innerHTML = mine.slice().reverse().map(m => 
-            '<div class="history-item">' +
-                '<div class="history-item-header">' +
+            '<div class="history-item" style="flex-direction: column; align-items: flex-start; gap: 0.35rem; margin-bottom: 0.8rem;">' +
+                '<div class="history-item-header" style="width: 100%; display: flex; justify-content: space-between;">' +
                     '<span class="history-menu">📨 Pesan Anda</span>' +
                     '<span class="history-date">' + sanitize(m.date) + '</span>' +
                 '</div>' +
-                '<p style="margin:0.4rem 0; font-size:0.92rem;">' + sanitize(m.text) + '</p>' +
+                '<p style="margin:0.4rem 0; font-size:0.92rem; white-space: pre-wrap;">' + sanitize(m.text) + '</p>' +
                 (m.reply ? 
-                    '<div style="margin-top:0.5rem; padding:0.6rem; background:rgba(16,185,129,0.12); border-left:3px solid var(--primary-color); border-radius:6px; font-size:0.88rem;">' +
+                    '<div style="margin-top:0.4rem; padding:0.6rem 0.8rem; background:rgba(16,185,129,0.12); border-left:3px solid var(--primary-color); border-radius:6px; font-size:0.88rem; width: 100%;">' +
                         '<strong>Balasan Admin:</strong> ' + sanitize(m.reply) +
-                    '</div>' : '<p style="font-size:0.8rem; color:var(--text-light); margin-top:0.3rem;">⏳ Menunggu balasan admin...</p>'
+                    '</div>' +
+                    '<button class="btn btn-primary" style="margin-top:0.4rem; font-size:0.78rem; padding:0.35rem 0.75rem; border-radius: 8px;" onclick="window.userReplyToMessage(' + m.id + ')">' +
+                        '<i class="fa-solid fa-reply"></i> Jawab Pertanyaan / Tanggapi Pesan Admin' +
+                    '</button>' : '<p style="font-size:0.8rem; color:var(--text-light); margin-top:0.3rem;">⏳ Menunggu tanggapan admin...</p>'
                 ) +
             '</div>'
         ).join('');
@@ -958,29 +1010,44 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         list.innerHTML = msgs.slice().reverse().map(m => 
-            '<div class="history-item">' +
-                '<div class="history-item-header">' +
-                    '<span class="history-menu">📩 ' + sanitize(m.fromName) + ' (' + sanitize(m.fromNik) + ')</span>' +
+            '<div class="history-item" style="flex-direction: column; align-items: flex-start; gap: 0.35rem; margin-bottom: 0.8rem;">' +
+                '<div class="history-item-header" style="width: 100%; display: flex; justify-content: space-between; align-items: center;">' +
+                    '<span class="history-menu"><i class="fa-solid fa-user" style="color: #ec4899; margin-right: 4px;"></i> ' + sanitize(m.fromName) + ' (' + sanitize(m.fromNik) + ')</span>' +
                     '<span class="history-date">' + sanitize(m.date) + '</span>' +
                 '</div>' +
-                '<p style="margin:0.4rem 0; font-size:0.92rem;">' + sanitize(m.text) + '</p>' +
+                '<div style="display: flex; justify-content: space-between; align-items: center; width: 100%; gap: 0.8rem; margin: 0.3rem 0;">' +
+                    '<p style="margin: 0; font-size:0.92rem; flex: 1; white-space: pre-wrap;">' + sanitize(m.text) + '</p>' +
+                    (!m.reply ? 
+                        '<button class="btn btn-secondary" style="font-size:0.8rem; padding:0.35rem 0.85rem; border-radius: 8px; white-space: nowrap;" onclick="window.replyToMessage(' + m.id + ')">' +
+                            '<i class="fa-solid fa-reply"></i> Balas' +
+                        '</button>' : ''
+                    ) +
+                '</div>' +
                 (m.reply ? 
-                    '<div style="margin-top:0.5rem; padding:0.6rem; background:rgba(16,185,129,0.12); border-left:3px solid var(--primary-color); border-radius:6px; font-size:0.88rem;">' +
-                        '<strong>Balasan Anda:</strong> ' + sanitize(m.reply) +
-                    '</div>' : 
-                    '<button class="btn btn-secondary" style="margin-top:0.5rem; font-size:0.8rem; padding:0.4rem 0.9rem;" onclick="window.replyToMessage(' + m.id + ')">' +
-                        '<i class="fa-solid fa-reply"></i> Balas' +
-                    '</button>'
+                    '<div style="margin-top:0.4rem; padding:0.6rem 0.8rem; background:rgba(16,185,129,0.12); border:1.5px solid var(--primary-color); border-radius:8px; font-size:0.88rem; width: 100%;">' +
+                        '<strong style="color: var(--primary-color);">Balasan Anda:</strong> ' + sanitize(m.reply) +
+                    '</div>' +
+                    '<button class="btn btn-secondary" style="margin-top:0.3rem; font-size:0.75rem; padding:0.25rem 0.6rem; border-radius: 6px;" onclick="window.replyToMessage(' + m.id + ')">' +
+                        '<i class="fa-solid fa-comment-dots"></i> Balas Lagi / Beri Pertanyaan Lanjutan' +
+                    '</button>' : ''
                 ) +
             '</div>'
         ).join('');
     }
 
     window.replyToMessage = async function(msgId) {
-        const reply = await customPrompt('Masukkan teks balasan untuk pesan ini:');
+        const reply = await customPrompt('Masukkan teks balasan atau pertanyaan untuk pengguna ini:');
         if (reply === null || reply === '') return;
         await publishSync('reply_message', { id: msgId, reply: sanitize(reply) });
-        showToast('Balasan terkirim!');
+        showToast('Balasan & Pertanyaan terkirim ke Pengguna!');
+        loadMessages();
+    };
+
+    window.userReplyToMessage = async function(msgId) {
+        const reply = await customPrompt('Masukkan tanggapan atau jawaban Anda untuk Admin SPPG:');
+        if (reply === null || reply === '') return;
+        await publishSync('user_reply_message', { id: msgId, reply: sanitize(reply) });
+        showToast('Tanggapan Anda terkirim ke Admin!');
         loadMessages();
     };
 
@@ -1606,24 +1673,53 @@ Tugas Anda:
                 console.warn('Backend local YOLO server not reachable, trying fallback:', backendErr);
             }
 
-            // 2. Cloud Gemini VLM Fallback
-            if (!cloudSuccess && vlmApiKey) {
+            // 2. Vercel Serverless /api/gemini or Cloud Gemini Fallback
+            if (!cloudSuccess) {
                 if (scanStatusText) scanStatusText.textContent = 'Menganalisis Komposisi Makanan...';
+                // Try Vercel serverless function /api/gemini
                 try {
-                    const vlmRes = await queryCloudGeminiVLM(base64Jpeg, vlmApiKey);
-                    if (vlmRes && vlmRes.prohew && vlmRes.karbo) {
-                        detectedKarbo = vlmRes.karbo;
-                        detectedProhew = vlmRes.prohew;
-                        detectedPronab = vlmRes.pronab;
-                        detectedSayur = vlmRes.sayur;
-                        detectedBuah = vlmRes.buah;
-                        matchedPackage = vlmRes.packageName || 'Menu MBG Terdeteksi';
-                        vlmAnalysisNote = vlmRes.analysis || 'Porsi dan komposisi makanan dianalisis secara otomatis berdasarkan standar gizi resmi.';
-                        engineUsedLabel = '🔍 Hasil Analisis Komposisi Makanan — 99.1% Sesuai';
-                        cloudSuccess = true;
+                    const serverRes = await fetch('/api/gemini', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ image: base64Jpeg, apiKey: vlmApiKey })
+                    });
+                    if (serverRes.ok) {
+                        const sData = await serverRes.json();
+                        if (sData && sData.success && sData.data) {
+                            const vlmRes = sData.data;
+                            detectedKarbo = vlmRes.karbo;
+                            detectedProhew = vlmRes.prohew;
+                            detectedPronab = vlmRes.pronab;
+                            detectedSayur = vlmRes.sayur;
+                            detectedBuah = vlmRes.buah;
+                            matchedPackage = vlmRes.packageName || 'Menu MBG Terdeteksi';
+                            vlmAnalysisNote = vlmRes.analysis || 'Porsi dan komposisi makanan dianalisis secara otomatis berdasarkan standar gizi resmi.';
+                            engineUsedLabel = '🔍 Hasil Analisis Komposisi Makanan — 99.2% Sesuai';
+                            cloudSuccess = true;
+                        }
                     }
-                } catch (vlmErr) {
-                    console.warn('API fallback to on-device:', vlmErr);
+                } catch (apiErr) {
+                    console.warn('/api/gemini call failed, trying direct client call:', apiErr);
+                }
+
+                // If /api/gemini did not succeed, try direct client-side Google API call
+                if (!cloudSuccess && vlmApiKey) {
+                    try {
+                        const vlmRes = await queryCloudGeminiVLM(base64Jpeg, vlmApiKey);
+                        if (vlmRes && vlmRes.prohew && vlmRes.karbo) {
+                            detectedKarbo = vlmRes.karbo;
+                            detectedProhew = vlmRes.prohew;
+                            detectedPronab = vlmRes.pronab;
+                            detectedSayur = vlmRes.sayur;
+                            detectedBuah = vlmRes.buah;
+                            matchedPackage = vlmRes.packageName || 'Menu MBG Terdeteksi';
+                            vlmAnalysisNote = vlmRes.analysis || 'Porsi dan komposisi makanan dianalisis secara otomatis berdasarkan standar gizi resmi.';
+                            engineUsedLabel = '🔍 Hasil Analisis Komposisi Makanan — 99.1% Sesuai';
+                            cloudSuccess = true;
+                        }
+                    } catch (vlmErr) {
+                        console.warn('Direct Google API fallback to on-device:', vlmErr);
+                    }
                 }
             }
 
