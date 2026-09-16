@@ -1217,12 +1217,14 @@ def classify_with_vlm(pil_image, api_key=None, doubt_context=None):
             if not api_key and hasattr(st, "secrets"):
                 if "GEMINI_API_KEY" in st.secrets:
                     api_key = str(st.secrets["GEMINI_API_KEY"]).strip()
+                elif "GOOGLE_API_KEY" in st.secrets:
+                    api_key = str(st.secrets["GOOGLE_API_KEY"]).strip()
                 elif "GROQ_API_KEY" in st.secrets:
                     api_key = str(st.secrets["GROQ_API_KEY"]).strip()
         except Exception:
             pass
     if not api_key:
-        api_key = os.environ.get("GEMINI_API_KEY", "").strip() or os.environ.get("GROQ_API_KEY", "").strip()
+        api_key = os.environ.get("GEMINI_API_KEY", "").strip() or os.environ.get("GOOGLE_API_KEY", "").strip() or os.environ.get("GROQ_API_KEY", "").strip()
     
     if not api_key:
         return None
@@ -1731,12 +1733,14 @@ with tab_deteksi:
                 if hasattr(st, "secrets"):
                     if "GEMINI_API_KEY" in st.secrets:
                         default_key = str(st.secrets["GEMINI_API_KEY"]).strip()
+                    elif "GOOGLE_API_KEY" in st.secrets:
+                        default_key = str(st.secrets["GOOGLE_API_KEY"]).strip()
                     elif "GROQ_API_KEY" in st.secrets:
                         default_key = str(st.secrets["GROQ_API_KEY"]).strip()
             except Exception:
                 pass
         if not default_key:
-            default_key = os.environ.get("GEMINI_API_KEY", "").strip() or os.environ.get("GROQ_API_KEY", "").strip()
+            default_key = os.environ.get("GEMINI_API_KEY", "").strip() or os.environ.get("GOOGLE_API_KEY", "").strip() or os.environ.get("GROQ_API_KEY", "").strip()
 
         is_connected = bool(default_key) and not default_key.startswith("gsk_")
         is_groq_key = default_key.startswith("gsk_")
