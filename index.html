@@ -357,12 +357,14 @@
                                     <label for="karbo">Karbohidrat</label>
                                     <div style="display: flex; gap: 0.5rem;">
                                         <select id="karbo" style="flex: 2;">
-                                            <option value="0">Tidak Ada</option>
-                                            <option value="150" selected>Nasi Putih</option>
-                                            <option value="130">Nasi Merah</option>
-                                            <option value="80">Kentang</option>
+                                            <option value="0">Tanpa Nasi (0g)</option>
+                                            <option value="195" selected>Nasi Putih Pulen</option>
+                                            <option value="210">Nasi Kuning Gurih</option>
+                                            <option value="240">Nasi Goreng Gurih</option>
+                                            <option value="180">Mie Goreng / Bihun</option>
+                                            <option value="185">Kentang Panggang Wedges</option>
                                         </select>
-                                        <input type="number" id="karbo-gram" value="100" min="0" placeholder="Gram" style="flex: 1; padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1);">
+                                        <input type="number" id="karbo-gram" value="150" min="0" placeholder="Gram" style="flex: 1; padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1);">
                                     </div>
                                 </div>
                                 <div class="input-group">
@@ -370,13 +372,18 @@
                                     <div style="display: flex; gap: 0.5rem;">
                                         <select id="prohew" style="flex: 2;">
                                             <option value="0">Tidak Ada</option>
-                                            <option value="200" selected>Ayam Goreng/Bakar</option>
-                                            <option value="150">Ikan Nila/Lele</option>
-                                            <option value="90">Udang Masak Kuah/Goreng</option>
-                                            <option value="250">Daging Sapi</option>
-                                            <option value="70">Telur Rebus (50g)</option>
+                                            <option value="215" selected>Ayam Lengkuas / Serundeng</option>
+                                            <option value="225">Paha Ayam Masak Saus</option>
+                                            <option value="230">Ayam Goreng Tepung Krispi</option>
+                                            <option value="215">Ayam Gulai / Kuah Kuning</option>
+                                            <option value="92">Telur Ceplok Balado</option>
+                                            <option value="79">Telur Rebus / Puyuh</option>
+                                            <option value="185">Semur / Rolade Daging Sapi</option>
+                                            <option value="260">Rendang Daging Sapi</option>
+                                            <option value="85">Udang Masak Kuah / Balado</option>
+                                            <option value="160">Ikan Goreng Filet Gurih</option>
                                         </select>
-                                        <input type="number" id="prohew-gram" value="100" min="0" placeholder="Gram" style="flex: 1; padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1);">
+                                        <input type="number" id="prohew-gram" value="85" min="0" placeholder="Gram" style="flex: 1; padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1);">
                                     </div>
                                 </div>
                                 <div class="input-group">
@@ -384,11 +391,14 @@
                                     <div style="display: flex; gap: 0.5rem;">
                                         <select id="pronab" style="flex: 2;">
                                             <option value="0">Tidak Ada</option>
-                                            <option value="190" selected>Tempe Goreng</option>
-                                            <option value="120">Tempe Orek Dadu</option>
-                                            <option value="80">Tahu</option>
+                                            <option value="118" selected>Tempe Goreng Gurih</option>
+                                            <option value="110">Tempe Orek Dadu Manis</option>
+                                            <option value="80">Tahu Goreng Kotak / Sakura</option>
+                                            <option value="95">Perkedel Kentang Gurih</option>
+                                            <option value="115">Bakwan Sayur Gurih</option>
+                                            <option value="60">Kacang Edamame Rebus</option>
                                         </select>
-                                        <input type="number" id="pronab-gram" value="100" min="0" placeholder="Gram" style="flex: 1; padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1);">
+                                        <input type="number" id="pronab-gram" value="50" min="0" placeholder="Gram" style="flex: 1; padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1);">
                                     </div>
                                 </div>
                                 <div class="input-group">
@@ -396,20 +406,25 @@
                                     <div style="display: flex; gap: 0.5rem;">
                                         <select id="sayur" style="flex: 2;">
                                             <option value="0">Tidak Ada</option>
-                                            <option value="20" selected>Sayur Bening/Bayam</option>
-                                            <option value="30">Tumis Kangkung / Buncis</option>
-                                            <option value="35">Sayur Capcay / Wortel</option>
-                                            <option value="25">Brokoli</option>
+                                            <option value="32" selected>Tumis Buncis Hijau</option>
+                                            <option value="35">Sayur Capcay Wortel Buncis</option>
+                                            <option value="25">Sayur Sop Wortel Kol</option>
+                                            <option value="30">Tumis Sayur Hijau (Bayam/Sawi)</option>
+                                            <option value="48">Tumis Jagung Manis & Wortel</option>
                                         </select>
-                                        <input type="number" id="sayur-gram" value="100" min="0" placeholder="Gram" style="flex: 1; padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1);">
+                                        <input type="number" id="sayur-gram" value="75" min="0" placeholder="Gram" style="flex: 1; padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1);">
                                     </div>
                                 </div>
                                 <div class="input-group" style="grid-column: 1 / -1;">
-                                    <label>Menu Tambahan / Kustom (Ketik Nama Makanan)</label>
+                                    <label><i class="fa-solid fa-wand-magic-sparkles" style="color:#9333ea;"></i> Menu Tambahan / Kustom (Ketik Nama & Cari dengan AI)</label>
                                     <div style="display: flex; gap: 0.5rem;">
-                                        <input type="text" id="custom-name" placeholder="Nama Makanan (contoh: Bubur Ayam)" style="flex: 2; padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1);">
+                                        <input type="text" id="custom-name" placeholder="Nama Makanan (contoh: Bubur Ayam / Soto / Rendang)" style="flex: 2; padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1);">
                                         <input type="number" id="custom-gram" placeholder="Gram" min="0" value="0" style="flex: 1; padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1);">
+                                        <button type="button" id="btn-ai-food-lookup" class="btn btn-secondary" style="background:#f3e8ff; color:#9333ea; border:1px solid #d8b4fe; font-weight:700; white-space:nowrap; padding:0.6rem 0.9rem;" onclick="window.lookupCustomFoodAI()">
+                                            <i class="fa-solid fa-wand-magic-sparkles"></i> Cari AI
+                                        </button>
                                     </div>
+                                    <div id="ai-food-badge" style="display:none; font-size:0.8rem; margin-top:0.4rem; padding:0.4rem 0.75rem; border-radius:8px; background:rgba(147,51,234,0.08); border:1px solid #d8b4fe; color:#7e22ce;"></div>
                                 </div>
                             </div>
                             <button type="button" id="btn-calculate-nutrition" class="btn btn-primary btn-block" style="margin-top: 1rem; background:#10b981; border-color:#10b981;" onclick="window.calculateNutrition()">Hitung Total Gizi</button>
@@ -431,6 +446,19 @@
                             <div class="nutri-box">
                                 <span class="nutri-title">Lemak</span>
                                 <span class="nutri-val" id="val-lemak">0 g</span>
+                            </div>
+                        </div>
+
+                        <!-- Breakdown Table & Next Action Sync -->
+                        <div id="nutrition-breakdown-card" class="hidden" style="margin-top:1.2rem;">
+                            <div id="nutrition-breakdown-content"></div>
+                            <div style="display:flex; gap:0.5rem; margin-top:1rem; flex-wrap:wrap;">
+                                <button type="button" class="btn btn-primary" style="flex:1; font-size:0.85rem;" onclick="openScreen('screen-dashboard-mbg')">
+                                    📊 Lihat Evaluasi Gizi di Dashboard &rarr;
+                                </button>
+                                <button type="button" class="btn btn-secondary" style="flex:1; font-size:0.85rem;" onclick="openScreen('screen-jurnal')">
+                                    🍱 Catat ke Jurnal Kebutuhan MBG &rarr;
+                                </button>
                             </div>
                         </div>
                     </div>

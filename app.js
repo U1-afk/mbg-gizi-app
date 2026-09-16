@@ -647,6 +647,19 @@ document.addEventListener('DOMContentLoaded', () => {
             // Klasifikasi Antropometri K-Nearest Neighbors (KNN)
             const knnResult = classifyNutritionalStatusKNN(age, gender, weight, height, 5);
 
+            // Hitung Kebutuhan Energi Otomatis (BMR & TDEE Standar Kemenkes RI)
+            let bmr;
+            if (gender === 'L') {
+                bmr = (10 * weight) + (6.25 * height) - (5 * age) + 5;
+            } else {
+                bmr = (10 * weight) + (6.25 * height) - (5 * age) - 161;
+            }
+            const tdee = Math.round(bmr * 1.55);
+            const mbgTarget = Math.round(tdee * 0.33);
+            const targetKarbo = Math.round((tdee * 0.60) / 4);
+            const targetPro = Math.round((tdee * 0.15) / 4);
+            const targetLem = Math.round((tdee * 0.25) / 9);
+
             // Save to Global State
             window.currentStudentProfile = {
                 age, gender, weight, height,
@@ -654,6 +667,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 status: knnResult.label,
                 confidence: knnResult.confidence,
                 method: 'KNN (K=5)'
+            };
+
+            window.currentTargetNutrition = {
+                bmr: Math.round(bmr),
+                tdee: tdee,
+                mbgTargetKal: mbgTarget,
+                targetKarbo: targetKarbo,
+                targetPro: targetPro,
+                targetLem: targetLem
             };
 
             const bmiScoreEl = document.getElementById('bmi-score');
@@ -668,7 +690,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (rfConfEl) rfConfEl.textContent = 'Tingkat Keyakinan KNN (K=5): ' + knnResult.confidence;
             if (bmiCard) bmiCard.classList.remove('hidden');
 
-            // Sync to Kalkulator Gizi Form
+            // Sync to Kalkulator Gizi Form & Display
             const tAge = document.getElementById('tdee-age');
             const tGen = document.getElementById('tdee-gender');
             const tW = document.getElementById('tdee-weight');
@@ -677,6 +699,19 @@ document.addEventListener('DOMContentLoaded', () => {
             if (tGen) tGen.value = gender;
             if (tW) tW.value = weight;
             if (tH) tH.value = height;
+
+            const tdeeTotalEl = document.getElementById('val-tdee-total');
+            const bmrTotalEl = document.getElementById('val-bmr-total');
+            const mbgTargetEl = document.getElementById('val-mbg-target');
+            const targetKarboEl = document.getElementById('val-target-karbo');
+            const targetProEl = document.getElementById('val-target-pro');
+            const targetLemEl = document.getElementById('val-target-lem');
+            if (tdeeTotalEl) tdeeTotalEl.textContent = tdee.toLocaleString('id-ID') + ' kcal/hari';
+            if (bmrTotalEl) bmrTotalEl.textContent = Math.round(bmr).toLocaleString('id-ID');
+            if (mbgTargetEl) mbgTargetEl.textContent = mbgTarget.toLocaleString('id-ID') + ' kcal';
+            if (targetKarboEl) targetKarboEl.textContent = targetKarbo + ' g';
+            if (targetProEl) targetProEl.textContent = targetPro + ' g';
+            if (targetLemEl) targetLemEl.textContent = targetLem + ' g';
 
             showToast('Status Gizi berhasil dianalisis dengan KNN!');
             updateIntegratedDashboard();
@@ -742,6 +777,421 @@ document.addEventListener('DOMContentLoaded', () => {
             updateIntegratedDashboard();
         });
     }
+
+    // ============================================================
+    // 7B. KALKULATOR GIZI MANUAL & CUSTOM FOOD AI
+    // ============================================================
+    const FOOD_NUTRITION_DB = {
+        karbo: {
+            "0": { name: "Tanpa Nasi", kal: 0, pro: 0, kar: 0, lem: 0 },
+            "195": { name: "Nasi Putih Pulen", kal: 130, pro: 2.7, kar: 28.7, lem: 0.3 }, // per 100g -> 150g = 195 kcal, 4.0 pro, 43.0 kar, 0.5 lem
+            "210": { name: "Nasi Kuning Gurih", kal: 140, pro: 2.8, kar: 27.7, lem: 2.1 },
+            "240": { name: "Nasi Goreng Gurih", kal: 160, pro: 3.5, kar: 28.0, lem: 4.3 },
+            "180": { name: "Mie Goreng / Bihun", kal: 150, pro: 3.2, kar: 31.7, lem: 2.1 },
+            "185": { name: "Kentang Panggang Wedges", kal: 123, pro: 2.7, kar: 23.3, lem: 2.3 }
+        },
+        prohew: {
+            "0": { name: "Tidak Ada", kal: 0, pro: 0, kar: 0, lem: 0 },
+            "215": { name: "Ayam Lengkuas / Serundeng", kal: 253, pro: 28.2, kar: 1.8, lem: 14.7 }, // per 100g -> 85g = 215 kcal, 24.0 pro
+            "225": { name: "Paha Ayam Masak Saus", kal: 265, pro: 23.0, kar: 16.5, lem: 12.4 }, // per 100g -> 85g = 225 kcal
+            "230": { name: "Ayam Goreng Tepung Krispi", kal: 270, pro: 26.5, kar: 9.4, lem: 14.1 },
+            "215_g": { name: "Ayam Gulai / Kuah Kuning", kal: 238, pro: 23.3, kar: 3.8, lem: 14.4 },
+            "92": { name: "Telur Ceplok Balado", kal: 167, pro: 11.8, kar: 1.5, lem: 12.7 }, // 55g = 92 kcal, 6.5 pro
+            "79": { name: "Telur Rebus / Puyuh", kal: 158, pro: 13.0, kar: 1.0, lem: 11.0 }, // 50g = 79 kcal, 6.5 pro
+            "185": { name: "Semur / Rolade Daging Sapi", kal: 247, pro: 25.3, kar: 4.7, lem: 14.0 },
+            "260": { name: "Rendang Daging Sapi", kal: 260, pro: 22.0, kar: 6.0, lem: 16.5 },
+            "85": { name: "Udang Masak Kuah / Balado", kal: 106, pro: 23.1, kar: 0.6, lem: 1.0 },
+            "160": { name: "Ikan Goreng Filet Gurih", kal: 200, pro: 22.5, kar: 1.3, lem: 11.3 }
+        },
+        pronab: {
+            "0": { name: "Tidak Ada", kal: 0, pro: 0, kar: 0, lem: 0 },
+            "118": { name: "Tempe Goreng Gurih", kal: 236, pro: 21.0, kar: 15.0, lem: 11.0 }, // per 100g -> 50g = 118 kcal, 10.5 pro
+            "110": { name: "Tempe Orek Dadu Manis", kal: 220, pro: 18.0, kar: 16.0, lem: 10.0 }, // 50g = 110 kcal, 9.0 pro
+            "80": { name: "Tahu Goreng Kotak / Sakura", kal: 107, pro: 10.7, kar: 2.7, lem: 6.4 }, // 75g = 80 kcal, 8.0 pro
+            "95": { name: "Perkedel Kentang Gurih", kal: 190, pro: 5.0, kar: 28.0, lem: 7.0 },
+            "115": { name: "Bakwan Sayur Gurih", kal: 230, pro: 4.4, kar: 24.0, lem: 13.0 },
+            "60": { name: "Kacang Edamame Rebus", kal: 120, pro: 12.0, kar: 9.0, lem: 5.0 }
+        },
+        sayur: {
+            "0": { name: "Tidak Ada", kal: 0, pro: 0, kar: 0, lem: 0 },
+            "32": { name: "Tumis Buncis Hijau", kal: 43, pro: 2.1, kar: 7.7, lem: 0.5 }, // 75g = 32 kcal, 1.6 pro
+            "35": { name: "Sayur Capcay Wortel Buncis", kal: 44, pro: 2.5, kar: 8.1, lem: 1.0 }, // 80g = 35 kcal, 2.0 pro
+            "25": { name: "Sayur Sop Wortel Kol", kal: 33, pro: 1.6, kar: 6.0, lem: 0.7 }, // 75g = 25 kcal, 1.2 pro
+            "30": { name: "Tumis Sayur Hijau (Bayam/Sawi)", kal: 40, pro: 2.4, kar: 6.7, lem: 0.8 },
+            "48": { name: "Tumis Jagung Manis & Wortel", kal: 64, pro: 2.0, kar: 14.0, lem: 0.7 }
+        }
+    };
+
+    const MENU_PRESETS = {
+        1: {
+            name: "Paket 1: Ayam Lengkuas + Tahu Kuning + Labu Siam + Semangka",
+            karbo: "195", karboGr: 150,
+            prohew: "215", prohewGr: 85,
+            pronab: "80", pronabGr: 75,
+            sayur: "30", sayurGr: 75,
+            custom: "Buah Semangka Merah Segar", customGr: 100
+        },
+        2: {
+            name: "Paket 2: Telur Rebus + Dadu Ayam + Tumis Buncis + Jeruk",
+            karbo: "195", karboGr: 150,
+            prohew: "79", prohewGr: 50,
+            pronab: "118", pronabGr: 50,
+            sayur: "32", sayurGr: 75,
+            custom: "Buah Jeruk Manis Segar", customGr: 100
+        },
+        3: {
+            name: "Paket 3: Telur Balado + Tahu Kukus + Tumis Tauge + Melon",
+            karbo: "195", karboGr: 150,
+            prohew: "92", prohewGr: 55,
+            pronab: "110", pronabGr: 50,
+            sayur: "35", sayurGr: 75,
+            custom: "Buah Melon Segar", customGr: 100
+        },
+        4: {
+            name: "Paket 4: Telur Ceplok + Tempe Goreng + Tumis Sayur + Jeruk",
+            karbo: "195", karboGr: 150,
+            prohew: "92", prohewGr: 55,
+            pronab: "80", pronabGr: 75,
+            sayur: "35", sayurGr: 80,
+            custom: "Buah Jeruk Manis Segar", customGr: 100
+        },
+        5: {
+            name: "Paket 5: Ayam Kremes + Sambal + Lalapan Timun Kol + Semangka",
+            karbo: "195", karboGr: 150,
+            prohew: "230", prohewGr: 85,
+            pronab: "118", pronabGr: 50,
+            sayur: "30", sayurGr: 75,
+            custom: "Buah Semangka Segar", customGr: 100
+        },
+        6: {
+            name: "Paket 6: Udang Masak Kuah + Tempe Orek + Sayur Capcay + Semangka",
+            karbo: "195", karboGr: 150,
+            prohew: "85", prohewGr: 85,
+            pronab: "110", pronabGr: 50,
+            sayur: "35", sayurGr: 80,
+            custom: "Buah Semangka Segar", customGr: 100
+        },
+        7: {
+            name: "Paket 7: Ikan Nila Goreng + Tempe + Sayur Bening Bayam + Pisang",
+            karbo: "195", karboGr: 150,
+            prohew: "160", prohewGr: 80,
+            pronab: "118", pronabGr: 50,
+            sayur: "25", sayurGr: 75,
+            custom: "Buah Pisang Ambon Segar", customGr: 100
+        },
+        8: {
+            name: "Paket 8: Ayam Lengkuas + Tempe Orek + Sayur Sop + Kelengkeng",
+            karbo: "195", karboGr: 150,
+            prohew: "215", prohewGr: 85,
+            pronab: "110", pronabGr: 50,
+            sayur: "25", sayurGr: 75,
+            custom: "Buah Kelengkeng Segar (5 Butir)", customGr: 75
+        },
+        9: {
+            name: "Paket 9: Paha Ayam Masak Saus + Tempe + Tumis Buncis + Kelengkeng",
+            karbo: "195", karboGr: 150,
+            prohew: "225", prohewGr: 85,
+            pronab: "118", pronabGr: 50,
+            sayur: "32", sayurGr: 75,
+            custom: "Buah Kelengkeng Segar (5 Butir)", customGr: 75
+        }
+    };
+
+    window._cachedCustomFood = null;
+
+    function loadMenuPreset(presetId) {
+        const p = MENU_PRESETS[presetId];
+        if (!p) return;
+
+        const kSel = document.getElementById('karbo');
+        const hSel = document.getElementById('prohew');
+        const nSel = document.getElementById('pronab');
+        const sSel = document.getElementById('sayur');
+
+        const kGr = document.getElementById('karbo-gram');
+        const hGr = document.getElementById('prohew-gram');
+        const nGr = document.getElementById('pronab-gram');
+        const sGr = document.getElementById('sayur-gram');
+
+        const cName = document.getElementById('custom-name');
+        const cGr = document.getElementById('custom-gram');
+        const badge = document.getElementById('ai-food-badge');
+
+        if (kSel) kSel.value = p.karbo;
+        if (hSel) hSel.value = p.prohew;
+        if (nSel) nSel.value = p.pronab;
+        if (sSel) sSel.value = p.sayur;
+
+        if (kGr) kGr.value = p.karboGr;
+        if (hGr) hGr.value = p.prohewGr;
+        if (nGr) nGr.value = p.pronabGr;
+        if (sGr) sGr.value = p.sayurGr;
+
+        if (cName) cName.value = p.custom;
+        if (cGr) cGr.value = p.customGr;
+        if (badge) badge.style.display = 'none';
+        window._cachedCustomFood = null;
+
+        calculateNutrition(false);
+        showToast('Memuat ' + p.name.split(':')[0] + '...');
+    }
+    window.loadMenuPreset = loadMenuPreset;
+
+    async function lookupCustomFoodAI() {
+        const cNameInput = document.getElementById('custom-name');
+        const cGramInput = document.getElementById('custom-gram');
+        const badge = document.getElementById('ai-food-badge');
+        const btnLookup = document.getElementById('btn-ai-food-lookup');
+
+        const foodName = cNameInput ? cNameInput.value.trim() : '';
+        const foodGram = Math.max(1, parseFloat(cGramInput ? cGramInput.value : 100) || 100);
+
+        if (!foodName) {
+            customAlert('Silakan ketik nama makanan terlebih dahulu (contoh: Rendang Sapi, Soto Ayam, Bubur Ayam)!');
+            return;
+        }
+
+        const originalBtnHtml = btnLookup ? btnLookup.innerHTML : '';
+        if (btnLookup) {
+            btnLookup.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Mencari AI...';
+            btnLookup.disabled = true;
+        }
+
+        try {
+            const vlmKey = vlmApiKey || localStorage.getItem('sppg_vlm_key') || '';
+            const res = await fetch('/api/gemini', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'lookup_food',
+                    foodName: foodName,
+                    gram: foodGram,
+                    apiKey: vlmKey
+                })
+            });
+
+            if (res.ok) {
+                const jsonRes = await res.json();
+                if (jsonRes && jsonRes.success && jsonRes.data) {
+                    window._cachedCustomFood = jsonRes.data;
+                    if (badge) {
+                        badge.style.display = 'block';
+                        badge.innerHTML = '✨ <strong>' + sanitize(jsonRes.data.name) + ' (' + jsonRes.data.gram + 'g)</strong>: ' +
+                            jsonRes.data.kal + ' kcal | Protein ' + jsonRes.data.pro + 'g | Karbo ' + jsonRes.data.kar + 'g | Lemak ' + jsonRes.data.lem + 'g ' +
+                            '<span style="font-size:0.75rem; color:#6b21a8; font-style:italic;">(' + sanitize(jsonRes.data.source) + ')</span>';
+                    }
+                    showToast('Data gizi ' + foodName + ' berhasil ditemukan!');
+                }
+            } else {
+                showToast('Menggunakan estimasi komposisi standar untuk ' + foodName);
+            }
+        } catch (e) {
+            console.warn('AI Food lookup error:', e);
+            showToast('Menggunakan estimasi komposisi standar');
+        } finally {
+            if (btnLookup) {
+                btnLookup.innerHTML = originalBtnHtml;
+                btnLookup.disabled = false;
+            }
+            calculateNutrition(false);
+        }
+    }
+    window.lookupCustomFoodAI = lookupCustomFoodAI;
+
+    function calculateNutrition(isFromScan = false) {
+        const kSel = document.getElementById('karbo');
+        const hSel = document.getElementById('prohew');
+        const nSel = document.getElementById('pronab');
+        const sSel = document.getElementById('sayur');
+
+        const kGr = Math.max(0, parseFloat(document.getElementById('karbo-gram')?.value || 0));
+        const hGr = Math.max(0, parseFloat(document.getElementById('prohew-gram')?.value || 0));
+        const nGr = Math.max(0, parseFloat(document.getElementById('pronab-gram')?.value || 0));
+        const sGr = Math.max(0, parseFloat(document.getElementById('sayur-gram')?.value || 0));
+
+        const cName = document.getElementById('custom-name')?.value.trim() || '';
+        const cGr = Math.max(0, parseFloat(document.getElementById('custom-gram')?.value || 0));
+
+        const kVal = kSel ? kSel.value : '195';
+        const hVal = hSel ? hSel.value : '215';
+        const nVal = nSel ? nSel.value : '118';
+        const sVal = sSel ? sSel.value : '32';
+
+        const kData = FOOD_NUTRITION_DB.karbo[kVal] || { name: 'Karbohidrat', kal: 130, pro: 2.7, kar: 28.7, lem: 0.3 };
+        const hData = FOOD_NUTRITION_DB.prohew[hVal] || { name: 'Lauk Hewani', kal: 250, pro: 25.0, kar: 2.0, lem: 14.0 };
+        const nData = FOOD_NUTRITION_DB.pronab[nVal] || { name: 'Lauk Nabati', kal: 200, pro: 16.0, kar: 12.0, lem: 10.0 };
+        const sData = FOOD_NUTRITION_DB.sayur[sVal] || { name: 'Sayuran', kal: 40, pro: 2.0, kar: 7.0, lem: 0.6 };
+
+        const items = [];
+
+        // Karbo
+        const kKal = (kData.kal * kGr) / 100.0;
+        const kPro = (kData.pro * kGr) / 100.0;
+        const kKar = (kData.kar * kGr) / 100.0;
+        const kLem = (kData.lem * kGr) / 100.0;
+        if (kGr > 0 && kVal !== '0') {
+            items.push({ cat: 'Karbohidrat', name: kData.name, gram: kGr, kal: kKal, pro: kPro, kar: kKar, lem: kLem });
+        }
+
+        // ProHew
+        const hKal = (hData.kal * hGr) / 100.0;
+        const hPro = (hData.pro * hGr) / 100.0;
+        const hKar = (hData.kar * hGr) / 100.0;
+        const hLem = (hData.lem * hGr) / 100.0;
+        if (hGr > 0 && hVal !== '0') {
+            items.push({ cat: 'Protein Hewani', name: hData.name, gram: hGr, kal: hKal, pro: hPro, kar: hKar, lem: hLem });
+        }
+
+        // ProNab
+        const nKal = (nData.kal * nGr) / 100.0;
+        const nPro = (nData.pro * nGr) / 100.0;
+        const nKar = (nData.kar * nGr) / 100.0;
+        const nLem = (nData.lem * nGr) / 100.0;
+        if (nGr > 0 && nVal !== '0') {
+            items.push({ cat: 'Protein Nabati', name: nData.name, gram: nGr, kal: nKal, pro: nPro, kar: nKar, lem: nLem });
+        }
+
+        // Sayur
+        const sKal = (sData.kal * sGr) / 100.0;
+        const sPro = (sData.pro * sGr) / 100.0;
+        const sKar = (sData.kar * sGr) / 100.0;
+        const sLem = (sData.lem * sGr) / 100.0;
+        if (sGr > 0 && sVal !== '0') {
+            items.push({ cat: 'Sayuran', name: sData.name, gram: sGr, kal: sKal, pro: sPro, kar: sKar, lem: sLem });
+        }
+
+        // Custom
+        let cKal = 0, cPro = 0, cKar = 0, cLem = 0;
+        if (cName && cGr > 0) {
+            if (window._cachedCustomFood && window._cachedCustomFood.name.toLowerCase().includes(cName.toLowerCase().trim())) {
+                const ratio = cGr / (window._cachedCustomFood.gram || 100);
+                cKal = window._cachedCustomFood.kal * ratio;
+                cPro = window._cachedCustomFood.pro * ratio;
+                cKar = window._cachedCustomFood.kar * ratio;
+                cLem = window._cachedCustomFood.lem * ratio;
+            } else {
+                let bK = 150, bP = 5, bC = 20, bL = 4;
+                const lower = cName.toLowerCase();
+                if (/daging|ayam|sapi|kambing|ikan|udang|telur/i.test(lower)) {
+                    bK = 210; bP = 20; bC = 3; bL = 13;
+                } else if (/nasi|mie|roti|bihun|kentang/i.test(lower)) {
+                    bK = 175; bP = 4; bC = 36; bL = 1.5;
+                } else if (/sayur|sup|sop|bayam|kangkung|wortel/i.test(lower)) {
+                    bK = 45; bP = 2; bC = 7; bL = 0.5;
+                } else if (/buah|apel|jeruk|semangka|pisang|kelengkeng|melon/i.test(lower)) {
+                    bK = 60; bP = 1; bC = 14; bL = 0.3;
+                }
+                const ratio = cGr / 100.0;
+                cKal = bK * ratio;
+                cPro = bP * ratio;
+                cKar = bC * ratio;
+                cLem = bL * ratio;
+            }
+            items.push({ cat: 'Menu Kustom / Buah', name: cName, gram: cGr, kal: cKal, pro: cPro, kar: cKar, lem: cLem });
+        }
+
+        // Total
+        let totalKal = 0, totalPro = 0, totalKar = 0, totalLem = 0;
+        items.forEach(it => {
+            totalKal += it.kal;
+            totalPro += it.pro;
+            totalKar += it.kar;
+            totalLem += it.lem;
+        });
+
+        totalKal = Math.round(totalKal);
+        totalPro = parseFloat(totalPro.toFixed(1));
+        totalKar = parseFloat(totalKar.toFixed(1));
+        totalLem = parseFloat(totalLem.toFixed(1));
+
+        // Display results
+        const resCard = document.getElementById('nutrition-result');
+        const vKal = document.getElementById('val-kalori');
+        const vPro = document.getElementById('val-protein');
+        const vKar = document.getElementById('val-karbo');
+        const vLem = document.getElementById('val-lemak');
+
+        if (vKal) vKal.textContent = totalKal + ' kcal';
+        if (vPro) vPro.textContent = totalPro + ' g';
+        if (vKar) vKar.textContent = totalKar + ' g';
+        if (vLem) vLem.textContent = totalLem + ' g';
+        if (resCard) resCard.classList.remove('hidden');
+
+        // Breakdown Table
+        const breakdownCard = document.getElementById('nutrition-breakdown-card');
+        const breakdownContent = document.getElementById('nutrition-breakdown-content');
+        if (breakdownContent && items.length > 0) {
+            let tableHtml = '<div style="background:white; border-radius:12px; border:1px solid rgba(0,0,0,0.08); overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.03);">' +
+                '<table style="width:100%; border-collapse:collapse; font-size:0.85rem;">' +
+                    '<thead style="background:#f8fafc; border-bottom:1.5px solid #e2e8f0; color:#475569; font-weight:700;">' +
+                        '<tr>' +
+                            '<th style="padding:0.6rem 0.75rem; text-align:left;">Bahan Makanan</th>' +
+                            '<th style="padding:0.6rem 0.5rem; text-align:center;">Porsi</th>' +
+                            '<th style="padding:0.6rem 0.5rem; text-align:center;">Energi</th>' +
+                            '<th style="padding:0.6rem 0.5rem; text-align:center;">Protein</th>' +
+                            '<th style="padding:0.6rem 0.5rem; text-align:center;">Karbo</th>' +
+                            '<th style="padding:0.6rem 0.5rem; text-align:center;">Lemak</th>' +
+                        '</tr>' +
+                    '</thead>' +
+                    '<tbody>';
+
+            items.forEach((it, idx) => {
+                const rowBg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
+                tableHtml += '<tr style="background:' + rowBg + '; border-bottom:1px solid #f1f5f9;">' +
+                    '<td style="padding:0.55rem 0.75rem;">' +
+                        '<div style="font-weight:700; color:#1e293b;">' + sanitize(it.name) + '</div>' +
+                        '<div style="font-size:0.75rem; color:#64748b;">' + sanitize(it.cat) + '</div>' +
+                    '</td>' +
+                    '<td style="padding:0.55rem 0.5rem; text-align:center;">' + it.gram + 'g</td>' +
+                    '<td style="padding:0.55rem 0.5rem; text-align:center; font-weight:700; color:#d97706;">' + Math.round(it.kal) + ' kcal</td>' +
+                    '<td style="padding:0.55rem 0.5rem; text-align:center; color:#2563eb; font-weight:600;">' + it.pro.toFixed(1) + 'g</td>' +
+                    '<td style="padding:0.55rem 0.5rem; text-align:center; color:#059669;">' + it.kar.toFixed(1) + 'g</td>' +
+                    '<td style="padding:0.55rem 0.5rem; text-align:center; color:#7c3aed;">' + it.lem.toFixed(1) + 'g</td>' +
+                '</tr>';
+            });
+
+            tableHtml += '</tbody></table></div>';
+            breakdownContent.innerHTML = tableHtml;
+            if (breakdownCard) breakdownCard.classList.remove('hidden');
+        }
+
+        // Build active menu description
+        const menuTitle = items.map(it => it.name.split('(')[0].trim()).join(' + ');
+
+        // SINKRONISASI KE GLOBAL STATE
+        window.currentMealIntake = {
+            kalori: totalKal,
+            protein: totalPro,
+            karbo: totalKar,
+            lemak: totalLem,
+            items: items,
+            menuName: menuTitle,
+            source: isFromScan ? 'Pemindaian Kamera Cerdas' : 'Kalkulator Gizi Manual'
+        };
+
+        // SINKRONISASI KE DASHBOARD EVALUASI MBG
+        updateIntegratedDashboard();
+
+        // SINKRONISASI KE JURNAL MBG
+        const mbgMenu = document.getElementById('mbg-menu');
+        if (mbgMenu) {
+            let matched = false;
+            for (let i = 0; i < mbgMenu.options.length; i++) {
+                const optVal = mbgMenu.options[i].value;
+                if (optVal.toLowerCase().includes(hData.name.toLowerCase().split(' ')[0]) ||
+                    (menuTitle && optVal.toLowerCase().includes(menuTitle.toLowerCase().slice(0, 10)))) {
+                    mbgMenu.selectedIndex = i;
+                    matched = true;
+                    break;
+                }
+            }
+            if (!matched && menuTitle) {
+                const customOpt = Array.from(mbgMenu.options).find(o => o.value.includes('Kustom') || o.value.includes('Lainnya'));
+                if (customOpt) customOpt.selected = true;
+            }
+        }
+    }
+    window.calculateNutrition = calculateNutrition;
 
     // ============================================================
     // 8. DASHBOARD EVALUASI MBG (ASUPAN VS TARGET)
@@ -1983,6 +2433,14 @@ Kembalikan HANYA format JSON valid persis berikut tanpa markdown atau backtick:
                     '<strong style="font-size:0.9rem; color:var(--text-main);"><i class="fa-solid fa-utensils"></i> Rincian Menu & Nilai Gizi:</strong>' +
                     itemsTableHtml +
                     (vlmAnalysisNote ? '<p style="margin-top:0.6rem; font-size:0.82rem; color:var(--text-light); background:rgba(37,99,235,0.05); padding:0.5rem 0.7rem; border-radius:6px; border-left:3px solid #2563eb;">💡 <em>' + vlmAnalysisNote + '</em></p>' : '') +
+                    '<div style="display:flex; gap:0.5rem; margin-top:0.85rem; flex-wrap:wrap;">' +
+                        '<button type="button" class="btn btn-primary" style="flex:1; font-size:0.85rem;" onclick="openScreen(\'screen-dashboard-mbg\')">' +
+                            '📊 Lihat Evaluasi Gizi di Dashboard &rarr;' +
+                        '</button>' +
+                        '<button type="button" class="btn btn-secondary" style="flex:1; font-size:0.85rem;" onclick="openScreen(\'screen-jurnal\')">' +
+                            '🍱 Catat ke Jurnal MBG &rarr;' +
+                        '</button>' +
+                    '</div>' +
                 '</div>';
 
         } catch (err) {
