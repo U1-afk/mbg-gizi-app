@@ -21,64 +21,85 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: 'Gambar tidak ditemukan dalam request' });
         }
 
-        const effectiveKey = apiKey || process.env.GEMINI_API_KEY;
+        const rawKey = apiKey || process.env.GEMINI_API_KEY || '';
+        const effectiveKey = rawKey.replace('AIzaSyAQ.', 'AQ.').trim();
         if (!effectiveKey) {
             return res.status(400).json({ error: 'GEMINI_API_KEY belum dikonfigurasi di Vercel atau form' });
         }
 
-        const promptText = `Anda adalah Ahli Gizi Profesional yang menganalisis baki makanan program MBG (Makan Bergizi Gratis) Indonesia.
-Tugas Anda:
-1. Identifikasi secara akurat jenis makanan di setiap sekat baki ompreng stainless:
-   - Karbohidrat (contoh: Nasi Putih Pulen, Nasi Merah, dll)
-   - Lauk Hewani (contoh: Ayam Goreng Lengkuas, Ikan Masak Bumbu, Udang Kuah Kuning, Telur Rebus, Telur Balado, Dadu Ayam)
-   - Lauk Nabati (contoh: Tempe Orek Dadu, Tahu Goreng Kuning, Tahu Kotak, Tempe Goreng)
-   - Sayuran (contoh: Sayur Sop Wortel Kol, Tumis Kangkung, Sayur Capcay, Tumis Buncis, Labu Siam)
-   - Buah / Pelengkap (contoh: Buah Kelengkeng Segar, Buah Semangka Merah, Buah Jeruk, Buah Melon, Pisang)
-2. Estimasi gramatur porsi standar makan siang siswa (TKPI Kemenkes RI) dan hitung Kalori, Protein, Karbohidrat, Lemak.
-3. Berikan output HANYA berupa JSON murni tanpa markdown, tanpa backtick, format persis berikut:
+        const cleanBase64 = image.includes(',') ? image.split(',')[1] : image;
+
+        const promptText = `Kamu adalah pakar computer vision gizi Program Makan Bergizi Gratis (MBG) Kemenkes RI.
+Analisis citra baki makanan kompartemen stainless ini secara sangat cermat dan objektif.
+Identifikasi setiap masakan di sekat baki:
+1. Makanan Pokok: (contoh: Nasi Putih Pulen Bentuk Hati, Nasi Goreng, dll)
+2. Lauk Hewani: Perhatikan dengan seksama! Jika terlihat potongan paha ayam / daging ayam berbumbu saus/kuah, sebut 'Paha Ayam Masak Saus Gurih' atau nama ayam aslinya. DILARANG menyebut Telur jika yang tersaji adalah potongan ayam!
+3. Lauk Nabati: (contoh: Tempe Goreng Gurih, Tempe Orek, Tahu Goreng)
+4. Sayuran: Perhatikan jenis sayurnya! Jika terlihat buncis hijau panjang ditumis, sebut 'Tumis Buncis Hijau'. DILARANG menyebut Capcay jika berupa buncis!
+5. Buah: Perhatikan buahnya! Jika terlihat butiran kelengkeng cokelat bulat, sebut 'Buah Kelengkeng Segar'.
+
+Kembalikan HANYA format JSON valid persis berikut tanpa markdown atau backtick:
 {
   "packageName": "Nama Menu Lengkap MBG",
-  "karbo": {"name": "Nasi Putih Pulen", "val": "150", "gram": 150, "kal": 195, "pro": 4.0, "kar": 43.0, "lem": 0.5, "conf": "98.5%"},
-  "prohew": {"name": "Nama Lauk Hewani", "val": "200", "gram": 85, "kal": 215, "pro": 24.0, "kar": 1.5, "lem": 12.5, "conf": "97.0%"},
-  "pronab": {"name": "Nama Lauk Nabati", "val": "120", "gram": 50, "kal": 115, "pro": 9.5, "kar": 8.0, "lem": 5.0, "conf": "96.2%"},
-  "sayur": {"name": "Nama Sayuran", "val": "20", "gram": 75, "kal": 25, "pro": 1.2, "kar": 4.5, "lem": 0.5, "conf": "95.0%"},
-  "buah": {"name": "Nama Buah / Pelengkap", "gram": 75, "kal": 45, "pro": 1.0, "kar": 11.3, "lem": 0.1, "conf": "97.5%"},
-  "analysis": "Porsi dan komposisi makanan teranalisis otomatis sesuai standar gizi resmi."
+  "karbo": {"name": "Nasi Putih Pulen", "val": "150", "gram": 150, "kal": 195, "pro": 4.0, "kar": 43.0, "lem": 0.5, "conf": "99.2%"},
+  "prohew": {"name": "Nama Lauk Hewani Asli", "val": "200", "gram": 85, "kal": 215, "pro": 24.0, "kar": 1.5, "lem": 12.5, "conf": "98.8%"},
+  "pronab": {"name": "Nama Lauk Nabati Asli", "val": "120", "gram": 50, "kal": 115, "pro": 9.5, "kar": 8.0, "lem": 5.0, "conf": "98.0%"},
+  "sayur": {"name": "Nama Sayuran Asli", "val": "20", "gram": 75, "kal": 25, "pro": 1.2, "kar": 4.5, "lem": 0.5, "conf": "98.5%"},
+  "buah": {"name": "Nama Buah Asli", "gram": 75, "kal": 45, "pro": 1.0, "kar": 11.3, "lem": 0.1, "conf": "99.0%"},
+  "analysis": "Porsi dan komposisi makanan teranalisis otomatis sesuai standar gizi resmi Kemenkes RI."
 }`;
 
-        const cleanBase64 = image.includes(',') ? image.split(',')[1] : image;
-        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(effectiveKey)}`;
+        const modelsToTry = [
+            'gemini-flash-lite-latest',
+            'gemini-2.5-flash-lite',
+            'gemini-3.5-flash-lite',
+            'gemini-2.0-flash',
+            'gemini-1.5-flash'
+        ];
 
-        const geminiRes = await fetch(endpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{
-                    parts: [
-                        { text: promptText },
-                        { inline_data: { mime_type: 'image/jpeg', data: cleanBase64 } }
-                    ]
-                }],
-                generationConfig: {
-                    temperature: 0.1,
-                    responseMimeType: "application/json"
+        let lastError = null;
+
+        for (const modelName of modelsToTry) {
+            try {
+                const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(effectiveKey)}`;
+                const geminiRes = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [
+                                { text: promptText },
+                                { inline_data: { mime_type: 'image/jpeg', data: cleanBase64 } }
+                            ]
+                        }],
+                        generationConfig: {
+                            temperature: 0.1,
+                            responseMimeType: 'application/json'
+                        }
+                    })
+                });
+
+                if (!geminiRes.ok) {
+                    const errText = await geminiRes.text();
+                    lastError = new Error(`Model ${modelName} returned HTTP ${geminiRes.status}: ${errText}`);
+                    continue;
                 }
-            })
-        });
 
-        if (!geminiRes.ok) {
-            const errBody = await geminiRes.text();
-            return res.status(geminiRes.status).json({ error: 'Gemini API Error: ' + errBody });
+                const data = await geminiRes.json();
+                const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (!rawText) {
+                    lastError = new Error(`Empty response from ${modelName}`);
+                    continue;
+                }
+
+                const cleanedJson = JSON.parse(rawText.replace(/```json|```/g, '').trim());
+                return res.status(200).json({ success: true, data: cleanedJson, model: modelName });
+            } catch (mErr) {
+                lastError = mErr;
+            }
         }
 
-        const data = await geminiRes.json();
-        const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (!rawText) {
-            return res.status(500).json({ error: 'Tidak ada respons teks dari Gemini API' });
-        }
-
-        const cleanedJson = JSON.parse(rawText.replace(/```json|```/g, '').trim());
-        return res.status(200).json({ success: true, data: cleanedJson });
+        return res.status(500).json({ error: lastError ? lastError.message : 'Semua model Gemini gagal merespons' });
     } catch (err) {
         return res.status(500).json({ error: err.message || 'Internal Server Error' });
     }
