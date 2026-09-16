@@ -239,47 +239,61 @@ render_html("""
         line-height: 1.3;
     }
 
-    /* Tabs Kustom Super Jelas & Tajam */
+    /* Tabs Kustom - Grid Kartu Modern Persis Index.html */
     div[data-baseweb="tab-list"] {
-        display: flex !important;
-        flex-wrap: wrap !important;
-        gap: 0.4rem !important;
-        background: rgba(255, 255, 255, 0.8) !important;
-        padding: 0.45rem !important;
-        border-radius: 16px !important;
-        border: 1.5px solid rgba(16, 185, 129, 0.25) !important;
-        margin-bottom: 1.4rem !important;
-        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.08) !important;
+        display: grid !important;
+        grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)) !important;
+        gap: 0.75rem !important;
+        background: transparent !important;
+        padding: 0 !important;
+        border: none !important;
+        margin-bottom: 1.6rem !important;
+        box-shadow: none !important;
     }
     button[data-baseweb="tab"] {
-        background: #ffffff !important;
-        border: 1px solid #cbd5e1 !important;
-        border-radius: 12px !important;
-        padding: 0.6rem 1rem !important;
+        background: rgba(255, 255, 255, 0.92) !important;
+        backdrop-filter: blur(14px) !important;
+        -webkit-backdrop-filter: blur(14px) !important;
+        border: 1.5px solid rgba(226, 232, 240, 0.9) !important;
+        border-radius: 16px !important;
+        padding: 1rem 0.8rem !important;
         font-weight: 700 !important;
-        font-size: 0.92rem !important;
+        font-size: 0.95rem !important;
         color: #1e293b !important;
-        transition: all 0.2s ease !important;
+        text-align: center !important;
+        min-height: 65px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        transition: all 0.25s ease !important;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03) !important;
     }
     button[data-baseweb="tab"] p, button[data-baseweb="tab"] span {
         color: #1e293b !important;
         font-weight: 700 !important;
+        font-size: 0.95rem !important;
+        text-align: center !important;
+        margin: 0 !important;
     }
     button[data-baseweb="tab"]:hover {
-        background: #ecfdf5 !important;
+        background: #ffffff !important;
         border-color: #10b981 !important;
-        color: #059669 !important;
+        transform: translateY(-3px) !important;
+        box-shadow: 0 8px 20px rgba(16, 185, 129, 0.18) !important;
     }
     button[data-baseweb="tab"][aria-selected="true"] {
         background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
         border-color: #059669 !important;
-        box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35) !important;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 22px rgba(16, 185, 129, 0.35) !important;
     }
     button[data-baseweb="tab"][aria-selected="true"] p,
     button[data-baseweb="tab"][aria-selected="true"] span {
         color: #ffffff !important;
+        font-weight: 800 !important;
     }
     div[data-baseweb="tab-highlight"] { display: none !important; }
+    div[data-baseweb="tab-border"] { display: none !important; }
 
     /* Kotak Pilihan Radio yang Jelas & Kontras */
     div[data-testid="stRadio"] div[role="radiogroup"] {
@@ -639,57 +653,24 @@ with col_nav_action:
         st.session_state.current_user = None
         st.rerun()
 
-# Header Banner
-render_html("""
-<div class="hero-banner">
-    <h1>🍱 Media Interaktif Pemantauan Gizi MBG</h1>
-    <p>Aplikasi Evaluasi Porsi Makan Bergizi Gratis & Analisis Status Gizi Siswa Berbasis Visi Komputer Cerdas Mengacu Standar Resmi Kementerian Kesehatan RI</p>
-    <div class="hero-tags">
-        <span class="hero-tag"><i class="fa-solid fa-certificate"></i> Standar Kemenkes RI Permenkes No. 2/2020</span>
-        <span class="hero-tag"><i class="fa-solid fa-microchip"></i> Intelligent Multimedia Processing</span>
-        <span class="hero-tag"><i class="fa-solid fa-bowl-rice"></i> 5 Kompartemen Baki Gizi Terpadu</span>
+# Top Welcome Header
+render_html(f"""
+<header class="dashboard-header" style="margin-bottom:1.4rem; background:rgba(255,255,255,0.85); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); padding:1.3rem 1.7rem; border-radius:20px; border:1px solid rgba(255,255,255,0.9); box-shadow:0 6px 20px -3px rgba(16,185,129,0.1);">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;">
+        <div>
+            <h2 style="font-size:1.75rem; font-weight:800; color:#0f172a; margin:0 0 0.3rem 0; letter-spacing:-0.5px;">
+                Selamat Datang, <span style="color:#059669;">{active_user.get('name', 'Siswa / Karyawan')}</span>! 👋
+            </h2>
+            <p style="color:#64748b; font-size:0.92rem; margin:0; font-weight:500;">
+                Media Interaktif Program Makan Bergizi Gratis (MBG) — Pemantauan Asupan & Kebutuhan Gizi Siswa.
+            </p>
+        </div>
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <span class="badge-ta badge-ta-main" style="background:rgba(16,185,129,0.15); color:#059669; padding:0.35rem 0.8rem; border-radius:20px; font-weight:700; font-size:0.78rem; border:1px solid rgba(16,185,129,0.3);"><i class="fa-solid fa-certificate"></i> Permenkes No. 2/2020</span>
+            <span class="badge-ta badge-ta-1" style="background:rgba(59,130,246,0.15); color:#2563eb; padding:0.35rem 0.8rem; border-radius:20px; font-weight:700; font-size:0.78rem; border:1px solid rgba(59,130,246,0.3);"><i class="fa-solid fa-camera"></i> Visi Komputer Cerdas</span>
+        </div>
     </div>
-</div>
-""")
-
-# Home Menu Grid 6 Fitur (Identik dengan Menu Vercel)
-render_html("""
-<div class="home-menu-grid">
-    <div class="menu-item">
-        <span class="badge-ta badge-ta-1">Pindai Makanan</span>
-        <div class="menu-icon" style="color:#2563eb;"><i class="fa-solid fa-camera"></i></div>
-        <div class="menu-title">Deteksi Baki MBG</div>
-        <div class="menu-subtitle">Pindai Baki & Hitung Nilai Gizi Otomatis</div>
-    </div>
-    <div class="menu-item">
-        <span class="badge-ta badge-ta-2">Kebutuhan Energi</span>
-        <div class="menu-icon" style="color:#d97706;"><i class="fa-solid fa-calculator"></i></div>
-        <div class="menu-title">Kalkulator Gizi</div>
-        <div class="menu-subtitle">Hitung Kebutuhan Energi & Makronutrisi</div>
-    </div>
-    <div class="menu-item">
-        <span class="badge-ta badge-ta-3">Status Gizi</span>
-        <div class="menu-icon" style="color:#9333ea;"><i class="fa-solid fa-brain"></i></div>
-        <div class="menu-title">Status Gizi Siswa</div>
-        <div class="menu-subtitle">Pemeriksaan Antropometri Kemenkes RI</div>
-    </div>
-    <div class="menu-item">
-        <span class="badge-ta badge-ta-main">Evaluasi Gizi</span>
-        <div class="menu-icon" style="color:#059669;"><i class="fa-solid fa-chart-pie"></i></div>
-        <div class="menu-title">Dashboard MBG</div>
-        <div class="menu-subtitle">Asupan Aktual vs Target Kebutuhan Siswa</div>
-    </div>
-    <div class="menu-item">
-        <div class="menu-icon" style="color:#0f766e;"><i class="fa-solid fa-utensils"></i></div>
-        <div class="menu-title">Kebutuhan MBG</div>
-        <div class="menu-subtitle">Jurnal Porsi & Kepuasan Menu Harian</div>
-    </div>
-    <div class="menu-item">
-        <div class="menu-icon" style="color:#6366f1;"><i class="fa-solid fa-book-medical"></i></div>
-        <div class="menu-title">Standar Menu</div>
-        <div class="menu-subtitle">Buku Pedoman Standar Porsi Kemenkes RI</div>
-    </div>
-</div>
+</header>
 """)
 
 
@@ -1691,22 +1672,22 @@ def classify_status_gizi(umur_bulan, jk_code, bb, tb):
 # ==============================================================================
 if is_admin_mode:
     tab_deteksi, tab_kalkulator, tab_status_gizi, tab_dashboard, tab_jurnal, tab_panduan, tab_admin = st.tabs([
-        "📸 Pindai Baki MBG",
-        "🧮 Kebutuhan Energi",
+        "📸 Deteksi Makanan MBG",
+        "🧮 Kalkulator Kebutuhan Gizi",
         "🧠 Status Gizi Siswa",
-        "📊 Dashboard Evaluasi Gizi",
-        "🍱 Jurnal MBG Harian",
-        "📖 Standar Menu & Pedoman",
+        "📊 Dashboard Evaluasi MBG",
+        "🍱 Jurnal Kebutuhan MBG",
+        "📖 Standar Menu MBG",
         "🛡️ Panel Administrator"
     ])
 else:
     tab_deteksi, tab_kalkulator, tab_status_gizi, tab_dashboard, tab_jurnal, tab_panduan = st.tabs([
-        "📸 Pindai Baki MBG",
-        "🧮 Kebutuhan Energi",
+        "📸 Deteksi Makanan MBG",
+        "🧮 Kalkulator Kebutuhan Gizi",
         "🧠 Status Gizi Siswa",
-        "📊 Dashboard Evaluasi Gizi",
-        "🍱 Jurnal MBG Harian",
-        "📖 Standar Menu & Pedoman"
+        "📊 Dashboard Evaluasi MBG",
+        "🍱 Jurnal Kebutuhan MBG",
+        "📖 Standar Menu MBG"
     ])
 
 
