@@ -202,98 +202,198 @@ render_html("""
         border: 1px solid rgba(255, 255, 255, 0.35);
     }
 
-    /* Home Menu Grid 6 Fitur Persis Vercel */
-    .home-menu-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        gap: 0.85rem;
-        margin-bottom: 1.6rem;
-    }
-    .menu-item {
-        background: rgba(255, 255, 255, 0.88);
-        backdrop-filter: blur(12px);
-        border: 1.5px solid rgba(255, 255, 255, 0.8);
-        border-radius: 16px;
-        padding: 1.1rem 0.9rem;
+    /* Home Menu Grid 6 Fitur Persis Index.html */
+    .menu-item-home {
+        background: rgba(255, 255, 255, 0.92);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1.5px solid rgba(226, 232, 240, 0.9);
+        border-radius: 20px 20px 0 0;
+        padding: 1.5rem 1.2rem 1rem 1.2rem;
         text-align: center;
-        transition: transform 0.2s, box-shadow 0.2s;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+        box-shadow: 0 4px 20px -2px rgba(16, 185, 129, 0.08);
+        transition: transform 0.25s ease, box-shadow 0.25s ease;
     }
-    .menu-item:hover {
+    .menu-item-home:hover {
         transform: translateY(-3px);
-        box-shadow: 0 8px 25px rgba(16, 185, 129, 0.2);
+        box-shadow: 0 10px 25px rgba(16, 185, 129, 0.18);
+        border-color: #10b981;
     }
-    .menu-item .menu-icon {
-        font-size: 2rem;
-        margin-bottom: 0.45rem;
+    .menu-icon-wrap {
+        font-size: 2.8rem;
+        margin: 0.85rem 0 0.5rem 0;
     }
-    .menu-item .menu-title {
+    .menu-card-title {
         font-weight: 800;
         color: #0f172a !important;
-        font-size: 0.9rem;
+        font-size: 1.18rem;
+        margin-bottom: 0.35rem;
     }
-    .menu-item .menu-subtitle {
-        font-size: 0.74rem;
+    .menu-card-desc {
+        font-size: 0.84rem;
         color: #64748b !important;
-        margin-top: 0.25rem;
-        line-height: 1.3;
+        line-height: 1.4;
+        min-height: 2.2rem;
+    }
+    
+    /* Tombol Navigasi Kartu Home */
+    div[data-testid="stColumn"] > div > div > div > button[kind="secondary"] {
+        border-radius: 0 0 18px 18px !important;
+        border-top: none !important;
+        font-weight: 700 !important;
+        background: #ffffff !important;
+        border-color: rgba(226, 232, 240, 0.9) !important;
+        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.04) !important;
+        color: #059669 !important;
+        font-size: 0.92rem !important;
+        padding: 0.65rem 1rem !important;
+    }
+    div[data-testid="stColumn"] > div > div > div > button[kind="secondary"]:hover {
+        background: #ecfdf5 !important;
+        border-color: #10b981 !important;
+        color: #047857 !important;
     }
 
-    /* Tabs Kustom - Grid Kartu Modern Persis Index.html */
-    div[data-baseweb="tab-list"] {
-        display: grid !important;
-        grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)) !important;
-        gap: 0.75rem !important;
-        background: transparent !important;
-        padding: 0 !important;
-        border: none !important;
-        margin-bottom: 1.6rem !important;
-        box-shadow: none !important;
+    /* Kartu Menu Beranda (Home Feature Cards - Persis Tampilan Web HTML) */
+    .menu-item-home {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        border: 1.5px solid rgba(226, 232, 240, 0.9);
+        border-bottom: none;
+        border-radius: 20px 20px 0 0;
+        padding: 1.6rem 1.2rem 0.8rem 1.2rem;
+        text-align: center;
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.04);
+        transition: all 0.25s ease;
+        position: relative;
     }
-    button[data-baseweb="tab"] {
-        background: rgba(255, 255, 255, 0.92) !important;
-        backdrop-filter: blur(14px) !important;
-        -webkit-backdrop-filter: blur(14px) !important;
+    .menu-icon-wrap {
+        font-size: 2.6rem;
+        margin: 0.6rem 0 0.5rem 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform 0.25s ease;
+    }
+    .menu-card-title {
+        font-weight: 800;
+        color: #0f172a;
+        font-size: 1.12rem;
+        margin-bottom: 0.35rem;
+        letter-spacing: -0.3px;
+    }
+    .menu-card-desc {
+        font-size: 0.82rem;
+        color: #64748b;
+        font-weight: 500;
+        line-height: 1.4;
+        min-height: 2.4rem;
+    }
+    
+    /* Tombol Aksi Langsung Menyatu di Bawah Kartu */
+    div.stButton > button[key^="btn_open_card_"] {
+        border-radius: 0 0 20px 20px !important;
+        margin-top: -1px !important;
         border: 1.5px solid rgba(226, 232, 240, 0.9) !important;
-        border-radius: 16px !important;
-        padding: 1rem 0.8rem !important;
+        background: #ffffff !important;
+        color: #059669 !important;
         font-weight: 700 !important;
-        font-size: 0.95rem !important;
-        color: #1e293b !important;
-        text-align: center !important;
-        min-height: 65px !important;
+        font-size: 0.92rem !important;
+        padding: 0.65rem 1rem !important;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04) !important;
+        transition: all 0.25s ease !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        transition: all 0.25s ease !important;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03) !important;
+        gap: 0.5rem !important;
     }
-    button[data-baseweb="tab"] p, button[data-baseweb="tab"] span {
-        color: #1e293b !important;
-        font-weight: 700 !important;
-        font-size: 0.95rem !important;
-        text-align: center !important;
-        margin: 0 !important;
-    }
-    button[data-baseweb="tab"]:hover {
-        background: #ffffff !important;
-        border-color: #10b981 !important;
-        transform: translateY(-3px) !important;
-        box-shadow: 0 8px 20px rgba(16, 185, 129, 0.18) !important;
-    }
-    button[data-baseweb="tab"][aria-selected="true"] {
+    div.stButton > button[key^="btn_open_card_"]:hover {
         background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
-        border-color: #059669 !important;
-        transform: translateY(-2px) !important;
-        box-shadow: 0 8px 22px rgba(16, 185, 129, 0.35) !important;
-    }
-    button[data-baseweb="tab"][aria-selected="true"] p,
-    button[data-baseweb="tab"][aria-selected="true"] span {
         color: #ffffff !important;
-        font-weight: 800 !important;
+        border-color: #059669 !important;
+        box-shadow: 0 8px 22px rgba(16, 185, 129, 0.3) !important;
+        transform: translateY(-2px) !important;
     }
-    div[data-baseweb="tab-highlight"] { display: none !important; }
-    div[data-baseweb="tab-border"] { display: none !important; }
+
+    /* Tombol Kembali ke Beranda (Back to Home) */
+    div.stButton > button[key="btn_back_to_home"] {
+        background: rgba(15, 118, 110, 0.12) !important;
+        color: #0f766e !important;
+        border: 1.5px solid rgba(15, 118, 110, 0.28) !important;
+        border-radius: 12px !important;
+        font-weight: 700 !important;
+        font-size: 0.92rem !important;
+        padding: 0.55rem 1.1rem !important;
+        box-shadow: none !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 0.45rem !important;
+        transition: all 0.2s ease !important;
+        margin-bottom: 0.5rem !important;
+    }
+    div.stButton > button[key="btn_back_to_home"]:hover {
+        background: #0f766e !important;
+        color: #ffffff !important;
+        border-color: #0f766e !important;
+        transform: translateX(-3px) !important;
+        box-shadow: 0 4px 15px rgba(15, 118, 110, 0.25) !important;
+    }
+
+    /* Badges Kategori */
+    .badge-ta {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        font-size: 0.72rem;
+        font-weight: 700;
+        border-radius: 20px;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+    }
+    .badge-ta-1 { background: rgba(59, 130, 246, 0.15); color: #2563eb; border: 1px solid rgba(59, 130, 246, 0.3); }
+    .badge-ta-2 { background: rgba(245, 158, 11, 0.15); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-ta-3 { background: rgba(168, 85, 247, 0.15); color: #9333ea; border: 1px solid rgba(168, 85, 247, 0.3); }
+    .badge-ta-main { background: rgba(16, 185, 129, 0.15); color: #059669; border: 1px solid rgba(16, 185, 129, 0.3); }
+
+    /* Penyesuaian Responsif untuk HP / Mobile */
+    @media (max-width: 768px) {
+        .block-container {
+            padding-left: 0.75rem !important;
+            padding-right: 0.75rem !important;
+            padding-top: 0.8rem !important;
+        }
+        .glass-nav {
+            padding: 0.65rem 1rem !important;
+            flex-direction: column !important;
+            gap: 0.5rem !important;
+            text-align: center !important;
+        }
+        .dashboard-header {
+            padding: 1.1rem 1.2rem !important;
+            text-align: center !important;
+        }
+        .dashboard-header h2 {
+            font-size: 1.35rem !important;
+        }
+        .menu-item-home {
+            padding: 1.3rem 1rem 0.7rem 1rem !important;
+        }
+        .menu-icon-wrap {
+            font-size: 2.2rem !important;
+        }
+        .menu-card-desc {
+            min-height: auto !important;
+        }
+        /* Memastikan kolom kartu pada HP tampil penuh dan tidak terpotong */
+        div[data-testid="stHorizontalBlock"] {
+            flex-wrap: wrap !important;
+        }
+        div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {
+            min-width: 100% !important;
+            margin-bottom: 0.6rem !important;
+        }
+    }
 
     /* Kotak Pilihan Radio yang Jelas & Kontras */
     div[data-testid="stRadio"] div[role="radiogroup"] {
@@ -651,27 +751,12 @@ with col_nav_action:
     if st.button("🚪 Keluar (Logout)", key="btn_logout_main_header", use_container_width=True):
         st.session_state.logged_in = False
         st.session_state.current_user = None
+        st.session_state.active_screen = "home"
         st.rerun()
 
-# Top Welcome Header
-render_html(f"""
-<header class="dashboard-header" style="margin-bottom:1.4rem; background:rgba(255,255,255,0.85); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); padding:1.3rem 1.7rem; border-radius:20px; border:1px solid rgba(255,255,255,0.9); box-shadow:0 6px 20px -3px rgba(16,185,129,0.1);">
-    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;">
-        <div>
-            <h2 style="font-size:1.75rem; font-weight:800; color:#0f172a; margin:0 0 0.3rem 0; letter-spacing:-0.5px;">
-                Selamat Datang, <span style="color:#059669;">{active_user.get('name', 'Siswa / Karyawan')}</span>! 👋
-            </h2>
-            <p style="color:#64748b; font-size:0.92rem; margin:0; font-weight:500;">
-                Media Interaktif Program Makan Bergizi Gratis (MBG) — Pemantauan Asupan & Kebutuhan Gizi Siswa.
-            </p>
-        </div>
-        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-            <span class="badge-ta badge-ta-main" style="background:rgba(16,185,129,0.15); color:#059669; padding:0.35rem 0.8rem; border-radius:20px; font-weight:700; font-size:0.78rem; border:1px solid rgba(16,185,129,0.3);"><i class="fa-solid fa-certificate"></i> Permenkes No. 2/2020</span>
-            <span class="badge-ta badge-ta-1" style="background:rgba(59,130,246,0.15); color:#2563eb; padding:0.35rem 0.8rem; border-radius:20px; font-weight:700; font-size:0.78rem; border:1px solid rgba(59,130,246,0.3);"><i class="fa-solid fa-camera"></i> Visi Komputer Cerdas</span>
-        </div>
-    </div>
-</header>
-""")
+if "active_screen" not in st.session_state:
+    st.session_state.active_screen = "home"
+
 
 
 # ==============================================================================
@@ -1668,33 +1753,120 @@ def classify_status_gizi(umur_bulan, jk_code, bb, tb):
 
 
 # ==============================================================================
-# 5. NAVIGASI FITUR UTAMA (ROLE-BASED: SISWA vs ADMIN)
+# 5. NAVIGASI FITUR UTAMA SISTEM (BERANDA vs FITUR TERPISAH)
 # ==============================================================================
-if is_admin_mode:
-    tab_deteksi, tab_kalkulator, tab_status_gizi, tab_dashboard, tab_jurnal, tab_panduan, tab_admin = st.tabs([
-        "📸 Deteksi Makanan MBG",
-        "🧮 Kalkulator Kebutuhan Gizi",
-        "🧠 Status Gizi Siswa",
-        "📊 Dashboard Evaluasi MBG",
-        "🍱 Jurnal Kebutuhan MBG",
-        "📖 Standar Menu MBG",
-        "🛡️ Panel Administrator"
-    ])
-else:
-    tab_deteksi, tab_kalkulator, tab_status_gizi, tab_dashboard, tab_jurnal, tab_panduan = st.tabs([
-        "📸 Deteksi Makanan MBG",
-        "🧮 Kalkulator Kebutuhan Gizi",
-        "🧠 Status Gizi Siswa",
-        "📊 Dashboard Evaluasi MBG",
-        "🍱 Jurnal Kebutuhan MBG",
-        "📖 Standar Menu MBG"
-    ])
+if "active_screen" not in st.session_state:
+    st.session_state.active_screen = "home"
 
+# Helper untuk merender kartu fitur di Beranda
+def render_feature_card(col, badge_text, badge_class, icon_class, icon_color, title, subtitle, btn_label, screen_key, target_screen):
+    with col:
+        render_html(f"""
+        <div class="menu-item-home">
+            <span class="badge-ta {badge_class}">{badge_text}</span>
+            <div class="menu-icon-wrap" style="color: {icon_color};">
+                <i class="{icon_class}"></i>
+            </div>
+            <div class="menu-card-title">{title}</div>
+            <div class="menu-card-desc">{subtitle}</div>
+        </div>
+        """)
+        if st.button(btn_label, key=f"btn_open_card_{screen_key}", use_container_width=True):
+            st.session_state.active_screen = target_screen
+            st.rerun()
+
+# Tombol Kembali ke Beranda saat berada di dalam fitur terpisah
+if st.session_state.active_screen != "home":
+    col_back, col_back_empty = st.columns([1.6, 4])
+    with col_back:
+        if st.button("⬅️ Kembali ke Beranda", key="btn_back_to_home", use_container_width=True):
+            st.session_state.active_screen = "home"
+            st.rerun()
+    render_html("<div style='margin-bottom:0.75rem;'></div>")
+
+# LAYAR 0: BERANDA (HOME MENU GRID 6 KARTU)
+if st.session_state.active_screen == "home":
+    # Header Sambutan Resmi
+    render_html(f"""
+    <header class="dashboard-header" style="margin-bottom:1.5rem; background:rgba(255,255,255,0.88); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); padding:1.4rem 1.8rem; border-radius:20px; border:1px solid rgba(255,255,255,0.9); box-shadow:0 6px 20px -3px rgba(16,185,129,0.1);">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;">
+            <div>
+                <h2 style="font-size:1.75rem; font-weight:800; color:#0f172a; margin:0 0 0.3rem 0; letter-spacing:-0.5px;">
+                    Selamat Datang, <span style="color:#059669;">{active_user.get('name', 'Siswa / Karyawan')}</span>! 👋
+                </h2>
+                <p style="color:#64748b; font-size:0.92rem; margin:0; font-weight:500;">
+                    Media Interaktif Program Makan Bergizi Gratis (MBG) — Pemantauan Asupan & Kebutuhan Gizi Siswa.
+                </p>
+            </div>
+            <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                <span class="badge-ta badge-ta-main" style="background:rgba(16,185,129,0.15); color:#059669; padding:0.35rem 0.8rem; border-radius:20px; font-weight:700; font-size:0.78rem; border:1px solid rgba(16,185,129,0.3);"><i class="fa-solid fa-certificate"></i> Permenkes No. 2/2020</span>
+                <span class="badge-ta badge-ta-1" style="background:rgba(59,130,246,0.15); color:#2563eb; padding:0.35rem 0.8rem; border-radius:20px; font-weight:700; font-size:0.78rem; border:1px solid rgba(59,130,246,0.3);"><i class="fa-solid fa-camera"></i> Visi Komputer Cerdas</span>
+            </div>
+        </div>
+    </header>
+    """)
+
+    # Grid 6 Kartu Interaktif Sesuai Web HTML
+    c1, c2 = st.columns(2, gap="large")
+    render_feature_card(
+        c1, "PINDAI MAKANAN", "badge-ta-1", "fa-solid fa-camera", "#2563eb",
+        "Deteksi Makanan MBG", "Pindai Baki & Hitung Nilai Gizi Otomatis",
+        "🚀 Buka Deteksi Makanan MBG", "deteksi", "deteksi"
+    )
+    render_feature_card(
+        c2, "KEBUTUHAN ENERGI", "badge-ta-2", "fa-solid fa-calculator", "#d97706",
+        "Kalkulator Kebutuhan Gizi", "Hitung Kebutuhan Energi & Makronutrisi",
+        "🧮 Buka Kalkulator Kebutuhan", "kalkulator", "kalkulator"
+    )
+
+    render_html("<div style='margin-bottom:1rem;'></div>")
+
+    c3, c4 = st.columns(2, gap="large")
+    render_feature_card(
+        c3, "STATUS GIZI", "badge-ta-3", "fa-solid fa-brain", "#9333ea",
+        "Status Gizi Siswa", "Pemeriksaan Antropometri & Indeks Massa Tubuh",
+        "🧠 Periksa Status Gizi Siswa", "status_gizi", "status_gizi"
+    )
+    render_feature_card(
+        c4, "EVALUASI GIZI", "badge-ta-main", "fa-solid fa-chart-pie", "#059669",
+        "Dashboard Evaluasi MBG", "Asupan Aktual vs Kebutuhan Individu",
+        "📊 Buka Dashboard Evaluasi", "dashboard", "dashboard"
+    )
+
+    render_html("<div style='margin-bottom:1rem;'></div>")
+
+    c5, c6 = st.columns(2, gap="large")
+    render_feature_card(
+        c5, "KEBUTUHAN MBG", "badge-ta-main", "fa-solid fa-utensils", "#0d9488",
+        "Kebutuhan MBG", "Jurnal Porsi & Kepuasan Menu Harian",
+        "🍱 Buka Jurnal Kebutuhan MBG", "jurnal", "jurnal"
+    )
+    if is_admin_mode:
+        render_feature_card(
+            c6, "PANEL ADMIN", "badge-ta-main", "fa-solid fa-shield-halved", "#dc2626",
+            "Panel Administrator", "Monitoring Log Siswa & Aduan MBG",
+            "🛡️ Buka Panel Administrator", "admin", "admin"
+        )
+    else:
+        render_feature_card(
+            c6, "STANDAR & BANTUAN", "badge-ta-main", "fa-solid fa-book-medical", "#059669",
+            "Standar Menu & Bantuan", "Pedoman Porsi MBG & Konsultasi Ahli Gizi",
+            "📖 Buka Standar Menu & Bantuan", "panduan", "panduan"
+        )
+
+    if is_admin_mode:
+        render_html("<div style='margin-bottom:1rem;'></div>")
+        c7, _ = st.columns([1, 1], gap="large")
+        render_feature_card(
+            c7, "STANDAR MENU", "badge-ta-main", "fa-solid fa-book-medical", "#059669",
+            "Standar Menu MBG", "Pedoman Kompartemen Baki Kemenkes RI",
+            "📖 Buka Standar Menu MBG", "panduan_admin", "panduan"
+        )
 
 # ==============================================================================
 # TAB 1: DETEKSI & EVALUASI BAKI MAKANAN
 # ==============================================================================
-with tab_deteksi:
+elif st.session_state.active_screen == "deteksi":
     render_html("""
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
         <div>
@@ -2147,7 +2319,7 @@ with tab_deteksi:
 # ==============================================================================
 # TAB 2: KALKULATOR KEBUTUHAN ENERGI & GIZI MANUAL
 # ==============================================================================
-with tab_kalkulator:
+elif st.session_state.active_screen == "kalkulator":
     render_html("""
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
         <div>
@@ -2228,6 +2400,10 @@ with tab_kalkulator:
         </div>
         """)
         
+        if st.button("📷 Lanjut Pindai Baki Makanan →", key="btn_kalk_to_deteksi", use_container_width=True):
+            st.session_state.active_screen = "deteksi"
+            st.rerun()
+        
     # Bagian Kalkulator Gizi Manual
     render_html("""
     <div class="glass-card" style="margin-top:1rem;">
@@ -2274,7 +2450,7 @@ with tab_kalkulator:
 # ==============================================================================
 # TAB 3: STATUS GIZI SISWA (KNN K=5 KEMENKES RI)
 # ==============================================================================
-with tab_status_gizi:
+elif st.session_state.active_screen == "status_gizi":
     render_html("""
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
         <div>
@@ -2371,6 +2547,16 @@ with tab_status_gizi:
         </div>
         """)
         
+        col_g_next1, col_g_next2 = st.columns(2)
+        with col_g_next1:
+            if st.button("👉 Lanjut Hitung Kebutuhan Energi →", key="btn_gizi_to_kalkulator", use_container_width=True):
+                st.session_state.active_screen = "kalkulator"
+                st.rerun()
+        with col_g_next2:
+            if st.button("📷 Lanjut Pindai Baki Makanan →", key="btn_gizi_to_deteksi", use_container_width=True):
+                st.session_state.active_screen = "deteksi"
+                st.rerun()
+        
         if os.path.exists("dataset_antropometri_mbg.csv"):
             with st.expander("📊 Lihat Basis Data & Detail Model Machine Learning (KNN K=5)"):
                 st.markdown("""
@@ -2398,7 +2584,7 @@ with tab_status_gizi:
 # ==============================================================================
 # TAB 4: DASHBOARD EVALUASI GIZI MBG
 # ==============================================================================
-with tab_dashboard:
+elif st.session_state.active_screen == "dashboard":
     render_html("""
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
         <div>
@@ -2465,12 +2651,23 @@ with tab_dashboard:
         </p>
     </div>
     """)
+    
+    col_d_act1, col_d_act2 = st.columns(2)
+    with col_d_act1:
+        if st.button("📷 Pindai Baki Makanan", key="btn_dash_to_deteksi", use_container_width=True):
+            st.session_state.active_screen = "deteksi"
+            st.rerun()
+    with col_d_act2:
+        if st.button("🧮 Atur Target Kebutuhan Energi", key="btn_dash_to_kalk", use_container_width=True):
+            st.session_state.active_screen = "kalkulator"
+            st.rerun()
+
 
 
 # ==============================================================================
 # TAB 5: JURNAL MBG HARIAN & KEPUASAN MENU
 # ==============================================================================
-with tab_jurnal:
+elif st.session_state.active_screen == "jurnal":
     render_html("""
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
         <div>
@@ -2582,7 +2779,7 @@ with tab_jurnal:
 # ==============================================================================
 # TAB 6: STANDAR MENU & PEDOMAN GIZI
 # ==============================================================================
-with tab_panduan:
+elif st.session_state.active_screen == "panduan":
     render_html("""
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
         <div>
@@ -2632,8 +2829,8 @@ with tab_panduan:
 # ==============================================================================
 # TAB 7: PANEL ADMINISTRATOR (HANYA AKTIF SAAT LOGIN SEBAGAI ADMIN)
 # ==============================================================================
-if is_admin_mode:
-    with tab_admin:
+elif st.session_state.active_screen == "admin":
+    if is_admin_mode:
         render_html("""
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
             <div>
