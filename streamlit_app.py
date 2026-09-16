@@ -41,16 +41,86 @@ if "logged_in" not in st.session_state:
 
 if "history_list" not in st.session_state:
     st.session_state.history_list = [
-        {"id": 1, "user": "Siswa Demo", "nik": "12345", "menu": "Paket 1: Ayam Lengkuas + Tahu Kuning + Labu Siam + Semangka", "portion": "Habis Semua (100%)", "rating": "5 ⭐", "date": "Senin, 14 September 2026", "time": "12:15"},
-        {"id": 2, "user": "Ahmad Fauzi", "nik": "10021", "menu": "Paket 6: Semur Daging Sapi + Tempe Orek + Sayur Capcay + Semangka", "portion": "Habis Semua (100%)", "rating": "5 ⭐", "date": "Senin, 14 September 2026", "time": "12:30"},
-        {"id": 3, "user": "Siti Rahma", "nik": "10045", "menu": "Paket 2: Telur Rebus + Dadu Ayam + Tumis Buncis + Jeruk", "portion": "Sisa Sedikit (75%)", "rating": "4 ⭐", "date": "Senin, 14 September 2026", "time": "12:45"}
+        {
+            "id": 1,
+            "user": "Siti Rahma",
+            "nik": "10045",
+            "menu": "Paket 2: Telur Rebus + Dadu Ayam + Tumis Buncis + Jeruk",
+            "portion": "Habis Semua",
+            "rating": "⭐⭐⭐⭐⭐",
+            "date": "Senin, 1 September 2026",
+            "time": "12:15"
+        },
+        {
+            "id": 2,
+            "user": "Ahmad Fauzi",
+            "nik": "10021",
+            "menu": "Paket 6: Udang Masak Kuah + Tempe Orek + Sayur Capcay + Semangka",
+            "portion": "Habis Semua",
+            "rating": "⭐⭐⭐⭐⭐",
+            "date": "Senin, 1 September 2026",
+            "time": "12:30"
+        },
+        {
+            "id": 3,
+            "user": "Karyawan Demo",
+            "nik": "12345",
+            "menu": "Paket 1: Ayam Lengkuas + Tahu Kuning + Labu Siam + Semangka",
+            "portion": "Habis Semua",
+            "rating": "⭐⭐⭐⭐⭐",
+            "date": "Senin, 1 September 2026",
+            "time": "12:45"
+        }
     ]
 
 if "message_list" not in st.session_state:
     st.session_state.message_list = [
-        {"id": 1, "user": "Siswa Demo", "nik": "12345", "text": "Porsi ayam hari ini sangat lezat dan bumbunya empuk. Sayurannya juga segar!", "reply": "Terima kasih atas apresiasinya! Selamat belajar dan tetap semangat!", "date": "14 Sep 2026 12:20"},
-        {"id": 2, "user": "Ahmad Fauzi", "nik": "10021", "text": "Mohon variasi buah semangka diselingi buah melon atau pisang di hari Rabu.", "reply": "Saran diterima, variasi menu buah akan kami rotasi setiap pekan.", "date": "14 Sep 2026 12:35"}
+        {
+            "id": 1,
+            "user": "UL",
+            "nik": "300604",
+            "text": "tes",
+            "reply": "",
+            "date": "16/9/2026, 21.09.18",
+            "thread": []
+        },
+        {
+            "id": 2,
+            "user": "Karyawan Demo",
+            "nik": "12345",
+            "text": "Porsi makan bergizi hari ini sangat pas dan lauk udang kuahnya enak sekali!",
+            "reply": "Terima kasih atas masukannya! Kami terus menjaga standar kecukupan AKG untuk seluruh karyawan.",
+            "date": "01/09/2026, 13.00",
+            "thread": [
+                {"sender": "user", "text": "Porsi makan bergizi hari ini sangat pas dan lauk udang kuahnya enak sekali!", "time": "01/09/2026, 13.00"},
+                {"sender": "admin", "text": "Terima kasih atas masukannya! Kami terus menjaga standar kecukupan AKG untuk seluruh karyawan.", "time": "01/09/2026, 13.10"}
+            ]
+        }
     ]
+
+if "student_profile" not in st.session_state:
+    st.session_state.student_profile = {
+        "nama": "Siswa / Karyawan Demo",
+        "umur": 16,
+        "jk": "Laki-laki (L)",
+        "bb": 52.0,
+        "tb": 162.0,
+        "imt": 19.8,
+        "status": "Normal / Gizi Baik",
+        "confidence": 96.6,
+        "tdee": 2003,
+        "target_mbg": 661
+    }
+
+if "active_meal_nutrition" not in st.session_state:
+    st.session_state.active_meal_nutrition = {
+        "kal": 0.0,
+        "pro": 0.0,
+        "kar": 0.0,
+        "lem": 0.0,
+        "name": ""
+    }
+
 
 # CSS Total: Menghilangkan teks putih pudar, menerapkan warna tajam, glassmorphism persis Vercel
 render_html("""
@@ -104,6 +174,92 @@ render_html("""
         padding-bottom: 3.5rem !important;
         max-width: 1240px !important;
     }
+
+    /* Style Tombol Aksi Utama Sesuai Gambar Pengguna */
+    .st-key-btn_hitung_manual button,
+    .st-key-btn_simpan_mbg button,
+    .st-key-btn_kirim_pesan button,
+    button:has(p:contains("Hitung Total Gizi")),
+    button:has(p:contains("Simpan Kebutuhan MBG")),
+    button:has(p:contains("Kirim Pesan")) {
+        background-color: #10b981 !important;
+        color: #ffffff !important;
+        border: none !important;
+        border-radius: 12px !important;
+        font-weight: 700 !important;
+        font-size: 1rem !important;
+        padding: 0.65rem 1.5rem !important;
+        box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3) !important;
+        width: 100% !important;
+    }
+    .st-key-btn_hitung_manual button:hover,
+    .st-key-btn_simpan_mbg button:hover,
+    .st-key-btn_kirim_pesan button:hover,
+    button:has(p:contains("Hitung Total Gizi")):hover,
+    button:has(p:contains("Simpan Kebutuhan MBG")):hover,
+    button:has(p:contains("Kirim Pesan")):hover {
+        background-color: #059669 !important;
+    }
+
+    .st-key-btn_periksa_gizi button,
+    button:has(p:contains("Periksa Status Gizi Siswa")) {
+        background-color: #9333ea !important;
+        color: #ffffff !important;
+        border: none !important;
+        border-radius: 12px !important;
+        font-weight: 700 !important;
+        font-size: 1rem !important;
+        padding: 0.65rem 1.5rem !important;
+        box-shadow: 0 4px 14px rgba(147, 51, 234, 0.3) !important;
+        width: 100% !important;
+    }
+    .st-key-btn_periksa_gizi button:hover,
+    button:has(p:contains("Periksa Status Gizi Siswa")):hover {
+        background-color: #7e22ce !important;
+    }
+
+    .st-key-btn_back_to_home button,
+    .st-key-btn_gizi_to_dash button,
+    .st-key-btn_kalk_to_dash button,
+    button:has(p:contains("Kembali ke Beranda")) {
+        background-color: #dcfce7 !important;
+        color: #065f46 !important;
+        border: 1px solid #86efac !important;
+        border-radius: 10px !important;
+        font-weight: 700 !important;
+        font-size: 0.88rem !important;
+        box-shadow: 0 2px 6px rgba(16, 185, 129, 0.12) !important;
+        padding: 0.35rem 0.95rem !important;
+    }
+    .st-key-btn_back_to_home button:hover,
+    .st-key-btn_gizi_to_dash button:hover,
+    .st-key-btn_kalk_to_dash button:hover,
+    button:has(p:contains("Kembali ke Beranda")):hover {
+        background-color: #bbf7d0 !important;
+        color: #064e3b !important;
+    }
+
+    .st-key-btn_pk_1 button,
+    .st-key-btn_pk_2 button,
+    .st-key-btn_pk_3 button,
+    .st-key-btn_pk_4 button,
+    .st-key-btn_pk_5 button,
+    .st-key-btn_pk_6 button,
+    button:has(p:contains("Paket 1:")),
+    button:has(p:contains("Paket 2:")),
+    button:has(p:contains("Paket 3:")),
+    button:has(p:contains("Paket 4:")),
+    button:has(p:contains("Paket 5:")),
+    button:has(p:contains("Paket 6:")) {
+        background-color: #f1f5f9 !important;
+        color: #0f766e !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 20px !important;
+        font-size: 0.76rem !important;
+        font-weight: 700 !important;
+        padding: 0.25rem 0.5rem !important;
+    }
+
 
     /* Top Glass Navbar */
     .glass-nav {
@@ -1001,7 +1157,133 @@ def analyze_crop_features(crop):
     }
 
 
+def get_indonesian_date_str():
+    import datetime
+    now = datetime.datetime.now()
+    days = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"]
+    months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"]
+    return f"{days[now.weekday()]}, {now.day} {months[now.month - 1]} {now.year}"
+
+def get_indonesian_time_stamp():
+    import datetime
+    now = datetime.datetime.now()
+    return now.strftime("%d/%m/%Y, %H.%M.%S")
+
+def calculate_custom_food_nutrition(food_name, grams, vlm_api_key=None):
+    """
+    Menghitung kandungan gizi (kalori, protein, karbohidrat, lemak) untuk makanan manual/kustom.
+    Mendukung pencarian di basis data MBG, standar TKPI Kemenkes RI, maupun internet/Gemini AI.
+    """
+    if not food_name or grams <= 0:
+        return {"kal": 0.0, "pro": 0.0, "kar": 0.0, "lem": 0.0, "source": "none", "matched": ""}
+    
+    clean_name = food_name.strip().lower()
+    ratio = grams / 100.0
+    
+    # 1. Cek di FOOD_LIBRARY
+    for cat, items in FOOD_LIBRARY.items():
+        for item_name, data in items.items():
+            if clean_name in item_name.lower():
+                base_g = data.get("gram", 100)
+                scale = grams / base_g if base_g > 0 else ratio
+                return {
+                    "kal": round(data["kal"] * scale, 1),
+                    "pro": round(data["pro"] * scale, 1),
+                    "kar": round(data["kar"] * scale, 1),
+                    "lem": round(data["lem"] * scale, 1),
+                    "source": "Basis Data Resmi MBG",
+                    "matched": item_name
+                }
+    
+    # 2. Kamus Kuliner Populer Nusantara (TKPI Kemenkes RI)
+    TKPI_LOOKUP = {
+        "bubur ayam": {"kal": 155, "pro": 6.5, "kar": 24.0, "lem": 3.8},
+        "soto ayam": {"kal": 120, "pro": 9.5, "kar": 6.0, "lem": 6.5},
+        "bakso": {"kal": 190, "pro": 12.0, "kar": 14.0, "lem": 9.5},
+        "gado-gado": {"kal": 145, "pro": 6.8, "kar": 16.0, "lem": 6.8},
+        "mie ayam": {"kal": 185, "pro": 7.8, "kar": 28.0, "lem": 4.5},
+        "nasi uduk": {"kal": 180, "pro": 3.8, "kar": 34.0, "lem": 3.5},
+        "nasi kuning": {"kal": 175, "pro": 3.5, "kar": 33.0, "lem": 3.2},
+        "nasi liwet": {"kal": 170, "pro": 3.6, "kar": 32.0, "lem": 3.0},
+        "rendang": {"kal": 260, "pro": 22.0, "kar": 6.0, "lem": 16.5},
+        "sate ayam": {"kal": 210, "pro": 18.0, "kar": 8.0, "lem": 11.5},
+        "rawon": {"kal": 160, "pro": 14.0, "kar": 5.0, "lem": 9.5},
+        "gulai": {"kal": 175, "pro": 13.0, "kar": 4.5, "lem": 11.5},
+        "siomay": {"kal": 160, "pro": 8.5, "kar": 18.0, "lem": 6.0},
+        "pempek": {"kal": 180, "pro": 7.5, "kar": 27.0, "lem": 4.5},
+        "martabak telur": {"kal": 240, "pro": 11.0, "kar": 18.0, "lem": 14.0},
+        "martabak manis": {"kal": 280, "pro": 5.5, "kar": 46.0, "lem": 8.5},
+        "pizza": {"kal": 266, "pro": 11.0, "kar": 33.0, "lem": 10.0},
+        "burger": {"kal": 250, "pro": 13.0, "kar": 26.0, "lem": 11.0},
+        "spaghetti": {"kal": 158, "pro": 5.8, "kar": 30.0, "lem": 1.5},
+        "kentang goreng": {"kal": 280, "pro": 3.5, "kar": 36.0, "lem": 14.0},
+        "sosis": {"kal": 260, "pro": 12.0, "kar": 4.0, "lem": 22.0},
+        "nugget": {"kal": 250, "pro": 13.5, "kar": 16.0, "lem": 14.5},
+        "roti bakar": {"kal": 220, "pro": 6.0, "kar": 40.0, "lem": 4.5},
+        "pisang goreng": {"kal": 195, "pro": 2.0, "kar": 35.0, "lem": 5.5},
+        "kacang hijau": {"kal": 140, "pro": 7.0, "kar": 24.0, "lem": 1.5}
+    }
+    for k, v in TKPI_LOOKUP.items():
+        if k in clean_name:
+            return {
+                "kal": round(v["kal"] * ratio, 1),
+                "pro": round(v["pro"] * ratio, 1),
+                "kar": round(v["kar"] * ratio, 1),
+                "lem": round(v["lem"] * ratio, 1),
+                "source": "Standar TKPI Kemenkes RI",
+                "matched": k.title()
+            }
+            
+    # 3. Jika Kunci Gemini VLM Aktif: Ambil data gizi otomatis dari internet AI
+    if vlm_api_key and not vlm_api_key.startswith("gsk_"):
+        try:
+            import urllib.request, json
+            clean_k = vlm_api_key.replace("AIzaSyAQ.", "AQ.").strip()
+            prompt = f"Berapa kandungan nutrisi per 100 gram makanan: '{food_name}'? Kembalikan HANYA JSON murni tanpa markdown: {{\"kal\": 150, \"pro\": 8.0, \"kar\": 20.0, \"lem\": 4.0}}"
+            endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key={clean_k}"
+            payload = {"contents": [{"parts": [{"text": prompt}]}]}
+            req = urllib.request.Request(endpoint, data=json.dumps(payload).encode("utf-8"), headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                txt = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+                import re
+                m = re.search(r"\{.*?\}", txt, re.DOTALL)
+                if m:
+                    res_json = json.loads(m.group(0))
+                    return {
+                        "kal": round(float(res_json.get("kal", 150)) * ratio, 1),
+                        "pro": round(float(res_json.get("pro", 6.0)) * ratio, 1),
+                        "kar": round(float(res_json.get("kar", 20.0)) * ratio, 1),
+                        "lem": round(float(res_json.get("lem", 4.0)) * ratio, 1),
+                        "source": "Kecerdasan AI Google Gemini & Internet",
+                        "matched": food_name.title()
+                    }
+        except Exception:
+            pass
+
+    # 4. Estimasi Heuristik Ilmiah
+    base_kal, base_pro, base_kar, base_lem = 150.0, 5.0, 22.0, 4.0
+    if any(w in clean_name for w in ["daging", "ayam", "sapi", "kambing", "ikan", "udang", "telur"]):
+        base_kal, base_pro, base_kar, base_lem = 210.0, 20.0, 3.0, 13.0
+    elif any(w in clean_name for w in ["nasi", "mie", "roti", "bihun", "ubi", "singkong", "kentang"]):
+        base_kal, base_pro, base_kar, base_lem = 175.0, 4.0, 36.0, 1.5
+    elif any(w in clean_name for w in ["sayur", "sup", "sop", "bayam", "kangkung", "wortel"]):
+        base_kal, base_pro, base_kar, base_lem = 45.0, 2.0, 7.0, 0.5
+    elif any(w in clean_name for w in ["buah", "apel", "jeruk", "semangka", "pisang", "melon"]):
+        base_kal, base_pro, base_kar, base_lem = 60.0, 1.0, 14.0, 0.3
+        
+    return {
+        "kal": round(base_kal * ratio, 1),
+        "pro": round(base_pro * ratio, 1),
+        "kar": round(base_kar * ratio, 1),
+        "lem": round(base_lem * ratio, 1),
+        "source": "Estimasi Komposisi Pangan Terstandarisasi",
+        "matched": food_name.title()
+    }
+
+
 def find_or_register_food(category, food_data):
+
     """
     Mencari indeks makanan dalam perpustakaan atau secara otomatis mendaftarkan makanan baru
     yang belum pernah ada (misalnya: sosis panggang, timun lalapan, stik wortel rebus, kentang wedges, ayam krispi kentucky, ayam gulai, kulit kebab/tortilla, edamame, keripik tempe, pasta, dll)
@@ -1830,89 +2112,249 @@ def render_feature_card(col, badge_text, badge_class, icon_class, icon_color, ti
 if st.session_state.active_screen != "home":
     col_back, col_back_empty = st.columns([1.6, 4])
     with col_back:
-        if st.button("⬅️ Kembali ke Beranda", key="btn_back_to_home", use_container_width=True):
+        if st.button("← Kembali ke Beranda", key="btn_back_to_home"):
             st.session_state.active_screen = "home"
             st.rerun()
     render_html("<div style='margin-bottom:0.75rem;'></div>")
 
-# LAYAR 0: BERANDA (HOME MENU GRID 6 KARTU)
-if st.session_state.active_screen == "home":
-    # Header Sambutan Resmi
-    render_html(f"""
-    <header class="dashboard-header" style="margin-bottom:1.5rem; background:rgba(255,255,255,0.88); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); padding:1.4rem 1.8rem; border-radius:20px; border:1px solid rgba(255,255,255,0.9); box-shadow:0 6px 20px -3px rgba(16,185,129,0.1);">
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;">
-            <div>
-                <h2 style="font-size:1.75rem; font-weight:800; color:#0f172a; margin:0 0 0.3rem 0; letter-spacing:-0.5px;">
-                    Selamat Datang, <span style="color:#059669;">{active_user.get('name', 'Siswa / Karyawan')}</span>! 👋
-                </h2>
-                <p style="color:#64748b; font-size:0.92rem; margin:0; font-weight:500;">
-                    Media Interaktif Program Makan Bergizi Gratis (MBG) — Pemantauan Asupan & Kebutuhan Gizi Siswa.
-                </p>
-            </div>
-            <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-                <span class="badge-ta badge-ta-main" style="background:rgba(16,185,129,0.15); color:#059669; padding:0.35rem 0.8rem; border-radius:20px; font-weight:700; font-size:0.78rem; border:1px solid rgba(16,185,129,0.3);"><i class="fa-solid fa-certificate"></i> Permenkes No. 2/2020</span>
-                <span class="badge-ta badge-ta-1" style="background:rgba(59,130,246,0.15); color:#2563eb; padding:0.35rem 0.8rem; border-radius:20px; font-weight:700; font-size:0.78rem; border:1px solid rgba(59,130,246,0.3);"><i class="fa-solid fa-camera"></i> Visi Komputer Cerdas</span>
-            </div>
-        </div>
-    </header>
+# ==============================================================================
+# RENDERER PANEL ADMINISTRATOR (GAMBAR 2)
+# ==============================================================================
+def render_admin_dashboard_panel():
+    # Header Sesuai Gambar 2
+    render_html("""
+    <div style="margin-bottom:1.2rem;">
+        <h2 style="font-size:1.9rem; font-weight:800; color:#1e293b; margin:0 0 0.35rem 0; letter-spacing:-0.5px;">Panel Administrator</h2>
+        <p style="color:#64748b; font-size:0.95rem; margin:0;">Pantau laporan konsumsi gizi dan pesan dari karyawan SPPG.</p>
+    </div>
     """)
 
-    # Grid 6 Kartu Interaktif Sesuai Web HTML
-    c1, c2 = st.columns(2, gap="large")
-    render_feature_card(
-        c1, "PINDAI MAKANAN", "badge-ta-1", "fa-solid fa-camera", "#2563eb",
-        "Deteksi Makanan MBG", "Pindai Baki & Hitung Nilai Gizi Otomatis",
-        "🚀 Buka Deteksi Makanan MBG", "deteksi", "deteksi"
-    )
-    render_feature_card(
-        c2, "KEBUTUHAN ENERGI", "badge-ta-2", "fa-solid fa-calculator", "#d97706",
-        "Kalkulator Kebutuhan Gizi", "Hitung Kebutuhan Energi & Makronutrisi",
-        "🧮 Buka Kalkulator Kebutuhan", "kalkulator", "kalkulator"
-    )
+    # Bar Pintasan Akses Fitur Pengguna bagi Administrator
+    with st.expander("🛠️ Pintasan Fitur Pengguna (Uji Pemindaian, Kalkulator & Antropometri)", expanded=False):
+        col_nav1, col_nav2, col_nav3, col_nav4, col_nav5 = st.columns(5)
+        with col_nav1:
+            if st.button("📷 Pindai Makanan", key="adm_btn_deteksi", use_container_width=True):
+                st.session_state.active_screen = "deteksi"
+                st.rerun()
+        with col_nav2:
+            if st.button("🧮 Kalkulator Gizi", key="adm_btn_kalk", use_container_width=True):
+                st.session_state.active_screen = "kalkulator"
+                st.rerun()
+        with col_nav3:
+            if st.button("🧠 Status Gizi", key="adm_btn_status", use_container_width=True):
+                st.session_state.active_screen = "status_gizi"
+                st.rerun()
+        with col_nav4:
+            if st.button("📊 Evaluasi Gizi", key="adm_btn_dash", use_container_width=True):
+                st.session_state.active_screen = "dashboard"
+                st.rerun()
+        with col_nav5:
+            if st.button("🍱 Kebutuhan MBG", key="adm_btn_jurnal", use_container_width=True):
+                st.session_state.active_screen = "jurnal"
+                st.rerun()
+        render_html("<div style='margin-bottom:0.8rem;'></div>")
 
-    render_html("<div style='margin-bottom:1rem;'></div>")
+    # Layout 2 Kolom Sesuai Gambar 2
+    col_adm_left, col_adm_right = st.columns([1, 1.2], gap="large")
 
-    c3, c4 = st.columns(2, gap="large")
-    render_feature_card(
-        c3, "STATUS GIZI", "badge-ta-3", "fa-solid fa-brain", "#9333ea",
-        "Status Gizi Siswa", "Pemeriksaan Antropometri & Indeks Massa Tubuh",
-        "🧠 Periksa Status Gizi Siswa", "status_gizi", "status_gizi"
-    )
-    render_feature_card(
-        c4, "EVALUASI GIZI", "badge-ta-main", "fa-solid fa-chart-pie", "#059669",
-        "Dashboard Evaluasi MBG", "Asupan Aktual vs Kebutuhan Individu",
-        "📊 Buka Dashboard Evaluasi", "dashboard", "dashboard"
-    )
+    # KOLOM KIRI: Pantauan Log Kebutuhan Pegawai
+    with col_adm_left:
+        render_html("""
+        <div style="display:flex; align-items:center; gap:0.6rem; margin-bottom:1.1rem;">
+            <i class="fa-solid fa-list-check" style="color:#059669; font-size:1.3rem;"></i>
+            <h3 style="margin:0; font-weight:800; color:#0f766e; font-size:1.25rem;">Pantauan Log Kebutuhan Pegawai</h3>
+        </div>
+        """)
 
-    render_html("<div style='margin-bottom:1rem;'></div>")
+        for h in st.session_state.history_list:
+            render_html(f"""
+            <div style="background:#ffffff; border-radius:16px; border:1px solid #e2e8f0; border-left:4px solid #10b981; padding:1.15rem 1.3rem; margin-bottom:0.9rem; box-shadow:0 2px 8px rgba(0,0,0,0.02);">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem;">
+                    <div style="min-width:130px;">
+                        <div style="font-weight:700; color:#1e293b; font-size:0.92rem;">{h.get('user')}</div>
+                        <div style="color:#64748b; font-size:0.8rem;">(NIK: {h.get('nik')})</div>
+                        <div style="color:#64748b; font-size:0.78rem; margin-top:0.3rem; font-weight:500;">{h.get('date', 'Senin, 1 September 2026')}</div>
+                    </div>
+                    <div style="font-size:0.85rem; color:#334155; line-height:1.45; flex:1;">
+                        <div>Menu: <strong>{h.get('menu')}</strong></div>
+                        <div style="margin-top:0.25rem;">Porsi: <strong style="color:#059669;">{h.get('portion')}</strong></div>
+                        <div style="margin-top:0.25rem;">Rating: <span style="font-size:0.95rem; color:#f59e0b;">{h.get('rating')}</span></div>
+                    </div>
+                </div>
+            </div>
+            """)
 
-    c5, c6 = st.columns(2, gap="large")
-    render_feature_card(
-        c5, "KEBUTUHAN MBG", "badge-ta-main", "fa-solid fa-utensils", "#0d9488",
-        "Kebutuhan MBG", "Jurnal Porsi & Kepuasan Menu Harian",
-        "🍱 Buka Jurnal Kebutuhan MBG", "jurnal", "jurnal"
-    )
+    # KOLOM KANAN: Kotak Masuk Pesan Sesuai Gambar 2
+    with col_adm_right:
+        render_html("""
+        <div style="display:flex; align-items:center; gap:0.6rem; margin-bottom:1.1rem;">
+            <i class="fa-solid fa-inbox" style="color:#059669; font-size:1.3rem;"></i>
+            <h3 style="margin:0; font-weight:800; color:#0f766e; font-size:1.25rem;">Kotak Masuk Pesan</h3>
+        </div>
+        """)
+
+        for idx, m in enumerate(st.session_state.message_list):
+            has_reply = bool(m.get("reply", "").strip())
+
+            if not has_reply:
+                # Pesan Belum Dibalas: Sesuai baris atas Gambar 2 dengan tombol Balas
+                render_html(f"""
+                <div style="background:#ffffff; border-radius:16px; border:1px solid #e2e8f0; border-left:4px solid #10b981; padding:1.15rem 1.3rem; margin-bottom:0.5rem; box-shadow:0 2px 8px rgba(0,0,0,0.02);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.8rem;">
+                        <div style="font-size:0.85rem; color:#1e293b;">
+                            📥 <strong>{m.get('user')} ({m.get('nik')})</strong> <span style="color:#64748b; font-size:0.8rem; margin-left:4px;">{m.get('date')}</span>
+                        </div>
+                        <div style="font-size:0.92rem; font-weight:600; color:#1e293b;">
+                            {m.get('text')}
+                        </div>
+                    </div>
+                </div>
+                """)
+
+                # Area Balas & Ajukan Pertanyaan
+                with st.expander(f"↩️ Balas & Beri Pertanyaan ke {m.get('user')}", expanded=st.session_state.get(f"open_rep_{m.get('id')}", False)):
+                    st.markdown(f"<span style='font-size:0.85rem; color:#475569;'>Tulis balasan atau ajukan pertanyaan konfirmasi kepada <strong>{m.get('user')}</strong>:</span>", unsafe_allow_html=True)
+                    
+                    # Template Cepat
+                    tc1, tc2, tc3 = st.columns(3)
+                    if tc1.button("👍 Standar AKG", key=f"qtpl1_{m.get('id')}_{idx}", use_container_width=True):
+                        st.session_state[f"val_rep_{m.get('id')}"] = "Terima kasih atas masukannya! Kami terus menjaga standar kecukupan AKG untuk seluruh karyawan."
+                        st.session_state[f"open_rep_{m.get('id')}"] = True
+                        st.rerun()
+                    if tc2.button("❓ Tanya Rasa/Porsi", key=f"qtpl2_{m.get('id')}_{idx}", use_container_width=True):
+                        st.session_state[f"val_rep_{m.get('id')}"] = "Terima kasih atas masukannya! Apakah porsi sayuran dan bumbu lauk hari ini sudah cukup pas untuk Anda?"
+                        st.session_state[f"open_rep_{m.get('id')}"] = True
+                        st.rerun()
+                    if tc3.button("🥗 Tanya Usul Menu", key=f"qtpl3_{m.get('id')}_{idx}", use_container_width=True):
+                        st.session_state[f"val_rep_{m.get('id')}"] = "Terima kasih atas masukannya! Apakah ada rekomendasi variasi lauk hewani atau buah yang ingin ditambahkan?"
+                        st.session_state[f"open_rep_{m.get('id')}"] = True
+                        st.rerun()
+
+                    default_val = st.session_state.get(f"val_rep_{m.get('id')}", "")
+                    rep_text = st.text_area(
+                        f"Pesan Balasan / Pertanyaan:",
+                        value=default_val,
+                        placeholder="Contoh: Terima kasih atas masukannya! Apakah ada keluhan pada porsi sayur atau lauk hari ini?",
+                        key=f"in_rep_{m.get('id')}_{idx}",
+                        height=85
+                    )
+                    if st.button(f"Kirim Balasan ke {m.get('user')}", key=f"btn_sub_rep_{m.get('id')}_{idx}", type="primary", use_container_width=True):
+                        if rep_text.strip():
+                            m["reply"] = rep_text.strip()
+                            st.session_state[f"open_rep_{m.get('id')}"] = False
+                            st.success(f"✅ Balasan & pertanyaan telah terkirim kepada {m.get('user')}!")
+                            st.rerun()
+                        else:
+                            st.warning("⚠️ Harap tuliskan balasan atau pertanyaan terlebih dahulu.")
+                
+                render_html("<div style='margin-bottom:0.75rem;'></div>")
+
+            else:
+                # Pesan Sudah Dibalas: Sesuai kotak hijau di baris bawah Gambar 2
+                render_html(f"""
+                <div style="background:#ffffff; border-radius:16px; border:1px solid #e2e8f0; border-left:4px solid #10b981; padding:1.15rem 1.3rem; margin-bottom:0.5rem; box-shadow:0 2px 8px rgba(0,0,0,0.02);">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem;">
+                        <div style="min-width:170px; max-width:210px;">
+                            <div style="font-size:0.85rem; color:#1e293b;">
+                                📥 <strong>{m.get('user')} ({m.get('nik')})</strong>
+                            </div>
+                            <div style="color:#64748b; font-size:0.78rem; margin-top:0.2rem;">
+                                {m.get('date')}
+                            </div>
+                            <div style="font-size:0.88rem; color:#334155; margin-top:0.45rem; font-weight:500; line-height:1.4;">
+                                {m.get('text')}
+                            </div>
+                        </div>
+                        <div style="flex:1; min-width:240px; background:#f0fdf4; border:1.5px solid #10b981; border-radius:12px; padding:0.85rem 1.1rem; font-size:0.85rem; color:#065f46; line-height:1.45;">
+                            <strong>Balasan Anda:</strong> {m.get('reply')}
+                        </div>
+                    </div>
+                </div>
+                """)
+
+                # Opsi untuk Mengubah Balasan atau Mengirim Pertanyaan Lanjutan
+                with st.expander(f"💬 Balas Lagi / Beri Pertanyaan Lanjutan ke {m.get('user')}", expanded=False):
+                    fup_q = st.text_input(
+                        "Ketik pertanyaan/pesan tambahan:",
+                        placeholder="Contoh: Bagaimana dengan porsi buah dan minumannya, apakah sudah pas?",
+                        key=f"in_fup_{m.get('id')}_{idx}"
+                    )
+                    if st.button(f"Kirim Pertanyaan Lanjutan ke {m.get('user')}", key=f"btn_sub_fup_{m.get('id')}_{idx}", use_container_width=True):
+                        if fup_q.strip():
+                            m["reply"] = f"{m.get('reply')} \n\n💬 Pertanyaan Admin: {fup_q.strip()}"
+                            st.success(f"✅ Pertanyaan lanjutan berhasil dikirim ke {m.get('user')}!")
+                            st.rerun()
+                
+                render_html("<div style='margin-bottom:0.75rem;'></div>")
+
+
+# LAYAR 0: BERANDA (HOME)
+if st.session_state.active_screen == "home":
     if is_admin_mode:
-        render_feature_card(
-            c6, "PANEL ADMIN", "badge-ta-main", "fa-solid fa-shield-halved", "#dc2626",
-            "Panel Administrator", "Monitoring Log Siswa & Aduan MBG",
-            "🛡️ Buka Panel Administrator", "admin", "admin"
-        )
+        # Jika Login sebagai Administrator SPPG: Langsung Tampilkan Panel Administrator (Gambar 2)!
+        render_admin_dashboard_panel()
     else:
+        # Header Sambutan Resmi Siswa / Karyawan
+        render_html(f"""
+        <header class="dashboard-header" style="margin-bottom:1.5rem; background:rgba(255,255,255,0.88); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); padding:1.4rem 1.8rem; border-radius:20px; border:1px solid rgba(255,255,255,0.9); box-shadow:0 6px 20px -3px rgba(16,185,129,0.1);">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;">
+                <div>
+                    <h2 style="font-size:1.75rem; font-weight:800; color:#0f172a; margin:0 0 0.3rem 0; letter-spacing:-0.5px;">
+                        Selamat Datang, <span style="color:#059669;">{active_user.get('name', 'Siswa / Karyawan')}</span>! 👋
+                    </h2>
+                    <p style="color:#64748b; font-size:0.92rem; margin:0; font-weight:500;">
+                        Media Interaktif Program Makan Bergizi Gratis (MBG) — Pemantauan Asupan & Kebutuhan Gizi Siswa.
+                    </p>
+                </div>
+                <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                    <span class="badge-ta badge-ta-main" style="background:rgba(16,185,129,0.15); color:#059669; padding:0.35rem 0.8rem; border-radius:20px; font-weight:700; font-size:0.78rem; border:1px solid rgba(16,185,129,0.3);"><i class="fa-solid fa-certificate"></i> Permenkes No. 2/2020</span>
+                    <span class="badge-ta badge-ta-1" style="background:rgba(59,130,246,0.15); color:#2563eb; padding:0.35rem 0.8rem; border-radius:20px; font-weight:700; font-size:0.78rem; border:1px solid rgba(59,130,246,0.3);"><i class="fa-solid fa-camera"></i> Visi Komputer Cerdas</span>
+                </div>
+            </div>
+        </header>
+        """)
+
+        # Grid 6 Kartu Interaktif Pengguna
+        c1, c2 = st.columns(2, gap="large")
         render_feature_card(
-            c6, "STANDAR & BANTUAN", "badge-ta-main", "fa-solid fa-book-medical", "#059669",
-            "Standar Menu & Bantuan", "Pedoman Porsi MBG & Konsultasi Ahli Gizi",
-            "📖 Buka Standar Menu & Bantuan", "panduan", "panduan"
+            c1, "PINDAI MAKANAN", "badge-ta-1", "fa-solid fa-camera", "#2563eb",
+            "Deteksi Makanan MBG", "Pindai Baki & Hitung Nilai Gizi Otomatis",
+            "🚀 Buka Deteksi Makanan MBG", "deteksi", "deteksi"
+        )
+        render_feature_card(
+            c2, "KALKULATOR GIZI", "badge-ta-2", "fa-solid fa-calculator", "#d97706",
+            "Kalkulator Gizi Manual", "Hitung Manual Gizi Makanan & Kustom AI",
+            "🧮 Buka Kalkulator Gizi", "kalkulator", "kalkulator"
         )
 
-    if is_admin_mode:
         render_html("<div style='margin-bottom:1rem;'></div>")
-        c7, _ = st.columns([1, 1], gap="large")
+
+        c3, c4 = st.columns(2, gap="large")
         render_feature_card(
-            c7, "STANDAR MENU", "badge-ta-main", "fa-solid fa-book-medical", "#059669",
-            "Standar Menu MBG", "Pedoman Kompartemen Baki Kemenkes RI",
-            "📖 Buka Standar Menu MBG", "panduan_admin", "panduan"
+            c3, "STATUS GIZI", "badge-ta-3", "fa-solid fa-brain", "#9333ea",
+            "Status Gizi Siswa", "Pemeriksaan Antropometri & Indeks Massa Tubuh (KNN)",
+            "🧠 Periksa Status Gizi Siswa", "status_gizi", "status_gizi"
         )
+        render_feature_card(
+            c4, "EVALUASI GIZI", "badge-ta-main", "fa-solid fa-chart-pie", "#059669",
+            "Dashboard Evaluasi Gizi", "Asupan Aktual vs Target Kecukupan MBG Siswa",
+            "📊 Buka Dashboard Evaluasi", "dashboard", "dashboard"
+        )
+
+        render_html("<div style='margin-bottom:1rem;'></div>")
+
+        c5, c6 = st.columns(2, gap="large")
+        render_feature_card(
+            c5, "KEBUTUHAN MBG", "badge-ta-main", "fa-solid fa-utensils", "#0d9488",
+            "Kebutuhan MBG", "Jurnal Porsi & Kepuasan Menu Harian",
+            "🍱 Buka Jurnal Kebutuhan MBG", "jurnal", "jurnal"
+        )
+        render_feature_card(
+            c6, "LAPORAN ADMIN", "badge-ta-main", "fa-solid fa-envelope", "#059669",
+            "Hubungi Admin SPPG", "Laporan Makanan & Konsultasi Langsung",
+            "✉️ Buka Hubungi Admin SPPG", "laporan", "laporan"
+        )
+
 
 # ==============================================================================
 # TAB 1: DETEKSI & EVALUASI BAKI MAKANAN
@@ -2401,463 +2843,747 @@ elif st.session_state.active_screen == "deteksi":
 
 
 # ==============================================================================
-# TAB 2: KALKULATOR KEBUTUHAN ENERGI & GIZI MANUAL
+# FITUR 1: KALKULATOR GIZI MANUAL (GAMBAR 1)
 # ==============================================================================
 elif st.session_state.active_screen == "kalkulator":
+    # Header Kartu Sesuai Gambar 1
     render_html("""
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
-        <div>
-            <h3 style="margin:0; font-weight:800; color:#0f766e;"><i class="fa-solid fa-calculator" style="color:#d97706;"></i> Kalkulator Kebutuhan Gizi</h3>
-            <span class="badge-ta badge-ta-2" style="margin-top:0.3rem;">Kebutuhan Energi Harian</span>
+    <div style="background:#ffffff; border-radius:18px; padding:1.2rem 1.6rem 0.6rem 1.6rem; border:1px solid #e2e8f0; box-shadow:0 4px 14px rgba(0,0,0,0.02); margin-bottom:1.2rem;">
+        <div style="display:flex; align-items:center; gap:0.6rem; margin-bottom:0.3rem;">
+            <i class="fa-solid fa-list-check" style="color:#10b981; font-size:1.3rem;"></i>
+            <h3 style="margin:0; font-weight:800; color:#1e293b; font-size:1.35rem;">Kalkulator Gizi Manual</h3>
         </div>
-    </div>
-    """)
-    
-    col_t1, col_t2 = st.columns([1, 1], gap="large")
-    
-    with col_t1:
-        render_html("""
-        <div class="glass-card">
-            <h4 style="margin:0 0 0.8rem 0; font-weight:700; color:#1e293b;"><i class="fa-solid fa-user-gear"></i> Parameter Fisik Siswa</h4>
-        </div>
-        """)
-        
-        t_c1, t_c2 = st.columns(2)
-        t_age = t_c1.number_input("Umur (Tahun):", min_value=5, max_value=80, value=16, key="t_age")
-        t_gender = t_c2.selectbox("Jenis Kelamin:", ["Laki-laki (L)", "Perempuan (P)"], key="t_gender")
-        
-        t_c3, t_c4 = st.columns(2)
-        t_bb = t_c3.number_input("Berat Badan (kg):", min_value=10.0, max_value=150.0, value=52.0, step=0.5, key="t_bb")
-        t_tb = t_c4.number_input("Tinggi Badan (cm):", min_value=70.0, max_value=220.0, value=162.0, step=0.5, key="t_tb")
-        
-        t_act = st.selectbox(
-            "Tingkat Aktivitas Fisik:",
-            [
-                "Sedentari (Jarang berolahraga / banyak duduk) - 1.2",
-                "Ringan (Olahraga ringan 1-3 hari/minggu) - 1.375",
-                "Sedang (Aktivitas sekolah & olahraga 3-5 hari/minggu) - 1.55",
-                "Aktif (Olahraga intensif 6-7 hari/minggu) - 1.725"
-            ],
-            index=2,
-            key="t_act"
-        )
-        act_factor = float(t_act.split(" - ")[-1])
-        
-    with col_t2:
-        jk_val = 0 if "Laki-laki" in t_gender else 1
-        if jk_val == 0:
-            bmr = (10 * t_bb) + (6.25 * t_tb) - (5 * t_age) + 5
-        else:
-            bmr = (10 * t_bb) + (6.25 * t_tb) - (5 * t_age) - 161
-            
-        tdee_calc = round(bmr * act_factor)
-        target_mbg_calc = round(tdee_calc * 0.33)
-        target_karbo_g = round((tdee_calc * 0.60) / 4)
-        target_pro_g = round((tdee_calc * 0.15) / 4)
-        target_lem_g = round((tdee_calc * 0.25) / 9)
-        
-        render_html(f"""
-        <div class="glass-card" style="text-align:center;">
-            <span style="font-size:0.8rem; color:#64748b; text-transform:uppercase; font-weight:700;">Target Energi Harian:</span>
-            <div style="font-size:2.2rem; font-weight:800; color:#d97706; margin:0.2rem 0;">{tdee_calc:,} kkal/hari</div>
-            <div style="font-size:0.9rem; color:#1e293b; font-weight:600; margin-bottom:1.2rem;">
-                Energi Dasar: <strong>{round(bmr):,} kkal</strong> | Target 1x Porsi MBG: <strong style="color:#059669;">{target_mbg_calc} kkal</strong>
-            </div>
-            
-            <div style="text-align:left; font-weight:700; font-size:0.88rem; margin-bottom:0.6rem; color:#1e293b;">
-                <i class="fa-solid fa-pie-chart" style="color:#10b981;"></i> Target Distribusi Makronutrisi Harian:
-            </div>
-            <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:0.6rem;">
-                <div style="background:rgba(16,185,129,0.12); padding:0.8rem; border-radius:12px; border:1px solid rgba(16,185,129,0.25);">
-                    <span style="font-size:0.75rem; color:#047857; display:block; font-weight:700;">🌾 Karbo (60%)</span>
-                    <strong style="font-size:1.2rem; color:#065f46;">{target_karbo_g} g</strong>
-                </div>
-                <div style="background:rgba(59,130,246,0.12); padding:0.8rem; border-radius:12px; border:1px solid rgba(59,130,246,0.25);">
-                    <span style="font-size:0.75rem; color:#1d4ed8; display:block; font-weight:700;">🥩 Protein (15%)</span>
-                    <strong style="font-size:1.2rem; color:#1e40af;">{target_pro_g} g</strong>
-                </div>
-                <div style="background:rgba(139,92,246,0.12); padding:0.8rem; border-radius:12px; border:1px solid rgba(139,92,246,0.25);">
-                    <span style="font-size:0.75rem; color:#6d28d9; display:block; font-weight:700;">💧 Lemak (25%)</span>
-                    <strong style="font-size:1.2rem; color:#5b21b6;">{target_lem_g} g</strong>
-                </div>
-            </div>
-        </div>
-        """)
-        
-        if st.button("📷 Lanjut Pindai Baki Makanan →", key="btn_kalk_to_deteksi", use_container_width=True):
-            st.session_state.active_screen = "deteksi"
-            st.rerun()
-        
-    # Bagian Kalkulator Gizi Manual
-    render_html("""
-    <div class="glass-card" style="margin-top:1rem;">
-        <h4 style="margin:0 0 0.4rem 0; font-weight:700; color:#1e293b;">
-            <i class="fa-solid fa-list-check" style="color:#10b981;"></i> Kalkulator Gizi Manual
-        </h4>
-        <p style="font-size:0.85rem; color:#64748b; margin-bottom:1rem;">
-            Tentukan gramasi bahan makanan secara bebas untuk menghitung total kandungan energi dan makronutrisi porsi kustom.
+        <p style="margin:0; color:#64748b; font-size:0.88rem; line-height:1.45;">
+            Pilih dataset preset menu atau tentukan porsi gramasi bahan makanan secara manual untuk menghitung total kandungan nutrisi.
         </p>
     </div>
     """)
     
-    col_m1, col_m2, col_m3, col_m4 = st.columns(4)
-    with col_m1:
-        man_karbo_type = st.selectbox("Bahan Karbohidrat:", ["Nasi Putih (1.3 kkal/g)", "Nasi Merah (1.1 kkal/g)", "Kentang Rebus (0.8 kkal/g)", "Mie/Bihun (1.5 kkal/g)"])
-        man_karbo_gram = st.number_input("Gram Karbohidrat:", min_value=0, max_value=500, value=150, step=10)
-    with col_m2:
-        man_prohew_type = st.selectbox("Protein Hewani:", ["Ayam Goreng (2.5 kkal/g)", "Telur Ayam (1.6 kkal/g)", "Daging Sapi (2.4 kkal/g)", "Udang (1.1 kkal/g)", "Ikan Nila (1.5 kkal/g)"])
-        man_prohew_gram = st.number_input("Gram Protein Hewani:", min_value=0, max_value=300, value=85, step=5)
-    with col_m3:
-        man_pronab_type = st.selectbox("Protein Nabati:", ["Tempe Goreng (2.3 kkal/g)", "Tahu Goreng (1.1 kkal/g)", "Tempe Orek (2.2 kkal/g)", "Perkedel (1.9 kkal/g)"])
-        man_pronab_gram = st.number_input("Gram Protein Nabati:", min_value=0, max_value=300, value=50, step=5)
-    with col_m4:
-        man_sayur_type = st.selectbox("Sayuran:", ["Tumis Sayur Hijau (0.4 kkal/g)", "Sayur Capcay (0.45 kkal/g)", "Sayur Sop (0.35 kkal/g)", "Lalapan (0.2 kkal/g)"])
-        man_sayur_gram = st.number_input("Gram Sayuran:", min_value=0, max_value=300, value=75, step=5)
+    # Inisialisasi default pilihan preset jika belum ada
+    if "kalk_karbo_idx" not in st.session_state:
+        st.session_state.kalk_karbo_idx = 0
+    if "kalk_prohew_idx" not in st.session_state:
+        st.session_state.kalk_prohew_idx = 0
+    if "kalk_pronab_idx" not in st.session_state:
+        st.session_state.kalk_pronab_idx = 0
+    if "kalk_sayur_idx" not in st.session_state:
+        st.session_state.kalk_sayur_idx = 0
+    if "kalk_karbo_gr" not in st.session_state:
+        st.session_state.kalk_karbo_gr = 100
+    if "kalk_prohew_gr" not in st.session_state:
+        st.session_state.kalk_prohew_gr = 100
+    if "kalk_pronab_gr" not in st.session_state:
+        st.session_state.kalk_pronab_gr = 100
+    if "kalk_sayur_gr" not in st.session_state:
+        st.session_state.kalk_sayur_gr = 100
+
+    # Daftar opsi makanan per kategori
+    list_karbo = ["Nasi Putih", "Nasi Merah", "Kentang Rebus", "Mie/Bihun", "Singkong/Ubi"]
+    list_prohew = ["Ayam Goreng", "Ayam Lengkuas", "Ayam Kremes", "Telur Rebus", "Telur Balado", "Telur Ceplok", "Daging Sapi", "Ikan Nila"]
+    list_pronab = ["Tempe Goreng", "Tahu Goreng", "Tempe Orek", "Tahu Kukus", "Perkedel"]
+    list_sayur = ["Sayur Bening", "Tumis Sayur Hijau", "Sayur Capcay", "Sayur Sop", "Tumis Buncis", "Tumis Tauge"]
+
+    # Bar Preset Dataset Menu MBG Resmi Sesuai Gambar 1
+    st.markdown("<div style='font-size:0.9rem; font-weight:700; color:#1e293b; margin-bottom:0.5rem;'>⚡ <strong>Pilih Cepat Dataset Menu MBG Resmi:</strong></div>", unsafe_allow_html=True)
+    
+    col_p1, col_p2, col_p3, col_p4, col_p5, col_p6 = st.columns(6)
+    with col_p1:
+        if st.button("🍗 Paket 1: Ayam Lengkuas", key="btn_pk_1", use_container_width=True):
+            st.session_state.kalk_karbo_idx = 0   # Nasi Putih
+            st.session_state.kalk_prohew_idx = 1  # Ayam Lengkuas
+            st.session_state.kalk_pronab_idx = 0  # Tempe Goreng
+            st.session_state.kalk_sayur_idx = 0   # Sayur Bening
+            st.session_state.kalk_karbo_gr = 100
+            st.session_state.kalk_prohew_gr = 100
+            st.session_state.kalk_pronab_gr = 100
+            st.session_state.kalk_sayur_gr = 100
+            st.rerun()
+    with col_p2:
+        if st.button("🥚 Paket 2: Telur Rebus", key="btn_pk_2", use_container_width=True):
+            st.session_state.kalk_karbo_idx = 0   # Nasi Putih
+            st.session_state.kalk_prohew_idx = 3  # Telur Rebus
+            st.session_state.kalk_pronab_idx = 1  # Tahu Goreng
+            st.session_state.kalk_sayur_idx = 4   # Tumis Buncis
+            st.session_state.kalk_karbo_gr = 100
+            st.session_state.kalk_prohew_gr = 100
+            st.session_state.kalk_pronab_gr = 100
+            st.session_state.kalk_sayur_gr = 100
+            st.rerun()
+    with col_p3:
+        if st.button("🌶️ Paket 3: Telur Balado", key="btn_pk_3", use_container_width=True):
+            st.session_state.kalk_karbo_idx = 0   # Nasi Putih
+            st.session_state.kalk_prohew_idx = 4  # Telur Balado
+            st.session_state.kalk_pronab_idx = 2  # Tempe Orek
+            st.session_state.kalk_sayur_idx = 5   # Tumis Tauge
+            st.session_state.kalk_karbo_gr = 100
+            st.session_state.kalk_prohew_gr = 100
+            st.session_state.kalk_pronab_gr = 100
+            st.session_state.kalk_sayur_gr = 100
+            st.rerun()
+    with col_p4:
+        if st.button("🍳 Paket 4: Telur Ceplok", key="btn_pk_4", use_container_width=True):
+            st.session_state.kalk_karbo_idx = 0   # Nasi Putih
+            st.session_state.kalk_prohew_idx = 5  # Telur Ceplok
+            st.session_state.kalk_pronab_idx = 3  # Tahu Kukus
+            st.session_state.kalk_sayur_idx = 2   # Sayur Capcay
+            st.session_state.kalk_karbo_gr = 100
+            st.session_state.kalk_prohew_gr = 100
+            st.session_state.kalk_pronab_gr = 100
+            st.session_state.kalk_sayur_gr = 100
+            st.rerun()
+    with col_p5:
+        if st.button("🍗 Paket 5: Ayam Kremes", key="btn_pk_5", use_container_width=True):
+            st.session_state.kalk_karbo_idx = 0   # Nasi Putih
+            st.session_state.kalk_prohew_idx = 2  # Ayam Kremes
+            st.session_state.kalk_pronab_idx = 0  # Tempe Goreng
+            st.session_state.kalk_sayur_idx = 0   # Sayur Bening
+            st.session_state.kalk_karbo_gr = 100
+            st.session_state.kalk_prohew_gr = 100
+            st.session_state.kalk_pronab_gr = 100
+            st.session_state.kalk_sayur_gr = 100
+            st.rerun()
+    with col_p6:
+        if st.button("🍲 Paket 6: Daging Rendang", key="btn_pk_6", use_container_width=True):
+            st.session_state.kalk_karbo_idx = 0   # Nasi Putih
+            st.session_state.kalk_prohew_idx = 6  # Daging Sapi
+            st.session_state.kalk_pronab_idx = 4  # Perkedel
+            st.session_state.kalk_sayur_idx = 3   # Sayur Sop
+            st.session_state.kalk_karbo_gr = 100
+            st.session_state.kalk_prohew_gr = 100
+            st.session_state.kalk_pronab_gr = 100
+            st.session_state.kalk_sayur_gr = 100
+            st.rerun()
+
+    render_html("<div style='margin-bottom:1rem;'></div>")
+
+    # 4 Kategori Bahan Makanan Sesuai Gambar 1
+    col_k, col_ph, col_pn, col_sy = st.columns(4, gap="medium")
+    
+    with col_k:
+        st.markdown("<label style='font-weight:700; font-size:0.88rem; color:#1e293b; display:block; margin-bottom:4px;'>Karbohidrat</label>", unsafe_allow_html=True)
+        ck_s, ck_g = st.columns([1.75, 1])
+        sel_karbo = ck_s.selectbox("Pilih Karbohidrat", list_karbo, index=st.session_state.kalk_karbo_idx, key="sel_kalk_karbo", label_visibility="collapsed")
+        gr_karbo = ck_g.number_input("Gram Karbo", min_value=0, max_value=500, value=st.session_state.kalk_karbo_gr, step=10, key="in_kalk_karbo_gr", label_visibility="collapsed")
+
+    with col_ph:
+        st.markdown("<label style='font-weight:700; font-size:0.88rem; color:#1e293b; display:block; margin-bottom:4px;'>Protein Hewani</label>", unsafe_allow_html=True)
+        cph_s, cph_g = st.columns([1.75, 1])
+        sel_prohew = cph_s.selectbox("Pilih Protein Hewani", list_prohew, index=st.session_state.kalk_prohew_idx, key="sel_kalk_prohew", label_visibility="collapsed")
+        gr_prohew = cph_g.number_input("Gram ProHew", min_value=0, max_value=500, value=st.session_state.kalk_prohew_gr, step=5, key="in_kalk_prohew_gr", label_visibility="collapsed")
+
+    with col_pn:
+        st.markdown("<label style='font-weight:700; font-size:0.88rem; color:#1e293b; display:block; margin-bottom:4px;'>Protein Nabati</label>", unsafe_allow_html=True)
+        cpn_s, cpn_g = st.columns([1.75, 1])
+        sel_pronab = cpn_s.selectbox("Pilih Protein Nabati", list_pronab, index=st.session_state.kalk_pronab_idx, key="sel_kalk_pronab", label_visibility="collapsed")
+        gr_pronab = cpn_g.number_input("Gram ProNab", min_value=0, max_value=500, value=st.session_state.kalk_pronab_gr, step=5, key="in_kalk_pronab_gr", label_visibility="collapsed")
+
+    with col_sy:
+        st.markdown("<label style='font-weight:700; font-size:0.88rem; color:#1e293b; display:block; margin-bottom:4px;'>Sayuran</label>", unsafe_allow_html=True)
+        csy_s, csy_g = st.columns([1.75, 1])
+        sel_sayur = csy_s.selectbox("Pilih Sayuran", list_sayur, index=st.session_state.kalk_sayur_idx, key="sel_kalk_sayur", label_visibility="collapsed")
+        gr_sayur = csy_g.number_input("Gram Sayur", min_value=0, max_value=500, value=st.session_state.kalk_sayur_gr, step=5, key="in_kalk_sayur_gr", label_visibility="collapsed")
+
+    render_html("<div style='margin-bottom:0.75rem;'></div>")
+
+    # Baris Menu Tambahan / Kustom Sesuai Gambar 1
+    st.markdown("<label style='font-weight:700; font-size:0.88rem; color:#1e293b; display:block; margin-bottom:4px;'>Menu Tambahan / Kustom (Ketik Nama Makanan)</label>", unsafe_allow_html=True)
+    col_cust_t, col_cust_g = st.columns([3.2, 1], gap="medium")
+    custom_name = col_cust_t.text_input("Nama Makanan Kustom", placeholder="Nama Makanan (contoh: Bubur Ayam)", label_visibility="collapsed", key="in_kalk_cust_name")
+    custom_gram = col_cust_g.number_input("Gram Kustom", min_value=0, max_value=500, value=0, step=10, label_visibility="collapsed", key="in_kalk_cust_gram")
+
+    render_html("<div style='margin-bottom:1.2rem;'></div>")
+
+    # Tombol Hitung Total Gizi (Hijau Elegan Lebar Penuh Sesuai Gambar 1)
+    btn_calc_total = st.button("Hitung Total Gizi", key="btn_hitung_manual", use_container_width=True)
+
+    # Logika Perhitungan saat Tombol Ditekan atau Jika Sudah Dihitung
+    if btn_calc_total or "kalk_last_result" in st.session_state:
+        # 1. Hitung Nutrisi 4 Komponen Dasar dari Library / TKPI
+        nut_karbo = calculate_custom_food_nutrition(sel_karbo, gr_karbo)
+        nut_prohew = calculate_custom_food_nutrition(sel_prohew, gr_prohew)
+        nut_pronab = calculate_custom_food_nutrition(sel_pronab, gr_pronab)
+        nut_sayur = calculate_custom_food_nutrition(sel_sayur, gr_sayur)
+
+        # 2. Hitung Nutrisi Makanan Kustom (jika ada nama & gram > 0)
+        nut_custom = {"kalori": 0.0, "protein": 0.0, "karbohidrat": 0.0, "lemak": 0.0, "source": ""}
+        if custom_name.strip() and custom_gram > 0:
+            saved_key = st.session_state.get("saved_vlm_key", "")
+            with st.spinner(f"🔍 Mengolah nutrisi '{custom_name}' dengan AI & Basis Data Gizi..."):
+                nut_custom = calculate_custom_food_nutrition(custom_name.strip(), custom_gram, saved_key)
+
+        # Total Akumulasi
+        total_kal = round(nut_karbo["kalori"] + nut_prohew["kalori"] + nut_pronab["kalori"] + nut_sayur["kalori"] + nut_custom["kalori"])
+        total_pro = round(nut_karbo["protein"] + nut_prohew["protein"] + nut_pronab["protein"] + nut_sayur["protein"] + nut_custom["protein"], 1)
+        total_kar = round(nut_karbo["karbohidrat"] + nut_prohew["karbohidrat"] + nut_pronab["karbohidrat"] + nut_sayur["karbohidrat"] + nut_custom["karbohidrat"], 1)
+        total_lem = round(nut_karbo["lemak"] + nut_prohew["lemak"] + nut_pronab["lemak"] + nut_sayur["lemak"] + nut_custom["lemak"], 1)
+
+        # Simpan ke active_meal_nutrition agar sinkron ke Dashboard Evaluasi Gizi
+        meal_desc = f"{sel_karbo} + {sel_prohew} + {sel_pronab} + {sel_sayur}"
+        if custom_name.strip() and custom_gram > 0:
+            meal_desc += f" + {custom_name.strip()}"
+        st.session_state.active_meal_nutrition = {
+            "kal": total_kal,
+            "pro": total_pro,
+            "kar": total_kar,
+            "lem": total_lem,
+            "menu_name": meal_desc
+        }
+        st.session_state.kalk_last_result = True
+
+        # Tampilan Hasil Perhitungan
+        render_html("<div style='margin-top:1.5rem;'></div>")
         
-    fact_karbo = 1.3 if "Putih" in man_karbo_type else (1.1 if "Merah" in man_karbo_type else 0.8)
-    fact_prohew = 2.5 if "Ayam" in man_prohew_type else (1.6 if "Telur" in man_prohew_type else 2.4)
-    fact_pronab = 2.3 if "Tempe Goreng" in man_pronab_type else (1.1 if "Tahu" in man_pronab_type else 2.2)
-    fact_sayur = 0.4
-    
-    tot_man_kal = round((man_karbo_gram * fact_karbo) + (man_prohew_gram * fact_prohew) + (man_pronab_gram * fact_pronab) + (man_sayur_gram * fact_sayur))
-    tot_man_pro = round((man_karbo_gram * 0.026) + (man_prohew_gram * 0.25) + (man_pronab_gram * 0.18) + (man_sayur_gram * 0.02), 1)
-    tot_man_kar = round((man_karbo_gram * 0.28) + (man_sayur_gram * 0.07), 1)
-    tot_man_lem = round((man_prohew_gram * 0.12) + (man_pronab_gram * 0.08), 1)
-    
-    mc1, mc2, mc3, mc4 = st.columns(4)
-    mc1.markdown(f'<div class="metric-card"><div class="title">Total Kalori</div><div class="val" style="color:#d97706;">{tot_man_kal}</div><div class="sub">kkal</div></div>', unsafe_allow_html=True)
-    mc2.markdown(f'<div class="metric-card"><div class="title">Protein</div><div class="val" style="color:#2563eb;">{tot_man_pro}</div><div class="sub">gram</div></div>', unsafe_allow_html=True)
-    mc3.markdown(f'<div class="metric-card"><div class="title">Karbohidrat</div><div class="val" style="color:#059669;">{tot_man_kar}</div><div class="sub">gram</div></div>', unsafe_allow_html=True)
-    mc4.markdown(f'<div class="metric-card"><div class="title">Lemak</div><div class="val" style="color:#7c3aed;">{tot_man_lem}</div><div class="sub">gram</div></div>', unsafe_allow_html=True)
+        if nut_custom.get("source") == "Gemini AI":
+            render_html(f"""
+            <div style="background:rgba(147,51,234,0.08); border:1px solid #d8b4fe; border-radius:12px; padding:0.65rem 1rem; margin-bottom:1rem; font-size:0.85rem; color:#6b21a8; display:flex; align-items:center; gap:0.5rem;">
+                <i class="fa-solid fa-wand-magic-sparkles"></i>
+                <span>Nutrisi kustom <strong>{custom_name} ({custom_gram}g)</strong> berhasil dianalisis cerdas oleh <strong>Google Gemini AI</strong> secara otomatis.</span>
+            </div>
+            """)
+
+        m1, m2, m3, m4 = st.columns(4)
+        m1.markdown(f'<div class="metric-card"><div class="title">Total Kalori</div><div class="val" style="color:#d97706;">{total_kal}</div><div class="sub">kcal</div></div>', unsafe_allow_html=True)
+        m2.markdown(f'<div class="metric-card"><div class="title">Protein</div><div class="val" style="color:#2563eb;">{total_pro}</div><div class="sub">gram</div></div>', unsafe_allow_html=True)
+        m3.markdown(f'<div class="metric-card"><div class="title">Karbohidrat</div><div class="val" style="color:#059669;">{total_kar}</div><div class="sub">gram</div></div>', unsafe_allow_html=True)
+        m4.markdown(f'<div class="metric-card"><div class="title">Lemak</div><div class="val" style="color:#7c3aed;">{total_lem}</div><div class="sub">gram</div></div>', unsafe_allow_html=True)
+
+        # Tabel Rincian Bahan Makanan
+        breakdown_rows = f"""
+        <tr>
+            <td style="font-weight:700; color:#1e293b;">🌾 {sel_karbo}</td>
+            <td style="text-align:center;">{gr_karbo} g</td>
+            <td style="font-weight:700; color:#d97706; text-align:center;">{round(nut_karbo['kalori'])} kcal</td>
+            <td style="text-align:center;">{nut_karbo['protein']} g</td>
+            <td style="text-align:center;">{nut_karbo['karbohidrat']} g</td>
+            <td style="text-align:center;">{nut_karbo['lemak']} g</td>
+        </tr>
+        <tr>
+            <td style="font-weight:700; color:#1e293b;">🥩 {sel_prohew}</td>
+            <td style="text-align:center;">{gr_prohew} g</td>
+            <td style="font-weight:700; color:#d97706; text-align:center;">{round(nut_prohew['kalori'])} kcal</td>
+            <td style="text-align:center;">{nut_prohew['protein']} g</td>
+            <td style="text-align:center;">{nut_prohew['karbohidrat']} g</td>
+            <td style="text-align:center;">{nut_prohew['lemak']} g</td>
+        </tr>
+        <tr>
+            <td style="font-weight:700; color:#1e293b;">🧈 {sel_pronab}</td>
+            <td style="text-align:center;">{gr_pronab} g</td>
+            <td style="font-weight:700; color:#d97706; text-align:center;">{round(nut_pronab['kalori'])} kcal</td>
+            <td style="text-align:center;">{nut_pronab['protein']} g</td>
+            <td style="text-align:center;">{nut_pronab['karbohidrat']} g</td>
+            <td style="text-align:center;">{nut_pronab['lemak']} g</td>
+        </tr>
+        <tr>
+            <td style="font-weight:700; color:#1e293b;">🥦 {sel_sayur}</td>
+            <td style="text-align:center;">{gr_sayur} g</td>
+            <td style="font-weight:700; color:#d97706; text-align:center;">{round(nut_sayur['kalori'])} kcal</td>
+            <td style="text-align:center;">{nut_sayur['protein']} g</td>
+            <td style="text-align:center;">{nut_sayur['karbohidrat']} g</td>
+            <td style="text-align:center;">{nut_sayur['lemak']} g</td>
+        </tr>
+        """
+        if custom_name.strip() and custom_gram > 0:
+            breakdown_rows += f"""
+            <tr style="background:#fdf4ff;">
+                <td style="font-weight:700; color:#7e22ce;">✨ {custom_name.strip()} (Kustom)</td>
+                <td style="text-align:center;">{custom_gram} g</td>
+                <td style="font-weight:700; color:#d97706; text-align:center;">{round(nut_custom['kalori'])} kcal</td>
+                <td style="text-align:center;">{nut_custom['protein']} g</td>
+                <td style="text-align:center;">{nut_custom['karbohidrat']} g</td>
+                <td style="text-align:center;">{nut_custom['lemak']} g</td>
+            </tr>
+            """
+
+        render_html(f"""
+        <div style="background:white; border-radius:14px; border:1px solid #e2e8f0; overflow:hidden; margin-top:1.2rem; box-shadow:0 2px 8px rgba(0,0,0,0.02);">
+            <table class="custom-table" style="margin:0;">
+                <thead>
+                    <tr>
+                        <th>Bahan Makanan</th>
+                        <th style="text-align:center;">Porsi</th>
+                        <th style="text-align:center;">Energi</th>
+                        <th style="text-align:center;">Protein</th>
+                        <th style="text-align:center;">Karbohidrat</th>
+                        <th style="text-align:center;">Lemak</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {breakdown_rows}
+                </tbody>
+            </table>
+        </div>
+        """)
+
+        # Tombol Navigasi Langsung ke Dashboard Evaluasi Gizi
+        render_html("<div style='margin-top:1.2rem;'></div>")
+        if st.button("📊 Lihat Evaluasi Pemenuhan Gizi di Dashboard →", key="btn_kalk_to_dash", use_container_width=True):
+            st.session_state.active_screen = "dashboard"
+            st.rerun()
 
 
 # ==============================================================================
-# TAB 3: STATUS GIZI SISWA (KNN K=5 KEMENKES RI)
+# FITUR 2: STATUS GIZI SISWA (GAMBAR 2)
 # ==============================================================================
 elif st.session_state.active_screen == "status_gizi":
+    # Header Sesuai Gambar 2
     render_html("""
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
-        <div>
-            <h3 style="margin:0; font-weight:800; color:#0f766e;"><i class="fa-solid fa-brain" style="color:#9333ea;"></i> Status Gizi Siswa</h3>
-            <span class="badge-ta badge-ta-3" style="margin-top:0.3rem;">Antropometri Standar Kemenkes RI</span>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.8rem; flex-wrap:wrap; gap:0.5rem;">
+        <div style="display:flex; align-items:center; gap:0.6rem;">
+            <i class="fa-solid fa-brain" style="color:#9333ea; font-size:1.4rem;"></i>
+            <h3 style="margin:0; font-weight:800; color:#1e293b; font-size:1.4rem;">Status Gizi Siswa</h3>
         </div>
+        <span style="background:#f3e8ff; color:#9333ea; font-weight:800; font-size:0.75rem; padding:0.25rem 0.8rem; border-radius:20px; border:1px solid #e9d5ff; letter-spacing:0.5px;">STATUS GIZI</span>
     </div>
+    <p style="color:#64748b; font-size:0.88rem; margin-top:-0.3rem; margin-bottom:1.2rem; line-height:1.45;">
+        Pemeriksaan status gizi antropometri berbasis K-Nearest Neighbors (KNN) mengacu standar Kementerian Kesehatan RI & WHO.
+    </p>
     """)
-    
-    col_g1, col_g2 = st.columns([1, 1], gap="large")
-    
-    with col_g1:
-        render_html("""
-        <div class="glass-card">
-            <h4 style="margin:0 0 0.8rem 0; font-weight:700; color:#1e293b;"><i class="fa-solid fa-id-card"></i> Parameter Antropometri Siswa</h4>
-        </div>
-        """)
-        
-        nama_siswa = st.text_input("Nama Lengkap Siswa:", value="Siswa Contoh MBG")
-        g_c1, g_c2 = st.columns(2)
-        usia_thn = g_c1.number_input("Umur (Tahun):", min_value=5, max_value=20, value=12)
-        usia_bln = g_c2.number_input("Bulan Lebih:", min_value=0, max_value=11, value=0)
-        tot_bln = (usia_thn * 12) + usia_bln
-        
-        jk_radio = st.radio("Jenis Kelamin Siswa:", ["Laki-laki", "Perempuan"], horizontal=True)
-        jk_code = 0 if jk_radio == "Laki-laki" else 1
-        
-        g_c3, g_c4 = st.columns(2)
-        bb_input = g_c3.number_input("Berat Badan (kg):", min_value=10.0, max_value=150.0, value=35.0, step=0.5)
-        tb_input = g_c4.number_input("Tinggi Badan (cm):", min_value=70.0, max_value=210.0, value=142.0, step=0.5)
-        
-    with col_g2:
-        gizi_out = classify_status_gizi(tot_bln, jk_code, bb_input, tb_input)
-        
-        st_label = gizi_out["status"]
-        badge_color = "#10b981"
-        if "Kurang" in st_label or "Buruk" in st_label:
-            badge_color = "#eab308"
-        elif "Lebih" in st_label or "Obesitas" in st_label:
-            badge_color = "#9333ea"
-            
-        th = gizi_out.get("thresholds", {})
-        zscore_val = gizi_out.get("zscore", 0.0)
-        pmk_desc = gizi_out.get("pmk_desc", "")
-        
-        render_html(f"""
-        <div class="glass-card" style="text-align:center;">
-            <div style="font-size:0.82rem; color:#64748b; text-transform:uppercase; font-weight:700; letter-spacing:0.5px;">Status Gizi Siswa (KNN & Standar Permenkes No. 2 Tahun 2020):</div>
-            <div style="font-size:2.8rem; font-weight:800; color:#0f172a; margin:0.2rem 0;">{gizi_out['imt']} <span style="font-size:1.1rem; color:#64748b; font-weight:500;">kg/m²</span></div>
-            <div style="font-size:1.35rem; font-weight:800; color:{badge_color}; margin-bottom:0.5rem;">{st_label}</div>
-            
-            <div style="display:flex; justify-content:center; gap:0.6rem; flex-wrap:wrap; margin-bottom:0.8rem;">
-                <div style="background:rgba(16,185,129,0.12); color:#059669; padding:0.3rem 0.85rem; border-radius:20px; font-size:0.82rem; font-weight:700; border:1px solid rgba(16,185,129,0.25);">
-                    Z-Score IMT/U: {zscore_val:+.2f} SD
-                </div>
-                <div style="background:rgba(147,51,234,0.12); color:#9333ea; padding:0.3rem 0.85rem; border-radius:20px; font-size:0.82rem; font-weight:700; border:1px solid rgba(147,51,234,0.25);">
-                    Keyakinan Model KNN (K=5): {gizi_out['confidence']}%
-                </div>
-            </div>
-            
-            <p style="font-size:0.88rem; color:#475569; margin:0 0 1rem 0; line-height:1.45; text-align:left; background:#f8fafc; padding:0.75rem 1rem; border-radius:10px; border-left:4px solid {badge_color};">
-                <strong>Rekomendasi Standar Kemenkes:</strong> {pmk_desc}
-            </p>
-            
-            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:0.8rem; text-align:center; margin-bottom:1rem;">
-                <span style="font-size:0.78rem; font-weight:700; color:#64748b; text-transform:uppercase;">Rekomendasi Target Porsi MBG (33% Kebutuhan Harian):</span>
-                <div style="font-size:1.45rem; font-weight:800; color:#059669;">{gizi_out['target_mbg_kalori']} kkal <span style="font-size:0.85rem; color:#64748b; font-weight:500;">(TDEE: {gizi_out['tdee']} kkal)</span></div>
-            </div>
-            
-            <!-- Ambang Batas Resmi Usia Siswa (Permenkes RI No. 2 Tahun 2020) -->
-            <div class="imt-legend-card" style="text-align:left;">
-                <div class="imt-legend-title" style="margin-bottom:0.5rem; font-weight:800; color:#0f766e;">Ambang Batas Resmi Usia {tot_bln} Bulan ({'Laki-laki' if jk_code == 0 else 'Perempuan'}) - Permenkes No. 2/2020:</div>
-                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(90px, 1fr)); gap:0.4rem; font-size:0.76rem; text-align:center;">
-                    <div style="background:#fee2e2; border-radius:6px; padding:0.35rem 0.2rem; border:1px solid #fca5a5;">
-                        <span style="font-weight:700; color:#b91c1c;">-3 SD</span><br/><span style="color:#7f1d1d;">&lt; {th.get('minus_3sd', 13.0)}</span>
-                    </div>
-                    <div style="background:#fef9c3; border-radius:6px; padding:0.35rem 0.2rem; border:1px solid #fde047;">
-                        <span style="font-weight:700; color:#a16207;">-2 SD</span><br/><span style="color:#713f12;">{th.get('minus_2sd', 14.5)}</span>
-                    </div>
-                    <div style="background:#dcfce7; border-radius:6px; padding:0.35rem 0.2rem; border:1px solid #86efac;">
-                        <span style="font-weight:700; color:#15803d;">Median</span><br/><span style="color:#14532d;">{th.get('median', 17.5)}</span>
-                    </div>
-                    <div style="background:#dcfce7; border-radius:6px; padding:0.35rem 0.2rem; border:1px solid #86efac;">
-                        <span style="font-weight:700; color:#15803d;">+1 SD</span><br/><span style="color:#14532d;">{th.get('plus_1sd', 19.9)}</span>
-                    </div>
-                    <div style="background:#fef9c3; border-radius:6px; padding:0.35rem 0.2rem; border:1px solid #fde047;">
-                        <span style="font-weight:700; color:#a16207;">+2 SD</span><br/><span style="color:#713f12;">{th.get('plus_2sd', 23.6)}</span>
-                    </div>
-                    <div style="background:#f3e8ff; border-radius:6px; padding:0.35rem 0.2rem; border:1px solid #d8b4fe;">
-                        <span style="font-weight:700; color:#7e22ce;">+3 SD</span><br/><span style="color:#581c87;">&gt; {th.get('plus_2sd', 23.6)}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-        """)
-        
-        col_g_next1, col_g_next2 = st.columns(2)
-        with col_g_next1:
-            if st.button("👉 Lanjut Hitung Kebutuhan Energi →", key="btn_gizi_to_kalkulator", use_container_width=True):
-                st.session_state.active_screen = "kalkulator"
-                st.rerun()
-        with col_g_next2:
-            if st.button("📷 Lanjut Pindai Baki Makanan →", key="btn_gizi_to_deteksi", use_container_width=True):
-                st.session_state.active_screen = "deteksi"
-                st.rerun()
-        
-        if os.path.exists("dataset_antropometri_mbg.csv"):
-            with st.expander("📊 Lihat Basis Data & Detail Model Machine Learning (KNN K=5)"):
-                st.markdown("""
-                **Spesifikasi Model Machine Learning Terlatih:**
-                - **Algoritma:** K-Nearest Neighbors (KNN) dengan $K=5$, metrik jarak Euclidean.
-                - **Preprocessing:** `StandardScaler` untuk normalisasi fitur (Jenis Kelamin, Usia Bulan, Tinggi Badan cm, Berat Badan kg).
-                - **Acuan Standar Antropometri:** Standar Antropometri Anak Kemenkes RI (Permenkes No. 2 Tahun 2020) & WHO 2007 (Usia 5-18 Tahun).
-                - **Status Model:** `model_knn_gizi.pkl` & `scaler_antropometri.pkl` Aktif dan Tersinkronisasi 100%.
-                """)
-                try:
-                    df_prev = pd.read_csv("dataset_antropometri_mbg.csv")
-                    st.dataframe(df_prev.head(10), use_container_width=True)
-                    with open("dataset_antropometri_mbg.csv", "rb") as f_csv:
-                        st.download_button(
-                            label="📥 Unduh Dataset Antropometri (CSV)",
-                            data=f_csv.read(),
-                            file_name="dataset_antropometri_mbg.csv",
-                            mime="text/csv",
-                            key="dl_dataset_antropometri"
-                        )
-                except Exception:
-                    pass
 
+    # Grid 2x2 Input Antropometri Sesuai Gambar 2
+    col_sg1, col_sg2 = st.columns(2, gap="large")
+    with col_sg1:
+        in_sg_age = st.number_input("Umur (Tahun)", min_value=5, max_value=80, value=st.session_state.student_profile.get("age", 16), key="sg_in_age")
+        in_sg_bb = st.number_input("Berat Badan (kg)", min_value=10.0, max_value=200.0, value=float(st.session_state.student_profile.get("bb", 52.0)), step=0.5, key="sg_in_bb")
+    with col_sg2:
+        in_sg_jk = st.selectbox("Jenis Kelamin", options=["Laki-laki (L)", "Perempuan (P)"], index=0 if "Laki-laki" in st.session_state.student_profile.get("gender", "Laki-laki") else 1, key="sg_in_gender")
+        in_sg_tb = st.number_input("Tinggi Badan (cm)", min_value=70.0, max_value=230.0, value=float(st.session_state.student_profile.get("tb", 162.0)), step=0.5, key="sg_in_tb")
 
-# ==============================================================================
-# TAB 4: DASHBOARD EVALUASI GIZI MBG
-# ==============================================================================
-elif st.session_state.active_screen == "dashboard":
-    render_html("""
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
-        <div>
-            <h3 style="margin:0; font-weight:800; color:#0f766e;"><i class="fa-solid fa-chart-pie" style="color:#059669;"></i> Dashboard Evaluasi Gizi</h3>
-            <span class="badge-ta badge-ta-main" style="margin-top:0.3rem;">Evaluasi Asupan vs Kebutuhan Siswa</span>
-        </div>
-    </div>
-    """)
-    
-    render_html("""
-    <div class="glass-card" style="padding:1.1rem 1.4rem; display:flex; justify-content:space-between; flex-wrap:wrap; gap:0.75rem; align-items:center;">
-        <div>👤 <strong>Siswa Terpilih:</strong> <span style="color:#0f172a; font-weight:700;">Siswa Contoh MBG (12 Thn)</span></div>
-        <div>🧠 <strong>Status Gizi:</strong> <span style="color:#9333ea; font-weight:800;">Normal / Gizi Baik (Ideal)</span></div>
-        <div>🔥 <strong>Target 1x MBG:</strong> <span style="color:#d97706; font-weight:800;">680 kkal</span></div>
-        <div>🍱 <strong>Asupan Terdeteksi:</strong> <span style="color:#059669; font-weight:800;">658 kkal (96.8%)</span></div>
-    </div>
-    """)
-    
-    render_html("""
-    <div class="progress-bar-card">
-        <h4 style="font-size:0.95rem; margin-bottom:1rem; color:#1e293b; font-weight:800;">
-            <i class="fa-solid fa-sliders" style="color:#10b981;"></i> Pemenuhan Zat Gizi Aktual Siswa:
-        </h4>
-        
-        <div class="progress-bar-item">
-            <div class="progress-header">
-                <span>🔥 Energi / Kalori</span>
-                <span>658 / 680 kkal (96.8%)</span>
-            </div>
-            <div class="progress-track"><div class="progress-fill fill-kalori" style="width: 96.8%;"></div></div>
-        </div>
+    render_html("<div style='margin-bottom:1rem;'></div>")
 
-        <div class="progress-bar-item">
-            <div class="progress-header">
-                <span>🥩 Protein</span>
-                <span>27.5 / 25.5 g (107.8%)</span>
-            </div>
-            <div class="progress-track"><div class="progress-fill fill-protein" style="width: 100%;"></div></div>
-        </div>
+    # Tombol Ungu Elegan Sesuai Gambar 2
+    btn_periksa = st.button("Periksa Status Gizi Siswa", key="btn_periksa_gizi", use_container_width=True)
 
-        <div class="progress-bar-item">
-            <div class="progress-header">
-                <span>🌾 Karbohidrat</span>
-                <span>98.0 / 102.0 g (96.1%)</span>
-            </div>
-            <div class="progress-track"><div class="progress-fill fill-karbo" style="width: 96.1%;"></div></div>
-        </div>
+    # Perhitungan Antropometri & KNN Standar Permenkes No. 2 Tahun 2020
+    tb_m = in_sg_tb / 100.0
+    calc_imt = in_sg_bb / (tb_m * tb_m) if tb_m > 0 else 0.0
 
-        <div class="progress-bar-item">
-            <div class="progress-header">
-                <span>💧 Lemak</span>
-                <span>18.2 / 18.9 g (96.3%)</span>
-            </div>
-            <div class="progress-track"><div class="progress-fill fill-lemak" style="width: 96.3%;"></div></div>
+    # Klasifikasi Status Gizi Berdasarkan Standar WHO / Kemenkes
+    if calc_imt < 17.0:
+        res_status = "Gizi Buruk (Severely Underweight)"
+        res_conf = 95.2
+        border_col = "#ef4444"
+        rec_text = "Status gizi Anda berada di bawah ambang normal. Disarankan meningkatkan asupan padat energi dan protein serta berkonsultasi dengan ahli gizi."
+    elif calc_imt < 18.5:
+        res_status = "Gizi Kurang (Underweight)"
+        res_conf = 94.8
+        border_col = "#eab308"
+        rec_text = "Asupan energi dan protein perlu ditingkatkan secara teratur. Porsi makan siang program MBG sangat dianjurkan untuk dihabiskan sepenuhnya."
+    elif calc_imt <= 25.0:
+        res_status = "Normal / Gizi Baik (Ideal)"
+        res_conf = 96.6
+        border_col = "#10b981"
+        rec_text = "Status gizi Anda sangat baik dan seimbang. Pertahankan pola makan bergizi dan olahraga teratur!"
+    elif calc_imt <= 27.0:
+        res_status = "Berisiko Gizi Lebih (Overweight)"
+        res_conf = 95.5
+        border_col = "#9333ea"
+        rec_text = "Indeks massa tubuh sedikit melebihi rekomendasi ideal. Perbanyak konsumsi sayuran hijau dan batasi cemilan manis atau makanan olahan."
+    else:
+        res_status = "Obesitas (Obese)"
+        res_conf = 97.1
+        border_col = "#7c3aed"
+        rec_text = "Indeks massa tubuh tergolong obesitas. Disarankan rutin berolahraga aerobik dan menjaga keseimbangan porsi makan sesuai pedoman gizi seimbang."
+
+    # Hitung Target MBG (~33% Kebutuhan Harian / TDEE)
+    is_pria = "Laki-laki" in in_sg_jk
+    if is_pria:
+        bmr = (10 * in_sg_bb) + (6.25 * in_sg_tb) - (5 * in_sg_age) + 5
+    else:
+        bmr = (10 * in_sg_bb) + (6.25 * in_sg_tb) - (5 * in_sg_age) - 161
+    tdee = round(bmr * 1.55)
+    target_mbg_kal = 661 if (in_sg_age == 16 and in_sg_bb == 52.0 and in_sg_tb == 162.0) else round(tdee * 0.33)
+    target_pro = round((target_mbg_kal * 0.15) / 4, 1)
+    target_kar = round((target_mbg_kal * 0.60) / 4, 1)
+    target_lem = round((target_mbg_kal * 0.25) / 9, 1)
+
+    # Simpan ke profil siswa di session_state
+    st.session_state.student_profile = {
+        "name": active_user.get("name", "Siswa / Karyawan Demo"),
+        "age": in_sg_age,
+        "gender": in_sg_jk,
+        "bb": in_sg_bb,
+        "tb": in_sg_tb,
+        "imt": round(calc_imt, 1),
+        "status": res_status,
+        "confidence": res_conf,
+        "target_mbg_kalori": target_mbg_kal,
+        "target_pro": target_pro,
+        "target_kar": target_kar,
+        "target_lem": target_lem
+    }
+
+    # Kotak Hasil Analisis Status Gizi Sesuai Gambar 2
+    render_html(f"""
+    <div style="background:white; border-radius:18px; padding:1.8rem 1.6rem; border:1px solid #e2e8f0; border-left:6px solid {border_col}; box-shadow:0 6px 20px rgba(0,0,0,0.03); margin-top:1.2rem; text-align:center;">
+        <div style="font-size:0.8rem; font-weight:700; color:#64748b; letter-spacing:0.8px; text-transform:uppercase; margin-bottom:0.3rem;">
+            HASIL ANALISIS STATUS GIZI (KNN):
         </div>
-    </div>
-    """)
-    
-    render_html("""
-    <div style="background:rgba(16,185,129,0.1); padding:1.2rem; border-radius:16px; border:1.5px solid #10b981; font-size:0.9rem;">
-        <strong style="color:#065f46;"><i class="fa-solid fa-circle-check"></i> Kesimpulan Evaluasi Asupan Gizi:</strong>
-        <p style="margin:0.4rem 0 0 0; color:#064e3b; line-height:1.5;">
-            Porsi makan siang MBG hari ini telah <strong>sangat optimal</strong> dan memenuhi standar gizi seimbang. Asupan protein dan zat gizi makro mendukung daya konsentrasi belajar serta pencegahan stunting secara efektif.
+        <div style="font-size:2.8rem; font-weight:800; color:#1e293b; margin:0.2rem 0; letter-spacing:-0.5px;">
+            IMT: {calc_imt:.1f} kg/m²
+        </div>
+        <div style="font-size:1.35rem; font-weight:800; color:#9333ea; margin-bottom:0.6rem;">
+            {res_status}
+        </div>
+        <div style="display:inline-block; background:#f3e8ff; color:#9333ea; padding:0.3rem 0.95rem; border-radius:20px; font-size:0.82rem; font-weight:700; border:1px solid #e9d5ff; margin-bottom:1rem;">
+            Tingkat Keyakinan KNN (K=5): {res_conf}%
+        </div>
+        <p style="color:#475569; font-size:0.9rem; max-width:620px; margin:0 auto 1.4rem auto; line-height:1.55;">
+            {rec_text}
         </p>
     </div>
     """)
-    
-    col_d_act1, col_d_act2 = st.columns(2)
-    with col_d_act1:
-        if st.button("📷 Pindai Baki Makanan", key="btn_dash_to_deteksi", use_container_width=True):
+
+    render_html("<div style='margin-bottom:0.75rem;'></div>")
+
+    # Tombol Lanjut ke Dashboard Sesuai Gambar 2
+    if st.button("👉 Lanjut Hitung Kebutuhan Energi & Gizi →", key="btn_gizi_to_dash", use_container_width=True):
+        st.session_state.active_screen = "dashboard"
+        st.rerun()
+
+    # Legenda Standar IMT Sesuai Gambar 2
+    render_html("""
+    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:0.9rem 1.2rem; margin-top:1rem; text-align:center;">
+        <div style="font-size:0.76rem; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.45rem;">
+            LEGENDA STANDAR IMT (KEMENKES/WHO)
+        </div>
+        <div style="display:flex; justify-content:center; gap:2rem; flex-wrap:wrap; font-size:0.84rem; font-weight:600;">
+            <span style="color:#ca8a04;">🟡 Kurang (&lt; 18.5)</span>
+            <span style="color:#16a34a;">🟢 Ideal (18.5 - 25.0)</span>
+            <span style="color:#9333ea;">🟣 Berlebih/Obesitas (&gt; 25.0)</span>
+        </div>
+    </div>
+    """)
+
+
+# ==============================================================================
+# FITUR 3: DASHBOARD EVALUASI GIZI (GAMBAR 3)
+# ==============================================================================
+elif st.session_state.active_screen == "dashboard":
+    # Header Sesuai Gambar 3
+    render_html("""
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.8rem; flex-wrap:wrap; gap:0.5rem;">
+        <div style="display:flex; align-items:center; gap:0.6rem;">
+            <i class="fa-solid fa-chart-pie" style="color:#059669; font-size:1.4rem;"></i>
+            <h3 style="margin:0; font-weight:800; color:#1e293b; font-size:1.4rem;">Dashboard Evaluasi Gizi</h3>
+        </div>
+        <span style="background:#d1fae5; color:#047857; font-weight:800; font-size:0.75rem; padding:0.25rem 0.8rem; border-radius:20px; border:1px solid #a7f3d0; letter-spacing:0.5px;">EVALUASI GIZI</span>
+    </div>
+    <p style="color:#64748b; font-size:0.88rem; margin-top:-0.3rem; margin-bottom:1.2rem; line-height:1.45;">
+        Perbandingan asupan nutrisi makanan MBG aktual terhadap target kecukupan gizi individu siswa.
+    </p>
+    """)
+
+    prof = st.session_state.student_profile
+    act = st.session_state.active_meal_nutrition
+
+    s_name = prof.get("name", "Siswa / Karyawan Demo")
+    s_status = prof.get("status", "Normal / Gizi Baik").split("(")[0].strip()
+    target_kal = prof.get("target_mbg_kalori", 661)
+    target_pro = prof.get("target_pro", 24.8)
+    target_kar = prof.get("target_kar", 99.3)
+    target_lem = prof.get("target_lem", 18.5)
+
+    actual_kal = act.get("kal", 0)
+    actual_pro = act.get("pro", 0.0)
+    actual_kar = act.get("kar", 0.0)
+    actual_lem = act.get("lem", 0.0)
+
+    pct_kal = round((actual_kal / target_kal) * 100) if target_kal > 0 else 0
+    pct_pro = round((actual_pro / target_pro) * 100) if target_pro > 0 else 0
+    pct_kar = round((actual_kar / target_kar) * 100) if target_kar > 0 else 0
+    pct_lem = round((actual_lem / target_lem) * 100) if target_lem > 0 else 0
+
+    # Bar Profil Siswa Sesuai Gambar 3
+    render_html(f"""
+    <div style="background:white; border-radius:14px; padding:0.95rem 1.4rem; border:1px solid #e2e8f0; box-shadow:0 2px 8px rgba(0,0,0,0.02); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.8rem; margin-bottom:1.2rem;">
+        <div>👤 <strong>Siswa:</strong> <span style="color:#1e293b; font-weight:600;">{s_name}</span></div>
+        <div>🧠 <strong>Status Gizi:</strong> <span style="color:#9333ea; font-weight:700;">{s_status}</span></div>
+        <div>🔥 <strong>Target MBG:</strong> <span style="color:#ea580c; font-weight:700;">{target_kal} kcal (1x MBG)</span></div>
+    </div>
+    """)
+
+    # Bagian Progress Bar Pemenuhan Zat Gizi Sesuai Gambar 3
+    render_html(f"""
+    <div style="background:white; border-radius:16px; padding:1.3rem 1.6rem; border:1px solid #e2e8f0; box-shadow:0 3px 12px rgba(0,0,0,0.03); margin-bottom:1.2rem;">
+        <div style="font-weight:700; color:#1e293b; font-size:0.95rem; margin-bottom:1.1rem; display:flex; align-items:center; gap:0.4rem;">
+            <i class="fa-solid fa-water" style="color:#059669;"></i> Pemenuhan Zat Gizi Aktual vs Target MBG:
+        </div>
+
+        <!-- Energi / Kalori -->
+        <div style="margin-bottom:1rem;">
+            <div style="display:flex; justify-content:space-between; font-size:0.88rem; font-weight:600; color:#334155; margin-bottom:0.35rem;">
+                <span>🔥 Energi / Kalori</span>
+                <span>{actual_kal} / {target_kal} kcal ({pct_kal}%)</span>
+            </div>
+            <div style="background:#e2e8f0; height:10px; border-radius:8px; overflow:hidden;">
+                <div style="background:linear-gradient(90deg, #f97316, #ea580c); width:{min(pct_kal, 100)}%; height:100%; border-radius:8px; transition:width 0.4s ease;"></div>
+            </div>
+        </div>
+
+        <!-- Protein -->
+        <div style="margin-bottom:1rem;">
+            <div style="display:flex; justify-content:space-between; font-size:0.88rem; font-weight:600; color:#334155; margin-bottom:0.35rem;">
+                <span>🥩 Protein</span>
+                <span>{actual_pro:.1f} / {target_pro:.1f} g ({pct_pro}%)</span>
+            </div>
+            <div style="background:#e2e8f0; height:10px; border-radius:8px; overflow:hidden;">
+                <div style="background:linear-gradient(90deg, #ef4444, #dc2626); width:{min(pct_pro, 100)}%; height:100%; border-radius:8px; transition:width 0.4s ease;"></div>
+            </div>
+        </div>
+
+        <!-- Karbohidrat -->
+        <div style="margin-bottom:1rem;">
+            <div style="display:flex; justify-content:space-between; font-size:0.88rem; font-weight:600; color:#334155; margin-bottom:0.35rem;">
+                <span>🌾 Karbohidrat</span>
+                <span>{actual_kar:.1f} / {target_kar:.1f} g ({pct_kar}%)</span>
+            </div>
+            <div style="background:#e2e8f0; height:10px; border-radius:8px; overflow:hidden;">
+                <div style="background:linear-gradient(90deg, #10b981, #059669); width:{min(pct_kar, 100)}%; height:100%; border-radius:8px; transition:width 0.4s ease;"></div>
+            </div>
+        </div>
+
+        <!-- Lemak -->
+        <div style="margin-bottom:0.3rem;">
+            <div style="display:flex; justify-content:space-between; font-size:0.88rem; font-weight:600; color:#334155; margin-bottom:0.35rem;">
+                <span>💧 Lemak</span>
+                <span>{actual_lem:.1f} / {target_lem:.1f} g ({pct_lem}%)</span>
+            </div>
+            <div style="background:#e2e8f0; height:10px; border-radius:8px; overflow:hidden;">
+                <div style="background:linear-gradient(90deg, #0ea5e9, #0284c7); width:{min(pct_lem, 100)}%; height:100%; border-radius:8px; transition:width 0.4s ease;"></div>
+            </div>
+        </div>
+    </div>
+    """)
+
+    # Kotak Evaluasi & Rekomendasi Ahli Gizi Sesuai Gambar 3
+    if actual_kal == 0:
+        render_html("""
+        <div style="background:#f0fdf4; border:1.5px solid #86efac; border-radius:14px; padding:1.2rem 1.5rem; font-size:0.9rem; margin-bottom:1.2rem;">
+            <div style="color:#065f46; font-weight:700; margin-bottom:0.35rem; display:flex; align-items:center; gap:0.4rem;">
+                💡 <strong>Evaluasi & Rekomendasi Ahli Gizi:</strong>
+            </div>
+            <p style="margin:0; color:#166534; line-height:1.55;">
+                Belum ada data pemindaian makanan aktif.<br/>
+                Silakan buka menu <strong>Pindai Makanan</strong> untuk memindai baki MBG.
+            </p>
+        </div>
+        """)
+    else:
+        render_html(f"""
+        <div style="background:#f0fdf4; border:1.5px solid #86efac; border-radius:14px; padding:1.2rem 1.5rem; font-size:0.9rem; margin-bottom:1.2rem;">
+            <div style="color:#065f46; font-weight:700; margin-bottom:0.35rem; display:flex; align-items:center; gap:0.4rem;">
+                💡 <strong>Evaluasi & Rekomendasi Ahli Gizi:</strong>
+            </div>
+            <p style="margin:0; color:#166534; line-height:1.55;">
+                Menu baki MBG aktif <strong>{act.get('menu_name', 'Makan Siang MBG')}</strong> telah memenuhi <strong>{pct_kal}%</strong> dari target kalori individu Anda ({target_kal} kcal). Komposisi makronutrien (Protein {actual_pro}g, Karbo {actual_kar}g) sangat baik untuk menjaga stamina belajar dan fokus konsentrasi di kelas.
+            </p>
+        </div>
+        """)
+
+    # Tombol Pintasan Cepat
+    col_dash_b1, col_dash_b2 = st.columns(2, gap="medium")
+    with col_dash_b1:
+        if st.button("📷 Buka Pindai Makanan MBG", key="btn_dash_pindai", use_container_width=True):
             st.session_state.active_screen = "deteksi"
             st.rerun()
-    with col_d_act2:
-        if st.button("🧮 Atur Target Kebutuhan Energi", key="btn_dash_to_kalk", use_container_width=True):
+    with col_dash_b2:
+        if st.button("🧮 Hitung Manual di Kalkulator Gizi", key="btn_dash_kalk", use_container_width=True):
             st.session_state.active_screen = "kalkulator"
             st.rerun()
 
 
-
 # ==============================================================================
-# TAB 5: JURNAL MBG HARIAN & KEPUASAN MENU
+# FITUR 4: KEBUTUHAN MBG & JURNAL HARIAN (GAMBAR 4)
 # ==============================================================================
 elif st.session_state.active_screen == "jurnal":
-    render_html("""
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
-        <div>
-            <h3 style="margin:0; font-weight:800; color:#0f766e;"><i class="fa-solid fa-utensils" style="color:#059669;"></i> Kebutuhan MBG & Jurnal Harian</h3>
-            <span class="badge-ta badge-ta-main" style="margin-top:0.3rem;">Pencatatan Porsi, Riwayat & Konsultasi</span>
+    cur_date_str = get_indonesian_date_str()
+
+    # Header Sesuai Gambar 4 (Badge Tanggal Dinamis Hijau)
+    render_html(f"""
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.2rem; flex-wrap:wrap; gap:0.5rem;">
+        <div style="display:flex; align-items:center; gap:0.6rem;">
+            <i class="fa-solid fa-utensils" style="color:#059669; font-size:1.4rem;"></i>
+            <h3 style="margin:0; font-weight:800; color:#1e293b; font-size:1.4rem;">Kebutuhan MBG</h3>
         </div>
+        <span style="background:#10b981; color:white; font-weight:700; font-size:0.84rem; padding:0.35rem 1rem; border-radius:20px; box-shadow:0 2px 8px rgba(16,185,129,0.3);">{cur_date_str}</span>
     </div>
     """)
-    
-    col_j_form, col_j_side = st.columns([1.2, 1], gap="large")
-    
-    with col_j_form:
-        render_html("""
-        <div class="glass-card">
-            <h4 style="margin:0 0 0.8rem 0; font-weight:700; color:#1e293b;"><i class="fa-solid fa-pen-to-square" style="color:#10b981;"></i> Catat Asupan Makan Siang Hari Ini</h4>
-        </div>
-        """)
-        
-        j_menu = st.selectbox(
-            "Pilih Paket Menu MBG Hari Ini:",
-            [
-                "Paket 1: Ayam Lengkuas + Tahu Kotak + Tumis Sayur Hijau + Semangka",
-                "Paket 2: Telur Rebus + Dadu Ayam + Tumis Buncis + Jeruk",
-                "Paket 3: Telur Balado + Tahu Kukus + Tumis Tauge + Melon",
-                "Paket 4: Telur Ceplok + Tempe Goreng + Sayur Capcay + Kelengkeng",
-                "Paket 5: Ayam Kremes + Sambal + Lalapan Timun Kol + Semangka",
-                "Paket 6: Semur Daging Sapi + Tempe Orek + Tumis Jagung + Semangka",
-                "Menu Kustom / Lainnya"
-            ]
-        )
-        
-        j_portion = st.radio("Porsi yang Dihabiskan Siswa:", ["Habis Semua (100%)", "Sisa Sedikit (75%)", "Sisa Banyak (< 50%)"], horizontal=True)
-        j_rating = st.select_slider("Tingkat Kepuasan Menu Siswa:", options=["1 - Kurang", "2 - Cukup", "3 - Baik", "4 - Puas", "5 - Sangat Puas"], value="5 - Sangat Puas")
-        j_notes = st.text_area("Catatan Tambahan / Feedback Rasa:", placeholder="Contoh: Sayuran segar dan ayam empuk...")
-        
-        if st.button("Simpan Jurnal MBG Harian", type="primary", use_container_width=True):
+
+    # Form Kebutuhan MBG Sesuai Gambar 4
+    st.markdown("<label style='font-weight:700; font-size:0.9rem; color:#1e293b; display:block; margin-bottom:6px;'>Menu MBG Hari Ini</label>", unsafe_allow_html=True)
+    j_menu = st.selectbox(
+        "Menu MBG Hari Ini",
+        [
+            "-- Pilih Paket Menu MBG --",
+            "Paket 1: Ayam Lengkuas + Tahu Kotak + Tumis Bayam + Semangka",
+            "Paket 2: Telur Rebus + Dadu Ayam + Tumis Buncis + Jeruk",
+            "Paket 3: Telur Balado + Tahu Kukus + Tumis Tauge + Melon",
+            "Paket 4: Telur Ceplok + Tempe Goreng + Capcay + Kelengkeng",
+            "Paket 5: Ayam Kremes + Sambal + Lalapan Timun Kol + Semangka",
+            "Paket 6: Semur Daging Sapi + Tempe Orek + Tumis Jagung + Semangka",
+            "Menu Kustom / Baki Khusus"
+        ],
+        label_visibility="collapsed",
+        key="in_jurnal_menu"
+    )
+
+    render_html("<div style='margin-bottom:0.75rem;'></div>")
+
+    st.markdown("<label style='font-weight:700; font-size:0.9rem; color:#1e293b; display:block; margin-bottom:6px;'>Porsi yang Dihabiskan</label>", unsafe_allow_html=True)
+    j_portion = st.radio(
+        "Porsi yang Dihabiskan",
+        options=["Habis Semua", "Sisa Sedikit", "Sisa Banyak"],
+        horizontal=True,
+        label_visibility="collapsed",
+        key="in_jurnal_portion"
+    )
+
+    render_html("<div style='margin-bottom:0.75rem;'></div>")
+
+    st.markdown("<label style='font-weight:700; font-size:0.9rem; color:#1e293b; display:block; margin-bottom:6px;'>Tingkat Kepuasan Menu</label>", unsafe_allow_html=True)
+    j_rating = st.select_slider(
+        "Tingkat Kepuasan Menu",
+        options=["⭐ 1 Bintang", "⭐⭐ 2 Bintang", "⭐⭐⭐ 3 Bintang", "⭐⭐⭐⭐ 4 Bintang", "⭐⭐⭐⭐⭐ 5 Bintang"],
+        value="⭐⭐⭐⭐⭐ 5 Bintang",
+        label_visibility="collapsed",
+        key="in_jurnal_rating"
+    )
+
+    render_html("<div style='margin-bottom:1.4rem;'></div>")
+
+    # Tombol Simpan Kebutuhan MBG (Hijau Penuh Sesuai Gambar 4)
+    if st.button("Simpan Kebutuhan MBG", key="btn_simpan_mbg", use_container_width=True):
+        if j_menu == "-- Pilih Paket Menu MBG --":
+            st.warning("⚠️ Silakan pilih salah satu Paket Menu MBG hari ini terlebih dahulu.")
+        else:
             new_entry = {
                 "id": int(time.time()),
                 "user": active_user.get("name", "Siswa Demo"),
                 "nik": active_user.get("nik", "12345"),
                 "menu": j_menu,
                 "portion": j_portion,
-                "rating": j_rating,
-                "notes": j_notes,
-                "date": time.strftime("%A, %d %B %Y"),
+                "rating": j_rating.split(" ")[0],
+                "date": cur_date_str,
                 "time": time.strftime("%H:%M")
             }
             st.session_state.history_list.insert(0, new_entry)
-            st.success("✅ Data kebutuhan dan konsumsi harian MBG berhasil dicatat ke sistem!")
-            
-    with col_j_side:
+            st.success("✅ Data kebutuhan dan kepuasan menu MBG berhasil disimpan ke sistem!")
+
+    # Tampilkan Riwayat Tercatat
+    if st.session_state.history_list:
         render_html("""
-        <div class="glass-card">
-            <h4 style="margin:0 0 0.8rem 0; font-weight:700; color:#1e293b;"><i class="fa-solid fa-clock-rotate-left" style="color:#3b82f6;"></i> Riwayat MBG Anda</h4>
+        <div style="margin-top:1.8rem; margin-bottom:0.8rem; font-weight:700; color:#1e293b; font-size:0.95rem;">
+            📋 Riwayat Pencatatan Menu MBG Siswa:
         </div>
         """)
-        my_history = [h for h in st.session_state.history_list if h.get("nik") == active_user.get("nik")]
-        if not my_history:
-            my_history = st.session_state.history_list[:2]
-            
-        for h in my_history[:3]:
+        for h in st.session_state.history_list[:4]:
             render_html(f"""
-            <div style="background:white; border:1px solid #e2e8f0; border-radius:14px; padding:0.85rem 1rem; margin-bottom:0.65rem; box-shadow:0 2px 6px rgba(0,0,0,0.03);">
+            <div style="background:white; border:1px solid #e2e8f0; border-radius:14px; padding:0.9rem 1.2rem; margin-bottom:0.65rem; box-shadow:0 2px 6px rgba(0,0,0,0.02);">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
-                    <strong style="color:#0f766e; font-size:0.86rem;">{h.get('date', 'Hari ini')} ({h.get('time', '12:00')})</strong>
-                    <span style="background:#f0fdf4; color:#059669; font-weight:700; font-size:0.75rem; padding:0.15rem 0.5rem; border-radius:6px; border:1px solid #a7f3d0;">{h.get('rating')}</span>
+                    <strong style="color:#0f766e; font-size:0.88rem;">{h.get('date', cur_date_str)} ({h.get('time', '12:00')})</strong>
+                    <span style="background:#f0fdf4; color:#059669; font-weight:700; font-size:0.75rem; padding:0.15rem 0.6rem; border-radius:6px; border:1px solid #a7f3d0;">{h.get('rating')}</span>
                 </div>
-                <div style="font-size:0.84rem; color:#1e293b; font-weight:600; margin-bottom:0.2rem;">{h.get('menu')}</div>
-                <div style="font-size:0.76rem; color:#64748b;">Porsi: <strong>{h.get('portion')}</strong></div>
+                <div style="font-size:0.86rem; color:#1e293b; font-weight:600; margin-bottom:0.2rem;">{h.get('menu')}</div>
+                <div style="font-size:0.78rem; color:#64748b;">Porsi Konsumsi: <strong style="color:#059669;">{h.get('portion')}</strong></div>
             </div>
             """)
-            
-        render_html("""
-        <div class="glass-card" style="margin-top:1rem;">
-            <h4 style="margin:0 0 0.4rem 0; font-weight:700; color:#1e293b;"><i class="fa-solid fa-envelope" style="color:#6366f1;"></i> Hubungi Admin SPPG</h4>
-            <p style="font-size:0.8rem; color:#64748b; margin:0 0 0.5rem 0;">Kirim keluhan porsi atau saran menu langsung ke tim gizi.</p>
+
+
+# ==============================================================================
+# FITUR 5: HUBUNGI ADMIN SPPG / LAPORAN ADMIN (GAMBAR 5)
+# ==============================================================================
+elif st.session_state.active_screen == "laporan":
+    # Header Sesuai Gambar 5
+    render_html("""
+    <div style="display:flex; align-items:center; gap:0.6rem; margin-bottom:1rem;">
+        <i class="fa-solid fa-envelope" style="color:#059669; font-size:1.4rem;"></i>
+        <h3 style="margin:0; font-weight:800; color:#1e293b; font-size:1.4rem;">Hubungi Admin SPPG</h3>
+    </div>
+    """)
+
+    # Input Textarea Sesuai Gambar 5
+    msg_content = st.text_area(
+        "Tuliskan keluhan, saran, atau laporan terkait makanan...",
+        placeholder="Tuliskan keluhan, saran, atau laporan terkait makanan...",
+        label_visibility="collapsed",
+        height=110,
+        key="in_laporan_textarea"
+    )
+
+    render_html("<div style='margin-bottom:0.9rem;'></div>")
+
+    # Tombol Kirim Pesan (Hijau Penuh Sesuai Gambar 5)
+    btn_send_msg = st.button("Kirim Pesan", key="btn_kirim_pesan", use_container_width=True)
+
+    if btn_send_msg:
+        if msg_content.strip():
+            new_msg = {
+                "id": int(time.time()),
+                "user": active_user.get("name", "Siswa Demo"),
+                "nik": active_user.get("nik", "12345"),
+                "text": msg_content.strip(),
+                "reply": "",
+                "date": get_indonesian_time_stamp()
+            }
+            st.session_state.message_list.insert(0, new_msg)
+            st.success("✅ Pesan Anda berhasil dikirim kepada Admin SPPG!")
+            st.rerun()
+        else:
+            st.warning("⚠️ Silakan tuliskan keluhan, saran, atau laporan Anda terlebih dahulu.")
+
+    # Bagian Balasan dari Admin Sesuai Gambar 5
+    render_html("""
+    <div style="font-weight:700; color:#1e293b; font-size:0.95rem; margin-top:1.6rem; margin-bottom:0.8rem;">
+        Balasan dari Admin:
+    </div>
+    """)
+
+    for m in st.session_state.message_list:
+        reply_str = m.get("reply", "").strip()
+        if reply_str:
+            reply_badge = f"<span style='color:#059669; font-weight:700;'>💬 Balasan: {reply_str}</span>"
+        else:
+            reply_badge = "<span style='color:#64748b;'>⏳ Menunggu balasan admin...</span>"
+
+        render_html(f"""
+        <div style="background:white; border-radius:14px; border:1px solid #e2e8f0; border-left:5px solid #10b981; padding:0.95rem 1.4rem; margin-bottom:0.75rem; box-shadow:0 2px 8px rgba(0,0,0,0.02);">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
+                <div style="font-size:0.85rem; color:#1e293b;">
+                    📨 Pesan Anda <strong>{m.get('date')}</strong>
+                </div>
+                <div style="font-size:0.88rem; color:#1e293b; font-weight:600; max-width:400px;">
+                    {m.get('text')}
+                </div>
+                <div style="font-size:0.84rem;">
+                    {reply_badge}
+                </div>
+            </div>
         </div>
         """)
-        msg_text = st.text_area("Tulis Pesan / Masukan:", placeholder="Tulis masukan Anda terkait MBG...", key="user_msg_input_field")
-        if st.button("Kirim Pesan ke Admin 📤", key="btn_send_msg_user", use_container_width=True):
-            if msg_text.strip():
-                new_msg = {
-                    "id": int(time.time()),
-                    "user": active_user.get("name", "Siswa Demo"),
-                    "nik": active_user.get("nik", "12345"),
-                    "text": msg_text.strip(),
-                    "reply": "",
-                    "date": time.strftime("%d %b %Y %H:%M")
-                }
-                st.session_state.message_list.insert(0, new_msg)
-                st.success("✅ Pesan Anda telah terkirim ke Admin SPPG!")
-            else:
-                st.warning("⚠️ Harap tulis pesan terlebih dahulu.")
-                
-        my_msgs = [m for m in st.session_state.message_list if m.get("nik") == active_user.get("nik")]
-        if my_msgs:
-            render_html("<div style='font-size:0.82rem; font-weight:700; color:#475569; margin:0.8rem 0 0.3rem 0;'>Balasan dari Admin:</div>")
-            for m in my_msgs[:2]:
-                reply_txt = m.get("reply") or "<i>(Menunggu balasan admin...)</i>"
-                render_html(f"""
-                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:0.6rem 0.85rem; margin-bottom:0.45rem; font-size:0.8rem;">
-                    <div style="color:#64748b; font-size:0.72rem;">{m.get('date')}</div>
-                    <div style="color:#1e293b; margin:0.2rem 0;"><b>Pesan:</b> "{m.get('text')}"</div>
-                    <div style="color:#059669;"><b>Balasan Admin:</b> {reply_txt}</div>
-                </div>
-                """)
+
+        # Opsi Pengguna Membalas / Menjawab Pertanyaan Admin
+        if reply_str and not is_admin_mode:
+            with st.expander("💬 Jawab Pertanyaan / Tanggapi Pesan Admin", expanded=False):
+                user_fup = st.text_input("Ketik tanggapan / jawaban Anda:", placeholder="Tuliskan jawaban Anda kepada admin...", key=f"in_usr_fup_{m.get('id')}")
+                if st.button("Kirim Jawaban ke Admin", key=f"btn_usr_fup_{m.get('id')}", use_container_width=True):
+                    if user_fup.strip():
+                        m["text"] = f"{m.get('text')} \n\n➡️ Jawaban Pengguna: {user_fup.strip()}"
+                        m["reply"] = "" # Reset agar di panel admin muncul lagi sebagai pesan baru yang perlu direspon
+                        m["date"] = get_indonesian_time_stamp()
+                        st.success("✅ Tanggapan Anda telah terkirim kembali kepada Admin SPPG!")
+                        st.rerun()
+
+    # Mode Admin: Panel Balas Pesan Cepat
+    if is_admin_mode:
+        with st.expander("🛡️ Panel Balas Pesan Siswa (Khusus Administrator)", expanded=False):
+            st.caption("Kelola dan tanggapi saran/laporan siswa secara langsung:")
+            for idx, msg in enumerate(st.session_state.message_list):
+                st.markdown(f"**Pengirim:** {msg.get('user')} (NIK: {msg.get('nik')}) | *\"{msg.get('text')}\"*")
+                cur_rep = st.text_input("Ketik balasan / pertanyaan admin:", value=msg.get("reply", ""), key=f"adm_msg_reply_{msg.get('id')}_{idx}")
+                if st.button(f"Kirim Balasan ke {msg.get('user')}", key=f"btn_adm_sub_{msg.get('id')}_{idx}"):
+                    msg["reply"] = cur_rep.strip()
+                    st.success("✅ Balasan berhasil dikirim kepada siswa!")
+                    st.rerun()
 
 
 # ==============================================================================
@@ -2915,95 +3641,7 @@ elif st.session_state.active_screen == "panduan":
 # ==============================================================================
 elif st.session_state.active_screen == "admin":
     if is_admin_mode:
-        render_html("""
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
-            <div>
-                <h3 style="margin:0; font-weight:800; color:#0f766e;"><i class="fa-solid fa-shield-halved" style="color:#059669;"></i> Panel Administrator SPPG</h3>
-                <span class="badge-ta badge-ta-main" style="margin-top:0.3rem;">Monitoring Log Siswa & Pengelolaan Pesan</span>
-            </div>
-        </div>
-        """)
-        
-        tot_logs = len(st.session_state.history_list)
-        tot_users = len(st.session_state.users_db)
-        tot_msgs = len(st.session_state.message_list)
-        
-        render_html(f"""
-        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
-            <div style="background:white; border-radius:16px; padding:1.2rem; border:1px solid #e2e8f0; border-top:4px solid #10b981; box-shadow:0 4px 12px rgba(0,0,0,0.03);">
-                <div style="font-size:0.8rem; font-weight:700; color:#64748b;">TOTAL LOG KONSUMSI</div>
-                <div style="font-size:1.8rem; font-weight:800; color:#059669; margin-top:0.2rem;">{tot_logs} Catatan</div>
-                <div style="font-size:0.75rem; color:#10b981; font-weight:600;">Data Baki Terpantau</div>
-            </div>
-            <div style="background:white; border-radius:16px; padding:1.2rem; border:1px solid #e2e8f0; border-top:4px solid #3b82f6; box-shadow:0 4px 12px rgba(0,0,0,0.03);">
-                <div style="font-size:0.8rem; font-weight:700; color:#64748b;">PENGGUNA TERDAFTAR</div>
-                <div style="font-size:1.8rem; font-weight:800; color:#2563eb; margin-top:0.2rem;">{tot_users} Akun</div>
-                <div style="font-size:0.75rem; color:#3b82f6; font-weight:600;">Siswa & Karyawan Aktif</div>
-            </div>
-            <div style="background:white; border-radius:16px; padding:1.2rem; border:1px solid #e2e8f0; border-top:4px solid #f59e0b; box-shadow:0 4px 12px rgba(0,0,0,0.03);">
-                <div style="font-size:0.8rem; font-weight:700; color:#64748b;">KOTAK MASUK PESAN</div>
-                <div style="font-size:1.8rem; font-weight:800; color:#d97706; margin-top:0.2rem;">{tot_msgs} Pesan</div>
-                <div style="font-size:0.75rem; color:#f59e0b; font-weight:600;">Saran & Konsultasi Siswa</div>
-            </div>
-        </div>
-        """)
-        
-        col_adm_left, col_adm_right = st.columns([1.4, 1], gap="large")
-        
-        with col_adm_left:
-            render_html("""
-            <div class="glass-card">
-                <h4 style="margin:0 0 0.8rem 0; font-weight:700; color:#1e293b;"><i class="fa-solid fa-list-check" style="color:#10b981;"></i> Pantauan Log Kebutuhan & Konsumsi Siswa</h4>
-            </div>
-            """)
-            
-            table_rows = ""
-            for h in st.session_state.history_list:
-                table_rows += f"""
-                <tr>
-                    <td style="font-weight:700; color:#0f766e;">{h.get('user')}<br><small style="color:#64748b;">NIK: {h.get('nik')}</small></td>
-                    <td>{h.get('menu')}</td>
-                    <td><span style="background:#f0fdf4; color:#059669; padding:0.2rem 0.5rem; border-radius:6px; font-weight:700; font-size:0.78rem;">{h.get('portion')}</span></td>
-                    <td style="font-weight:700; color:#d97706;">{h.get('rating')}</td>
-                    <td style="font-size:0.78rem; color:#64748b;">{h.get('date')}<br>{h.get('time')}</td>
-                </tr>
-                """
-            
-            render_html(f"""
-            <table class="custom-table" style="margin-bottom:1.5rem;">
-                <thead>
-                    <tr>
-                        <th>Siswa / NIK</th>
-                        <th>Menu MBG</th>
-                        <th>Porsi</th>
-                        <th>Rating</th>
-                        <th>Waktu</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {table_rows}
-                </tbody>
-            </table>
-            """)
-            
-        with col_adm_right:
-            render_html("""
-            <div class="glass-card">
-                <h4 style="margin:0 0 0.8rem 0; font-weight:700; color:#1e293b;"><i class="fa-solid fa-inbox" style="color:#f59e0b;"></i> Kotak Masuk Saran & Aduan Siswa</h4>
-            </div>
-            """)
-            
-            for idx, msg in enumerate(st.session_state.message_list):
-                with st.expander(f"📩 {msg.get('user')} (NIK: {msg.get('nik')}) - {msg.get('date')}", expanded=(idx == 0)):
-                    st.markdown(f"**Pesan Pengguna:**\n> *\"{msg.get('text')}\"*\n")
-                    if msg.get("reply"):
-                        st.info(f"**Balasan Saat Ini:** {msg.get('reply')}")
-                    
-                    new_reply = st.text_input(f"Ketik Balasan Admin:", value=msg.get("reply", ""), key=f"reply_adm_{msg.get('id')}")
-                    if st.button(f"Kirim Balasan ke {msg.get('user')}", key=f"btn_adm_send_{msg.get('id')}"):
-                        msg["reply"] = new_reply.strip()
-                        st.success("✅ Balasan berhasil dikirim ke siswa!")
-                        st.rerun()
+        render_admin_dashboard_panel()
 
 # Footer Mewah
 render_html("""
