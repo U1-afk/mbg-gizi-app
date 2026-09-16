@@ -1,0 +1,9 @@
+﻿{
+  "name": "Media Interaktif MBG Gizi",
+  "short_name": "MBG Gizi",
+  "description": "Media Interaktif Program Makan Bergizi Gratis (MBG) & Evaluasi Gizi Siswa",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#059669"
+}
