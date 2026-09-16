@@ -66,7 +66,14 @@ export default async function handler(req, res) {
                 "ayam goreng": { kal: 230, pro: 22.5, kar: 8.0, lem: 12.0 },
                 "telur dadar": { kal: 150, pro: 10.0, kar: 2.0, lem: 11.5 },
                 "tempe orek": { kal: 180, pro: 14.0, kar: 12.0, lem: 8.0 },
-                "tahu isi": { kal: 160, pro: 8.0, kar: 15.0, lem: 7.5 }
+                "tahu isi": { kal: 160, pro: 8.0, kar: 15.0, lem: 7.5 },
+                "kerupuk": { kal: 500, pro: 3.5, kar: 65.0, lem: 26.0 },
+                "crackers": { kal: 500, pro: 3.5, kar: 65.0, lem: 26.0 },
+                "finna": { kal: 500, pro: 3.5, kar: 65.0, lem: 26.0 },
+                "susu": { kal: 65, pro: 3.2, kar: 4.8, lem: 3.5 },
+                "puding": { kal: 80, pro: 1.0, kar: 18.0, lem: 0.5 },
+                "semangka": { kal: 32, pro: 0.6, kar: 7.6, lem: 0.2 },
+                "telur mata sapi": { kal: 185, pro: 12.4, kar: 0.8, lem: 14.2 }
             };
 
             // Coba panggil Gemini AI jika key tersedia
@@ -120,12 +127,18 @@ Kembalikan HANYA format JSON valid persis berikut tanpa markdown atau backtick:
             let baseKal = 150.0, basePro = 5.0, baseKar = 22.0, baseLem = 4.0;
             if (/daging|ayam|sapi|kambing|ikan|udang|telur/i.test(cleanFood)) {
                 baseKal = 210.0; basePro = 20.0; baseKar = 3.0; baseLem = 13.0;
+            } else if (/kerupuk|krupuk|cracker|garlic|rempeyek|emping|peyek/i.test(cleanFood)) {
+                baseKal = 500.0; basePro = 3.5; baseKar = 65.0; baseLem = 26.0;
             } else if (/nasi|mie|roti|bihun|kentang/i.test(cleanFood)) {
                 baseKal = 175.0; basePro = 4.0; baseKar = 36.0; baseLem = 1.5;
             } else if (/sayur|sup|sop|bayam|kangkung|wortel|buncis/i.test(cleanFood)) {
                 baseKal = 45.0; basePro = 2.0; baseKar = 7.0; baseLem = 0.5;
             } else if (/buah|apel|jeruk|semangka|pisang|melon/i.test(cleanFood)) {
                 baseKal = 60.0; basePro = 1.0; baseKar = 14.0; baseLem = 0.3;
+            } else if (/susu|milk/i.test(cleanFood)) {
+                baseKal = 65.0; basePro = 3.2; baseKar = 4.8; baseLem = 3.5;
+            } else if (/puding|agar/i.test(cleanFood)) {
+                baseKal = 80.0; basePro = 1.0; baseKar = 18.0; baseLem = 0.5;
             }
 
             return res.status(200).json({
@@ -155,23 +168,90 @@ Kembalikan HANYA format JSON valid persis berikut tanpa markdown atau backtick:
 
         const cleanBase64 = image.includes(',') ? image.split(',')[1] : image;
 
-        const promptText = `Kamu adalah pakar computer vision gizi Program Makan Bergizi Gratis (MBG) Kemenkes RI.
-Analisis citra baki makanan kompartemen stainless ini secara sangat cermat dan objektif.
-Identifikasi setiap masakan di sekat baki:
-1. Makanan Pokok: (contoh: Nasi Putih Pulen Bentuk Hati, Nasi Goreng, dll)
-2. Lauk Hewani: Perhatikan dengan seksama! Jika terlihat potongan paha ayam / daging ayam berbumbu saus/kuah, sebut 'Paha Ayam Masak Saus Gurih' atau nama ayam aslinya. DILARANG menyebut Telur jika yang tersaji adalah potongan ayam!
-3. Lauk Nabati: (contoh: Tempe Goreng Gurih, Tempe Orek, Tahu Goreng)
-4. Sayuran: Perhatikan jenis sayurnya! Jika terlihat buncis hijau panjang ditumis, sebut 'Tumis Buncis Hijau'. DILARANG menyebut Capcay jika berupa buncis!
-5. Buah: Perhatikan buahnya! Jika terlihat butiran kelengkeng cokelat bulat, sebut 'Buah Kelengkeng Segar'.
+        const promptText = `Kamu adalah pakar computer vision dan sistem visual multimodal AI gizi Program Makan Bergizi Gratis (MBG) Kemenkes RI.
+Tugasmu adalah menganalisis citra baki makanan kompartemen stainless ini secara sangat cermat, objektif, dan mendalam.
+Kenali SETIAP makanan, lauk, sayur, buah, minuman, maupun kemasan kerupuk/snack/puding yang ada di SEMUA sekat baki.
+
+ATURAN DETEKSI LENGKAP:
+1. Kemasan / Kerupuk / Camilan: Periksa sekat yang berisi kemasan bungkusan makanan, kerupuk, keripik, atau snack! Baca teks/merek pada kemasan jika ada (misal: 'FINNA Garlic Crackers / Kerupuk Bawang Goreng', 'Kerupuk Udang', 'Kerupuk Putih', dll.). JANGAN LEWATKAN kemasan kerupuk atau camilan ini!
+2. Susu / Puding / Pencuci Mulut: Jika ada susu kemasan kotak (UHT), susu cup, atau puding/agar-agar cup, identifikasi jenis dan rasanya.
+3. Makanan Pokok: Identifikasi jenis & bentuk nasi (misal: Nasi Kuning Gurih, Nasi Putih Pulen Bentuk Hati, Nasi Goreng, Mie, Kentang, dll.).
+4. Lauk Hewani: Kenali olahan lauk hewani secara tepat (Telur Mata Sapi / Ceplok, Paha Ayam Masak Saus Gurih, Ayam Lengkuas, Daging Semur/Rendang, Udang, Ikan Filet, dll.).
+5. Lauk Nabati: (Tempe Orek Dadu, Tempe Goreng Gurih, Tahu Goreng Kotak, Perkedel, dll.).
+6. Sayuran: (Tumis Buncis Hijau, Sayur Capcay, Sayur Sop, Lalapan Selada/Timun, dll.).
+7. Buah-buahan: Kenali buah dan warnanya (Buah Semangka Kuning Segar jika daging buahnya kuning, Semangka Merah, Buah Kelengkeng Segar, Jeruk, Pisang, dll.).
 
 Kembalikan HANYA format JSON valid persis berikut tanpa markdown atau backtick:
 {
-  "packageName": "Nama Menu Lengkap MBG",
-  "karbo": {"name": "Nasi Putih Pulen", "val": "150", "gram": 150, "kal": 195, "pro": 4.0, "kar": 43.0, "lem": 0.5, "conf": "99.2%"},
-  "prohew": {"name": "Nama Lauk Hewani Asli", "val": "200", "gram": 85, "kal": 215, "pro": 24.0, "kar": 1.5, "lem": 12.5, "conf": "98.8%"},
-  "pronab": {"name": "Nama Lauk Nabati Asli", "val": "120", "gram": 50, "kal": 115, "pro": 9.5, "kar": 8.0, "lem": 5.0, "conf": "98.0%"},
-  "sayur": {"name": "Nama Sayuran Asli", "val": "20", "gram": 75, "kal": 25, "pro": 1.2, "kar": 4.5, "lem": 0.5, "conf": "98.5%"},
-  "buah": {"name": "Nama Buah Asli", "gram": 75, "kal": 45, "pro": 1.0, "kar": 11.3, "lem": 0.1, "conf": "99.0%"},
+  "packageName": "Nama Menu Lengkap MBG (sebutkan semua komponen termasuk kerupuk/pelengkap)",
+  "items": [
+    {
+      "category": "Makanan Pokok / Karbohidrat",
+      "name": "Nama Makanan Pokok Spesifik",
+      "gram": 150,
+      "kal": 210,
+      "pro": 4.2,
+      "kar": 41.5,
+      "lem": 3.2,
+      "conf": "99.2%"
+    },
+    {
+      "category": "Protein Hewani",
+      "name": "Nama Lauk Hewani",
+      "gram": 60,
+      "kal": 95,
+      "pro": 6.3,
+      "kar": 0.6,
+      "lem": 7.2,
+      "conf": "99.5%"
+    },
+    {
+      "category": "Protein Nabati",
+      "name": "Nama Lauk Nabati",
+      "gram": 45,
+      "kal": 105,
+      "pro": 8.5,
+      "kar": 7.5,
+      "lem": 4.8,
+      "conf": "98.2%"
+    },
+    {
+      "category": "Sayuran",
+      "name": "Nama Sayuran",
+      "gram": 75,
+      "kal": 25,
+      "pro": 1.2,
+      "kar": 4.5,
+      "lem": 0.5,
+      "conf": "98.7%"
+    },
+    {
+      "category": "Buah-buahan",
+      "name": "Nama Buah (misal: Buah Semangka Kuning Segar)",
+      "gram": 100,
+      "kal": 30,
+      "pro": 0.6,
+      "kar": 7.5,
+      "lem": 0.2,
+      "conf": "99.2%"
+    },
+    {
+      "category": "Pelengkap / Kerupuk",
+      "name": "Kerupuk Bawang Finna (Garlic Crackers)",
+      "gram": 15,
+      "kal": 70,
+      "pro": 0.5,
+      "kar": 11.0,
+      "lem": 2.8,
+      "conf": "99.0%"
+    }
+  ],
+  "karbo": {"name": "Nasi Kuning Gurih", "val": "210", "gram": 150, "kal": 210, "pro": 4.2, "kar": 41.5, "lem": 3.2, "conf": "99.2%"},
+  "prohew": {"name": "Telur Mata Sapi", "val": "92", "gram": 60, "kal": 95, "pro": 6.3, "kar": 0.6, "lem": 7.2, "conf": "99.5%"},
+  "pronab": {"name": "Tempe Orek Dadu", "val": "110", "gram": 45, "kal": 105, "pro": 8.5, "kar": 7.5, "lem": 4.8, "conf": "98.2%"},
+  "sayur": {"name": "Tumis Buncis Hijau", "val": "32", "gram": 75, "kal": 25, "pro": 1.2, "kar": 4.5, "lem": 0.5, "conf": "98.7%"},
+  "buah": {"name": "Buah Semangka Kuning Segar", "gram": 100, "kal": 30, "pro": 0.6, "kar": 7.5, "lem": 0.2, "conf": "99.2%"},
+  "pelengkap": {"name": "Kerupuk Bawang Finna (Garlic Crackers)", "gram": 15, "kal": 70, "pro": 0.5, "kar": 11.0, "lem": 2.8, "conf": "99.0%"},
   "analysis": "Porsi dan komposisi makanan teranalisis otomatis sesuai standar gizi resmi Kemenkes RI."
 }`;
 

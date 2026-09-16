@@ -1525,6 +1525,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function guessNutritionFromName(name) {
         const n = name.toLowerCase();
+        if (n.includes('kerupuk') || n.includes('krupuk') || n.includes('cracker') || n.includes('garlic') || n.includes('rempeyek') || n.includes('emping') || n.includes('peyek')) {
+            return { kal: 500, pro: 3.5, kar: 65.0, lem: 26.0 };
+        }
+        if (n.includes('susu') || n.includes('milk')) {
+            return { kal: 65, pro: 3.2, kar: 4.8, lem: 3.5 };
+        }
+        if (n.includes('puding') || n.includes('agar')) {
+            return { kal: 80, pro: 1.0, kar: 18.0, lem: 0.5 };
+        }
         if (n.includes('kelengkeng') || n.includes('lengkeng') || n.includes('duku') || n.includes('longan')) {
             return { kal: 60, pro: 1.3, kar: 15.1, lem: 0.1 };
         }
@@ -1716,55 +1725,64 @@ document.addEventListener('DOMContentLoaded', () => {
     const nutritionResult = document.getElementById('nutrition-result');
 
     window.calculateNutrition = function(isFromAIScan = false) {
-        const getWithGram = (selId, gramId) => {
-            const sel = document.getElementById(selId);
-            const gramInput = document.getElementById(gramId);
-            if (!sel) return { kal: 0, pro: 0, kar: 0, lem: 0 };
-            const gram = gramInput ? (parseFloat(gramInput.value) || 0) : 100;
-            const text = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : '';
-
-            let base = nutritionDB['0'];
-            if (sel.value !== '0') {
-                if (text.includes('Ikan')) base = nutritionDB['150_2'];
-                else if (text.includes('Udang')) base = nutritionDB['90'];
-                else if (text.includes('Tahu')) base = nutritionDB['80_2'];
-                else if (text.includes('Orek') || text.includes('Bacem')) base = nutritionDB['120'];
-                else if (text.includes('Capcay')) base = nutritionDB['35'];
-                else base = nutritionDB[sel.value] || nutritionDB['0'];
-            }
-            const m = gram / 100;
-            return { kal: base.kal * m, pro: base.pro * m, kar: base.kar * m, lem: base.lem * m };
-        };
-
-        const dK = getWithGram('karbo', 'karbo-gram');
-        const dH = getWithGram('prohew', 'prohew-gram');
-        const dN = getWithGram('pronab', 'pronab-gram');
-        const dS = getWithGram('sayur', 'sayur-gram');
-
+        let totalKal, totalPro, totalKar, totalLem;
         const customNameInput = document.getElementById('custom-name');
         const customGramInput = document.getElementById('custom-gram');
         const customName = customNameInput ? sanitize(customNameInput.value) : '';
         const customGram = customGramInput ? (parseFloat(customGramInput.value) || 0) : 0;
-
         let dC = { kal: 0, pro: 0, kar: 0, lem: 0 };
-        if (customName && customGram > 0) {
-            const base = guessNutritionFromName(customName);
-            const m = customGram / 100;
-            dC = { kal: base.kal * m, pro: base.pro * m, kar: base.kar * m, lem: base.lem * m };
+
+        if (isFromAIScan && window.currentMealIntake && window.currentMealIntake.kalori > 0) {
+            totalKal = window.currentMealIntake.kalori;
+            totalPro = window.currentMealIntake.protein;
+            totalKar = window.currentMealIntake.karbo;
+            totalLem = window.currentMealIntake.lemak;
+        } else {
+            const getWithGram = (selId, gramId) => {
+                const sel = document.getElementById(selId);
+                const gramInput = document.getElementById(gramId);
+                if (!sel) return { kal: 0, pro: 0, kar: 0, lem: 0 };
+                const gram = gramInput ? (parseFloat(gramInput.value) || 0) : 100;
+                const text = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : '';
+
+                let base = nutritionDB['0'];
+                if (sel.value !== '0') {
+                    if (text.includes('Ikan')) base = nutritionDB['150_2'];
+                    else if (text.includes('Udang')) base = nutritionDB['90'];
+                    else if (text.includes('Tahu')) base = nutritionDB['80_2'];
+                    else if (text.includes('Orek') || text.includes('Bacem')) base = nutritionDB['120'];
+                    else if (text.includes('Capcay')) base = nutritionDB['35'];
+                    else base = nutritionDB[sel.value] || nutritionDB['0'];
+                }
+                const m = gram / 100;
+                return { kal: base.kal * m, pro: base.pro * m, kar: base.kar * m, lem: base.lem * m };
+            };
+
+            const dK = getWithGram('karbo', 'karbo-gram');
+            const dH = getWithGram('prohew', 'prohew-gram');
+            const dN = getWithGram('pronab', 'pronab-gram');
+            const dS = getWithGram('sayur', 'sayur-gram');
+
+            if (customName && customGram > 0) {
+                const base = guessNutritionFromName(customName);
+                const m = customGram / 100;
+                dC = { kal: base.kal * m, pro: base.pro * m, kar: base.kar * m, lem: base.lem * m };
+            }
+
+            totalKal = Math.round(dK.kal + dH.kal + dN.kal + dS.kal + dC.kal);
+            totalPro = parseFloat((dK.pro + dH.pro + dN.pro + dS.pro + dC.pro).toFixed(1));
+            totalKar = parseFloat((dK.kar + dH.kar + dN.kar + dS.kar + dC.kar).toFixed(1));
+            totalLem = parseFloat((dK.lem + dH.lem + dN.lem + dS.lem + dC.lem).toFixed(1));
+
+            // Save into global meal state
+            window.currentMealIntake = {
+                kalori: totalKal,
+                protein: totalPro,
+                karbo: totalKar,
+                lemak: totalLem,
+                items: window.currentMealIntake ? window.currentMealIntake.items : []
+            };
         }
-
-        const totalKal = Math.round(dK.kal + dH.kal + dN.kal + dS.kal + dC.kal);
-        const totalPro = parseFloat((dK.pro + dH.pro + dN.pro + dS.pro + dC.pro).toFixed(1));
-        const totalKar = parseFloat((dK.kar + dH.kar + dN.kar + dS.kar + dC.kar).toFixed(1));
-        const totalLem = parseFloat((dK.lem + dH.lem + dN.lem + dS.lem + dC.lem).toFixed(1));
-
-        // Save into global meal state
-        window.currentMealIntake = {
-            kalori: totalKal,
-            protein: totalPro,
-            karbo: totalKar,
-            lemak: totalLem
-        };
 
         const valKal = document.getElementById('val-kalori');
         const valPro = document.getElementById('val-protein');
@@ -2035,23 +2053,90 @@ document.addEventListener('DOMContentLoaded', () => {
         const cleanKey = (apiKey || '').replace('AIzaSyAQ.', 'AQ.').trim();
         if (!cleanKey) throw new Error('No API key provided');
 
-        const promptText = `Kamu adalah pakar computer vision gizi Program Makan Bergizi Gratis (MBG) Kemenkes RI.
-Analisis citra baki makanan kompartemen stainless ini secara sangat cermat dan objektif.
-Identifikasi setiap masakan di sekat baki:
-1. Makanan Pokok: (contoh: Nasi Putih Pulen Bentuk Hati, Nasi Goreng, dll)
-2. Lauk Hewani: Perhatikan dengan seksama! Jika terlihat potongan paha ayam / daging ayam berbumbu saus/kuah, sebut 'Paha Ayam Masak Saus Gurih' atau nama ayam aslinya. DILARANG menyebut Telur jika yang tersaji adalah potongan ayam!
-3. Lauk Nabati: (contoh: Tempe Goreng Gurih, Tempe Orek, Tahu Goreng)
-4. Sayuran: Perhatikan jenis sayurnya! Jika terlihat buncis hijau panjang ditumis, sebut 'Tumis Buncis Hijau'. DILARANG menyebut Capcay jika berupa buncis!
-5. Buah: Perhatikan buahnya! Jika terlihat butiran kelengkeng cokelat bulat, sebut 'Buah Kelengkeng Segar'.
+        const promptText = `Kamu adalah pakar computer vision dan sistem visual multimodal AI gizi Program Makan Bergizi Gratis (MBG) Kemenkes RI.
+Tugasmu adalah menganalisis citra baki makanan kompartemen stainless ini secara sangat cermat, objektif, dan mendalam.
+Kenali SETIAP makanan, lauk, sayur, buah, minuman, maupun kemasan kerupuk/snack/puding yang ada di SEMUA sekat baki.
+
+ATURAN DETEKSI LENGKAP:
+1. Kemasan / Kerupuk / Camilan: Periksa sekat yang berisi kemasan bungkusan makanan, kerupuk, keripik, atau snack! Baca teks/merek pada kemasan jika ada (misal: 'FINNA Garlic Crackers / Kerupuk Bawang Goreng', 'Kerupuk Udang', 'Kerupuk Putih', dll.). JANGAN LEWATKAN kemasan kerupuk atau camilan ini!
+2. Susu / Puding / Pencuci Mulut: Jika ada susu kemasan kotak (UHT), susu cup, atau puding/agar-agar cup, identifikasi jenis dan rasanya.
+3. Makanan Pokok: Identifikasi jenis & bentuk nasi (misal: Nasi Kuning Gurih, Nasi Putih Pulen Bentuk Hati, Nasi Goreng, Mie, Kentang, dll.).
+4. Lauk Hewani: Kenali olahan lauk hewani secara tepat (Telur Mata Sapi / Ceplok, Paha Ayam Masak Saus Gurih, Ayam Lengkuas, Daging Semur/Rendang, Udang, Ikan Filet, dll.).
+5. Lauk Nabati: (Tempe Orek Dadu, Tempe Goreng Gurih, Tahu Goreng Kotak, Perkedel, dll.).
+6. Sayuran: (Tumis Buncis Hijau, Sayur Capcay, Sayur Sop, Lalapan Selada/Timun, dll.).
+7. Buah-buahan: Kenali buah dan warnanya (Buah Semangka Kuning Segar jika daging buahnya kuning, Semangka Merah, Buah Kelengkeng Segar, Jeruk, Pisang, dll.).
 
 Kembalikan HANYA format JSON valid persis berikut tanpa markdown atau backtick:
 {
-  "packageName": "Nama Menu Lengkap MBG",
-  "karbo": {"name": "Nasi Putih Pulen", "val": "150", "gram": 150, "kal": 195, "pro": 4.0, "kar": 43.0, "lem": 0.5, "conf": "99.2%"},
-  "prohew": {"name": "Nama Lauk Hewani Asli", "val": "200", "gram": 85, "kal": 215, "pro": 24.0, "kar": 1.5, "lem": 12.5, "conf": "98.8%"},
-  "pronab": {"name": "Nama Lauk Nabati Asli", "val": "120", "gram": 50, "kal": 115, "pro": 9.5, "kar": 8.0, "lem": 5.0, "conf": "98.0%"},
-  "sayur": {"name": "Nama Sayuran Asli", "val": "20", "gram": 75, "kal": 25, "pro": 1.2, "kar": 4.5, "lem": 0.5, "conf": "98.5%"},
-  "buah": {"name": "Nama Buah Asli", "gram": 75, "kal": 45, "pro": 1.0, "kar": 11.3, "lem": 0.1, "conf": "99.0%"},
+  "packageName": "Nama Menu Lengkap MBG (sebutkan semua komponen termasuk kerupuk/pelengkap)",
+  "items": [
+    {
+      "category": "Makanan Pokok / Karbohidrat",
+      "name": "Nama Makanan Pokok Spesifik",
+      "gram": 150,
+      "kal": 210,
+      "pro": 4.2,
+      "kar": 41.5,
+      "lem": 3.2,
+      "conf": "99.2%"
+    },
+    {
+      "category": "Protein Hewani",
+      "name": "Nama Lauk Hewani",
+      "gram": 60,
+      "kal": 95,
+      "pro": 6.3,
+      "kar": 0.6,
+      "lem": 7.2,
+      "conf": "99.5%"
+    },
+    {
+      "category": "Protein Nabati",
+      "name": "Nama Lauk Nabati",
+      "gram": 45,
+      "kal": 105,
+      "pro": 8.5,
+      "kar": 7.5,
+      "lem": 4.8,
+      "conf": "98.2%"
+    },
+    {
+      "category": "Sayuran",
+      "name": "Nama Sayuran",
+      "gram": 75,
+      "kal": 25,
+      "pro": 1.2,
+      "kar": 4.5,
+      "lem": 0.5,
+      "conf": "98.7%"
+    },
+    {
+      "category": "Buah-buahan",
+      "name": "Nama Buah (misal: Buah Semangka Kuning Segar)",
+      "gram": 100,
+      "kal": 30,
+      "pro": 0.6,
+      "kar": 7.5,
+      "lem": 0.2,
+      "conf": "99.2%"
+    },
+    {
+      "category": "Pelengkap / Kerupuk",
+      "name": "Kerupuk Bawang Finna (Garlic Crackers)",
+      "gram": 15,
+      "kal": 70,
+      "pro": 0.5,
+      "kar": 11.0,
+      "lem": 2.8,
+      "conf": "99.0%"
+    }
+  ],
+  "karbo": {"name": "Nasi Kuning Gurih", "val": "210", "gram": 150, "kal": 210, "pro": 4.2, "kar": 41.5, "lem": 3.2, "conf": "99.2%"},
+  "prohew": {"name": "Telur Mata Sapi", "val": "92", "gram": 60, "kal": 95, "pro": 6.3, "kar": 0.6, "lem": 7.2, "conf": "99.5%"},
+  "pronab": {"name": "Tempe Orek Dadu", "val": "110", "gram": 45, "kal": 105, "pro": 8.5, "kar": 7.5, "lem": 4.8, "conf": "98.2%"},
+  "sayur": {"name": "Tumis Buncis Hijau", "val": "32", "gram": 75, "kal": 25, "pro": 1.2, "kar": 4.5, "lem": 0.5, "conf": "98.7%"},
+  "buah": {"name": "Buah Semangka Kuning Segar", "gram": 100, "kal": 30, "pro": 0.6, "kar": 7.5, "lem": 0.2, "conf": "99.2%"},
+  "pelengkap": {"name": "Kerupuk Bawang Finna (Garlic Crackers)", "gram": 15, "kal": 70, "pro": 0.5, "kar": 11.0, "lem": 2.8, "conf": "99.0%"},
   "analysis": "Porsi dan komposisi makanan teranalisis otomatis sesuai standar gizi resmi Kemenkes RI."
 }`;
 
@@ -2111,8 +2196,9 @@ Kembalikan HANYA format JSON valid persis berikut tanpa markdown atau backtick:
             const snapshotThumb = canvasElement.toDataURL('image/jpeg', 0.6);
             const base64Jpeg = snapshotThumb.split(',')[1];
 
-            let detectedKarbo, detectedProhew, detectedPronab, detectedSayur, detectedBuah;
-            let matchedPackage = 'Paket 1: Ayam Lengkuas + Tahu Kuning + Labu Siam + Semangka';
+            let detectedKarbo, detectedProhew, detectedPronab, detectedSayur, detectedBuah, detectedPelengkap;
+            let detectedItemsDynamic = null;
+            let matchedPackage = 'Paket MBG Lengkap Bergizi';
             let engineUsedLabel = '🔍 Hasil Analisis Komposisi Makanan — 99.5% Sesuai';
             let vlmAnalysisNote = 'Porsi dan komposisi makanan dianalisis secara otomatis berdasarkan standar gizi resmi.';
 
@@ -2132,15 +2218,19 @@ Kembalikan HANYA format JSON valid persis berikut tanpa markdown atau backtick:
                 clearTimeout(timeoutId);
                 if (apiRes.ok) {
                     const data = await apiRes.json();
-                    if (data && data.success && data.prohew && data.karbo) {
+                    if (data && data.success) {
                         detectedKarbo = data.karbo;
                         detectedProhew = data.prohew;
                         detectedPronab = data.pronab;
                         detectedSayur = data.sayur;
                         detectedBuah = data.buah;
+                        detectedPelengkap = data.pelengkap;
                         matchedPackage = data.packageName || 'Menu MBG Terdeteksi';
                         vlmAnalysisNote = data.analysis || 'Porsi dan komposisi makanan dianalisis secara otomatis berdasarkan standar gizi resmi.';
                         engineUsedLabel = '🔍 Hasil Analisis Komposisi Makanan — 99.5% Sesuai';
+                        if (data.items && Array.isArray(data.items) && data.items.length > 0) {
+                            detectedItemsDynamic = data.items;
+                        }
                         cloudSuccess = true;
                     }
                 }
@@ -2167,9 +2257,13 @@ Kembalikan HANYA format JSON valid persis berikut tanpa markdown atau backtick:
                             detectedPronab = vlmRes.pronab;
                             detectedSayur = vlmRes.sayur;
                             detectedBuah = vlmRes.buah;
+                            detectedPelengkap = vlmRes.pelengkap;
                             matchedPackage = vlmRes.packageName || 'Menu MBG Terdeteksi';
                             vlmAnalysisNote = vlmRes.analysis || 'Porsi dan komposisi makanan dianalisis secara otomatis berdasarkan standar gizi resmi.';
                             engineUsedLabel = '🔍 Hasil Analisis Komposisi Makanan — 99.2% Sesuai';
+                            if (vlmRes.items && Array.isArray(vlmRes.items) && vlmRes.items.length > 0) {
+                                detectedItemsDynamic = vlmRes.items;
+                            }
                             cloudSuccess = true;
                         }
                     }
@@ -2181,15 +2275,19 @@ Kembalikan HANYA format JSON valid persis berikut tanpa markdown atau backtick:
                 if (!cloudSuccess && vlmApiKey) {
                     try {
                         const vlmRes = await queryCloudGeminiVLM(base64Jpeg, vlmApiKey);
-                        if (vlmRes && vlmRes.prohew && vlmRes.karbo) {
+                        if (vlmRes && (vlmRes.items || vlmRes.prohew || vlmRes.karbo)) {
                             detectedKarbo = vlmRes.karbo;
                             detectedProhew = vlmRes.prohew;
                             detectedPronab = vlmRes.pronab;
                             detectedSayur = vlmRes.sayur;
                             detectedBuah = vlmRes.buah;
+                            detectedPelengkap = vlmRes.pelengkap;
                             matchedPackage = vlmRes.packageName || 'Menu MBG Terdeteksi';
                             vlmAnalysisNote = vlmRes.analysis || 'Porsi dan komposisi makanan dianalisis secara otomatis berdasarkan standar gizi resmi.';
                             engineUsedLabel = '🔍 Hasil Analisis Komposisi Makanan — 99.1% Sesuai';
+                            if (vlmRes.items && Array.isArray(vlmRes.items) && vlmRes.items.length > 0) {
+                                detectedItemsDynamic = vlmRes.items;
+                            }
                             cloudSuccess = true;
                         }
                     } catch (vlmErr) {
@@ -2344,16 +2442,68 @@ Kembalikan HANYA format JSON valid persis berikut tanpa markdown atau backtick:
                 vlmAnalysisNote = 'Porsi dan komposisi makanan dianalisis secara otomatis berdasarkan standar gizi resmi.';
             }
 
-            // Sync detected items array
-            const detectedItems = [
-                { category: 'Karbohidrat', item: detectedKarbo.name, kal: Number(detectedKarbo.kal), pro: Number(detectedKarbo.pro), kar: Number(detectedKarbo.kar), lem: Number(detectedKarbo.lem), gram: Number(detectedKarbo.gram), conf: detectedKarbo.conf || '98%' },
-                { category: 'Protein Hewani', item: detectedProhew.name, kal: Number(detectedProhew.kal), pro: Number(detectedProhew.pro), kar: Number(detectedProhew.kar), lem: Number(detectedProhew.lem), gram: Number(detectedProhew.gram), conf: detectedProhew.conf || '96%' },
-                { category: 'Protein Nabati', item: detectedPronab.name, kal: Number(detectedPronab.kal), pro: Number(detectedPronab.pro), kar: Number(detectedPronab.kar), lem: Number(detectedPronab.lem), gram: Number(detectedPronab.gram), conf: detectedPronab.conf || '95%' },
-                { category: 'Sayuran', item: detectedSayur.name, kal: Number(detectedSayur.kal), pro: Number(detectedSayur.pro), kar: Number(detectedSayur.kar), lem: Number(detectedSayur.lem), gram: Number(detectedSayur.gram), conf: detectedSayur.conf || '94%' },
-                { category: 'Buah / Pelengkap', item: detectedBuah.name, kal: Number(detectedBuah.kal), pro: Number(detectedBuah.pro), kar: Number(detectedBuah.kar), lem: Number(detectedBuah.lem), gram: Number(detectedBuah.gram), conf: detectedBuah.conf || '97%' }
-            ];
+            // Sync detected items array (support dynamic multi-item lists from Gemini VLM)
+            let detectedItems = [];
+            if (detectedItemsDynamic && Array.isArray(detectedItemsDynamic) && detectedItemsDynamic.length > 0) {
+                detectedItems = detectedItemsDynamic.map(it => ({
+                    category: it.category || 'Komposisi Makanan',
+                    item: it.name || it.item || 'Makanan MBG',
+                    kal: Number(it.kal) || 0,
+                    pro: Number(it.pro) || 0,
+                    kar: Number(it.kar) || 0,
+                    lem: Number(it.lem) || 0,
+                    gram: Number(it.gram) || 0,
+                    conf: it.conf || '99.0%'
+                }));
+            } else {
+                detectedItems = [
+                    { category: 'Karbohidrat', item: detectedKarbo?.name || 'Nasi Putih Pulen', kal: Number(detectedKarbo?.kal || 195), pro: Number(detectedKarbo?.pro || 4.0), kar: Number(detectedKarbo?.kar || 43.0), lem: Number(detectedKarbo?.lem || 0.5), gram: Number(detectedKarbo?.gram || 150), conf: detectedKarbo?.conf || '98%' },
+                    { category: 'Protein Hewani', item: detectedProhew?.name || 'Lauk Hewani', kal: Number(detectedProhew?.kal || 200), pro: Number(detectedProhew?.pro || 20.0), kar: Number(detectedProhew?.kar || 2.0), lem: Number(detectedProhew?.lem || 10.0), gram: Number(detectedProhew?.gram || 85), conf: detectedProhew?.conf || '96%' },
+                    { category: 'Protein Nabati', item: detectedPronab?.name || 'Lauk Nabati', kal: Number(detectedPronab?.kal || 110), pro: Number(detectedPronab?.pro || 10.0), kar: Number(detectedPronab?.kar || 8.0), lem: Number(detectedPronab?.lem || 5.0), gram: Number(detectedPronab?.gram || 50), conf: detectedPronab?.conf || '95%' },
+                    { category: 'Sayuran', item: detectedSayur?.name || 'Sayur Segar', kal: Number(detectedSayur?.kal || 28), pro: Number(detectedSayur?.pro || 1.5), kar: Number(detectedSayur?.kar || 5.0), lem: Number(detectedSayur?.lem || 0.5), gram: Number(detectedSayur?.gram || 75), conf: detectedSayur?.conf || '94%' },
+                    { category: 'Buah / Pelengkap', item: detectedBuah?.name || 'Buah Segar', kal: Number(detectedBuah?.kal || 35), pro: Number(detectedBuah?.pro || 0.6), kar: Number(detectedBuah?.kar || 8.0), lem: Number(detectedBuah?.lem || 0.2), gram: Number(detectedBuah?.gram || 100), conf: detectedBuah?.conf || '97%' }
+                ];
+                if (detectedPelengkap && detectedPelengkap.name) {
+                    detectedItems.push({
+                        category: 'Pelengkap / Kerupuk',
+                        item: detectedPelengkap.name,
+                        kal: Number(detectedPelengkap.kal) || 70,
+                        pro: Number(detectedPelengkap.pro) || 0.5,
+                        kar: Number(detectedPelengkap.kar) || 11.0,
+                        lem: Number(detectedPelengkap.lem) || 2.8,
+                        gram: Number(detectedPelengkap.gram) || 15,
+                        conf: detectedPelengkap.conf || '99.0%'
+                    });
+                }
+            }
 
-            // Calculate Totals
+            // Extract individual items from detectedItems if needed for form controls
+            if (!detectedKarbo) {
+                const kIt = detectedItems.find(i => /karbo|nasi|mie|roti|pokok/i.test(i.category) || /nasi|mie|bihun/i.test(i.item));
+                if (kIt) detectedKarbo = { name: kIt.item, gram: kIt.gram, kal: kIt.kal, pro: kIt.pro, kar: kIt.kar, lem: kIt.lem, conf: kIt.conf, val: '150' };
+            }
+            if (!detectedProhew) {
+                const hIt = detectedItems.find(i => /hewani|ayam|telur|ikan|daging|udang/i.test(i.category) || /ayam|telur|ikan|daging|udang/i.test(i.item));
+                if (hIt) detectedProhew = { name: hIt.item, gram: hIt.gram, kal: hIt.kal, pro: hIt.pro, kar: hIt.kar, lem: hIt.lem, conf: hIt.conf, val: '200' };
+            }
+            if (!detectedPronab) {
+                const nIt = detectedItems.find(i => /nabati|tempe|tahu/i.test(i.category) || /tempe|tahu/i.test(i.item));
+                if (nIt) detectedPronab = { name: nIt.item, gram: nIt.gram, kal: nIt.kal, pro: nIt.pro, kar: nIt.kar, lem: nIt.lem, conf: nIt.conf, val: '118' };
+            }
+            if (!detectedSayur) {
+                const sIt = detectedItems.find(i => /sayur|sop|buncis|capcay/i.test(i.category) || /sayur|sop|buncis|capcay|kangkung/i.test(i.item));
+                if (sIt) detectedSayur = { name: sIt.item, gram: sIt.gram, kal: sIt.kal, pro: sIt.pro, kar: sIt.kar, lem: sIt.lem, conf: sIt.conf, val: '32' };
+            }
+            if (!detectedBuah) {
+                const bIt = detectedItems.find(i => /buah|semangka|jeruk|pisang|melon|kelengkeng/i.test(i.category) || /semangka|jeruk|pisang|melon|kelengkeng/i.test(i.item));
+                if (bIt) detectedBuah = { name: bIt.item, gram: bIt.gram, kal: bIt.kal, pro: bIt.pro, kar: bIt.kar, lem: bIt.lem, conf: bIt.conf };
+            }
+            if (!detectedPelengkap) {
+                const pIt = detectedItems.find(i => /pelengkap|kerupuk|camilan|snack|susu|puding/i.test(i.category) || /kerupuk|crackers|finna|peyek|susu|puding/i.test(i.item));
+                if (pIt) detectedPelengkap = { name: pIt.item, gram: pIt.gram, kal: pIt.kal, pro: pIt.pro, kar: pIt.kar, lem: pIt.lem, conf: pIt.conf };
+            }
+
+            // Calculate Totals across ALL detected items
             let totalKal = 0, totalPro = 0, totalKar = 0, totalLem = 0;
             detectedItems.forEach(it => {
                 totalKal += it.kal;
@@ -2365,6 +2515,16 @@ Kembalikan HANYA format JSON valid persis berikut tanpa markdown atau backtick:
             totalPro = parseFloat(totalPro.toFixed(1));
             totalKar = parseFloat(totalKar.toFixed(1));
             totalLem = parseFloat(totalLem.toFixed(1));
+
+            // Save into global meal state
+            window.currentMealIntake = {
+                kalori: totalKal,
+                protein: totalPro,
+                karbo: totalKar,
+                lemak: totalLem,
+                items: detectedItems,
+                photoUrl: snapshotThumb
+            };
 
             // Sync to form controls
             const kSel = document.getElementById('karbo');
@@ -2378,24 +2538,84 @@ Kembalikan HANYA format JSON valid persis berikut tanpa markdown atau backtick:
             const cName = document.getElementById('custom-name');
             const cGram = document.getElementById('custom-gram');
 
-            if (kSel && detectedKarbo.val) kSel.value = detectedKarbo.val;
-            if (hSel && detectedProhew.val) hSel.value = detectedProhew.val;
-            if (nSel && detectedPronab.val) nSel.value = detectedPronab.val;
-            if (sSel && detectedSayur.val) sSel.value = detectedSayur.val;
+            if (kSel && detectedKarbo) {
+                const kn = (detectedKarbo.name || '').toLowerCase();
+                if (kn.includes('kuning')) kSel.value = '175';
+                else if (kn.includes('uduk')) kSel.value = '180';
+                else if (kn.includes('merah')) kSel.value = '140';
+                else if (kn.includes('mie')) kSel.value = '200';
+                else if (kn.includes('kentang')) kSel.value = '160';
+                else if (detectedKarbo.val) kSel.value = detectedKarbo.val;
+                else kSel.value = '150';
+            }
+            if (hSel && detectedProhew) {
+                const hn = (detectedProhew.name || '').toLowerCase();
+                if (hn.includes('mata sapi') || hn.includes('ceplok')) hSel.value = '92';
+                else if (hn.includes('dadar')) hSel.value = '70';
+                else if (hn.includes('rebus') || hn.includes('puyuh')) hSel.value = '79';
+                else if (hn.includes('rendang')) hSel.value = '260';
+                else if (hn.includes('daging') || hn.includes('rolade') || hn.includes('semur daging')) hSel.value = '185';
+                else if (hn.includes('udang')) hSel.value = '85';
+                else if (hn.includes('ikan')) hSel.value = '160';
+                else if (hn.includes('semur')) hSel.value = '195';
+                else if (hn.includes('ayam')) hSel.value = '200';
+                else if (detectedProhew.val) hSel.value = detectedProhew.val;
+            }
+            if (nSel && detectedPronab) {
+                const nn = (detectedPronab.name || '').toLowerCase();
+                if (nn.includes('orek') || nn.includes('bacem')) nSel.value = '110';
+                else if (nn.includes('tahu')) nSel.value = '80';
+                else if (nn.includes('perkedel')) nSel.value = '95';
+                else if (nn.includes('bakwan')) nSel.value = '115';
+                else if (nn.includes('edamame') || nn.includes('kacang')) nSel.value = '60';
+                else if (nn.includes('tempe')) nSel.value = '118';
+                else if (detectedPronab.val) nSel.value = detectedPronab.val;
+            }
+            if (sSel && detectedSayur) {
+                const sn = (detectedSayur.name || '').toLowerCase();
+                if (sn.includes('buncis')) sSel.value = '32';
+                else if (sn.includes('capcay')) sSel.value = '35';
+                else if (sn.includes('sop') || sn.includes('sayur bening')) sSel.value = '25';
+                else if (sn.includes('jagung')) sSel.value = '48';
+                else if (sn.includes('sayur') || sn.includes('sawi') || sn.includes('bayam')) sSel.value = '30';
+                else if (detectedSayur.val) sSel.value = detectedSayur.val;
+            }
 
-            if (kGram) kGram.value = detectedKarbo.gram;
-            if (hGram) hGram.value = detectedProhew.gram;
-            if (nGram) nGram.value = detectedPronab.gram;
-            if (sGram) sGram.value = detectedSayur.gram;
+            if (kGram && detectedKarbo) kGram.value = detectedKarbo.gram || 150;
+            if (hGram && detectedProhew) hGram.value = detectedProhew.gram || 85;
+            if (nGram && detectedPronab) nGram.value = detectedPronab.gram || 50;
+            if (sGram && detectedSayur) sGram.value = detectedSayur.gram || 75;
 
-            if (cName) cName.value = detectedBuah.name;
-            if (cGram) cGram.value = detectedBuah.gram;
+            // Sync Custom / Extra (Buah and/or Pelengkap / Crackers)
+            if (cName && cGram) {
+                if (detectedBuah && detectedPelengkap) {
+                    cName.value = detectedBuah.name + ' + ' + detectedPelengkap.name;
+                    cGram.value = (Number(detectedBuah.gram) || 0) + (Number(detectedPelengkap.gram) || 0);
+                } else if (detectedPelengkap) {
+                    cName.value = detectedPelengkap.name;
+                    cGram.value = detectedPelengkap.gram || 15;
+                } else if (detectedBuah) {
+                    cName.value = detectedBuah.name;
+                    cGram.value = detectedBuah.gram || 100;
+                }
+            }
 
             // Sync to Survey menu
             const mbgMenuSel = document.getElementById('mbg-menu');
             if (mbgMenuSel) {
-                const matchOpt = Array.from(mbgMenuSel.options).find(o => o.value === matchedPackage || o.value.includes(detectedProhew.name.split(' ')[0]));
-                if (matchOpt) mbgMenuSel.value = matchOpt.value;
+                let matchOpt = Array.from(mbgMenuSel.options).find(o => o.value === matchedPackage || (matchedPackage && o.value.toLowerCase().includes(matchedPackage.toLowerCase())));
+                if (!matchOpt && detectedProhew) {
+                    matchOpt = Array.from(mbgMenuSel.options).find(o => o.value.toLowerCase().includes(detectedProhew.name.toLowerCase().split(' ')[0]));
+                }
+                if (!matchOpt) {
+                    const newOpt = document.createElement('option');
+                    newOpt.value = matchedPackage;
+                    newOpt.textContent = matchedPackage;
+                    mbgMenuSel.appendChild(newOpt);
+                    mbgMenuSel.value = matchedPackage;
+                } else {
+                    mbgMenuSel.value = matchOpt.value;
+                }
             }
 
             // Build itemized table with Confidence Tags
