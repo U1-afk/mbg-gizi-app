@@ -1,3 +1,10 @@
+// Vercel Serverless Function: Persistent Multi-Device Synchronizer
+// Endpoint: /api/sync
+
+const CLOUD_USERS_ID = 'ff808181a09d98f701a0ce45868a7b64';
+const CLOUD_HIST_ID = 'ff808181a09d98f701a0ce509a637b83';
+const CLOUD_MSG_ID = 'ff808181a09d98f701a0ce509bc17b84';
+
 let db = {
     history: [
         {
@@ -62,7 +69,103 @@ function sanitizeString(str) {
     return str.replace(/<[^>]*>?/gm, '').trim();
 }
 
-export default function handler(req, res) {
+async function fetchCloudUsers() {
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
+        const res = await fetch(`https://api.restful-api.dev/objects/${CLOUD_USERS_ID}`, {
+            headers: { 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0' },
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+            const data = await res.json();
+            if (data && data.data && Array.isArray(data.data.users)) {
+                return data.data.users;
+            }
+        }
+    } catch (e) {}
+    return null;
+}
+
+async function saveCloudUsers(usersList) {
+    try {
+        await fetch(`https://api.restful-api.dev/objects/${CLOUD_USERS_ID}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0' },
+            body: JSON.stringify({
+                name: 'MBG_SPPG_USERS_PERSISTENT',
+                data: { users: usersList }
+            })
+        });
+    } catch (e) {}
+}
+
+async function fetchCloudHistory() {
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
+        const res = await fetch(`https://api.restful-api.dev/objects/${CLOUD_HIST_ID}`, {
+            headers: { 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0' },
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+            const data = await res.json();
+            if (data && data.data && Array.isArray(data.data.history)) {
+                return data.data.history;
+            }
+        }
+    } catch (e) {}
+    return null;
+}
+
+async function saveCloudHistory(histList) {
+    try {
+        await fetch(`https://api.restful-api.dev/objects/${CLOUD_HIST_ID}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0' },
+            body: JSON.stringify({
+                name: 'MBG_SPPG_HISTORY_PERSISTENT',
+                data: { history: histList }
+            })
+        });
+    } catch (e) {}
+}
+
+async function fetchCloudMessages() {
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
+        const res = await fetch(`https://api.restful-api.dev/objects/${CLOUD_MSG_ID}`, {
+            headers: { 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0' },
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+            const data = await res.json();
+            if (data && data.data && Array.isArray(data.data.messages)) {
+                return data.data.messages;
+            }
+        }
+    } catch (e) {}
+    return null;
+}
+
+async function saveCloudMessages(msgList) {
+    try {
+        await fetch(`https://api.restful-api.dev/objects/${CLOUD_MSG_ID}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0' },
+            body: JSON.stringify({
+                name: 'MBG_SPPG_MESSAGES_PERSISTENT',
+                data: { messages: msgList }
+            })
+        });
+    } catch (e) {}
+}
+
+export default async function handler(req, res) {
     // Set CORS headers
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -78,6 +181,37 @@ export default function handler(req, res) {
     }
 
     if (req.method === 'GET') {
+        // Ambil data persisten dari cloud
+        const cloudUsers = await fetchCloudUsers();
+        if (cloudUsers && cloudUsers.length > 0) {
+            for (const cUser of cloudUsers) {
+                if (!db.users.find(u => u.nik.toLowerCase() === cUser.nik.toLowerCase())) {
+                    db.users.push(cUser);
+                }
+            }
+        }
+
+        const cloudHist = await fetchCloudHistory();
+        if (cloudHist && cloudHist.length > 0) {
+            for (const ch of cloudHist) {
+                if (!db.history.find(h => h.id === ch.id)) {
+                    db.history.push(ch);
+                }
+            }
+        }
+
+        const cloudMsg = await fetchCloudMessages();
+        if (cloudMsg && cloudMsg.length > 0) {
+            for (const cm of cloudMsg) {
+                const existing = db.messages.find(m => m.id === cm.id);
+                if (!existing) {
+                    db.messages.push(cm);
+                } else if (cm.reply && !existing.reply) {
+                    existing.reply = cm.reply;
+                }
+            }
+        }
+
         res.status(200).json(db);
     } else if (req.method === 'POST') {
         const body = req.body || {};
@@ -91,6 +225,8 @@ export default function handler(req, res) {
             if (!db.users.find(u => u.nik.toLowerCase() === p.nik.toLowerCase())) {
                 db.users.push(p);
             }
+            // Simpan permanen ke cloud store
+            await saveCloudUsers(db.users);
         } else if (body.action === 'add_history' && body.payload) {
             const h = body.payload;
             h.user = sanitizeString(h.user);
@@ -98,16 +234,19 @@ export default function handler(req, res) {
             h.menu = sanitizeString(h.menu);
             h.portion = sanitizeString(h.portion);
             db.history.push(h);
+            await saveCloudHistory(db.history);
         } else if (body.action === 'add_message' && body.payload) {
             const m = body.payload;
             m.fromNik = sanitizeString(m.fromNik);
             m.fromName = sanitizeString(m.fromName);
             m.text = sanitizeString(m.text);
             db.messages.push(m);
+            await saveCloudMessages(db.messages);
         } else if (body.action === 'reply_message' && body.payload) {
             const msg = db.messages.find(m => m.id === body.payload.id);
             if (msg) {
                 msg.reply = sanitizeString(body.payload.reply);
+                await saveCloudMessages(db.messages);
             }
         } else if (body.action === 'user_reply_message' && body.payload) {
             const msg = db.messages.find(m => m.id === body.payload.id);
@@ -115,13 +254,17 @@ export default function handler(req, res) {
                 const userAns = sanitizeString(body.payload.reply);
                 msg.text = (msg.text || '') + '\n\n➡️ Tanggapan Pengguna: ' + userAns;
                 msg.reply = ''; // kosongkan agar muncul tombol Balas lagi bagi admin
+                await saveCloudMessages(db.messages);
             }
         } else if (body.type === 'history' && Array.isArray(body.data)) {
             db.history = body.data;
+            await saveCloudHistory(db.history);
         } else if (body.type === 'messages' && Array.isArray(body.data)) {
             db.messages = body.data;
+            await saveCloudMessages(db.messages);
         } else if (body.type === 'users' && Array.isArray(body.data)) {
             db.users = body.data;
+            await saveCloudUsers(db.users);
         }
         res.status(200).json({ success: true, db });
     } else {

@@ -179,7 +179,7 @@
                         <div class="form-row">
                             <div class="input-group">
                                 <label for="rf-age">Umur (Tahun)</label>
-                                <input type="number" id="rf-age" min="5" max="80" value="16" placeholder="Contoh: 16" required>
+                                <input type="number" id="rf-age" min="3" max="80" value="16" placeholder="Contoh: 16" required>
                             </div>
                             <div class="input-group">
                                 <label for="rf-gender">Jenis Kelamin</label>
@@ -252,7 +252,7 @@
                         <div class="form-row">
                             <div class="input-group">
                                 <label for="tdee-age">Umur (Tahun)</label>
-                                <input type="number" id="tdee-age" value="16" min="5" max="80" required>
+                                <input type="number" id="tdee-age" value="16" min="3" max="80" required>
                             </div>
                             <div class="input-group">
                                 <label for="tdee-gender">Jenis Kelamin</label>
@@ -292,9 +292,9 @@
                         <div style="background:white; padding:1.2rem; border-radius:14px; border:1px solid rgba(0,0,0,0.08); text-align:left;">
                             <div style="text-align:center; margin-bottom:1rem;">
                                 <span style="font-size:0.8rem; color:var(--text-light); text-transform:uppercase; font-weight:700;">Target Energi Harian:</span>
-                                <div style="font-size:2rem; font-weight:800; color:#d97706;" id="val-tdee-total">2,150 kcal/hari</div>
+                                <div style="font-size:2rem; font-weight:800; color:#d97706;" id="val-tdee-total">2.446 kcal/hari</div>
                                 <div style="font-size:0.88rem; color:var(--text-main); font-weight:600;">
-                                    Energi Dasar: <span id="val-bmr-total">1,450</span> kcal | Target 1x Porsi MBG: <span id="val-mbg-target" style="color:var(--primary-color);">710 kcal</span>
+                                    Energi Dasar: <span id="val-bmr-total">1.578</span> kcal | Target 1x Porsi MBG: <span id="val-mbg-target" style="color:var(--primary-color);">807 kcal</span>
                                 </div>
                             </div>
 
@@ -302,15 +302,15 @@
                             <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:0.6rem; text-align:center;">
                                 <div style="background:rgba(16,185,129,0.1); padding:0.6rem; border-radius:8px;">
                                     <span style="font-size:0.75rem; color:var(--text-light); display:block;">🌾 Karbo (60%)</span>
-                                    <strong style="font-size:1rem; color:#047857;" id="val-target-karbo">322 g</strong>
+                                    <strong style="font-size:1rem; color:#047857;" id="val-target-karbo">367 g</strong>
                                 </div>
                                 <div style="background:rgba(59,130,246,0.1); padding:0.6rem; border-radius:8px;">
-                                    <span style="font-size:0.75rem; color:var(--text-light); display:block;">🥩 Protein (15%)</span>
-                                    <strong style="font-size:1rem; color:#1d4ed8;" id="val-target-pro">80 g</strong>
+                                    <span style="font-size:0.75rem; color:var(--text-light); display:block;">🥩 Protein (20%)</span>
+                                    <strong style="font-size:1rem; color:#1d4ed8;" id="val-target-pro">122 g</strong>
                                 </div>
                                 <div style="background:rgba(139,92,246,0.1); padding:0.6rem; border-radius:8px;">
-                                    <span style="font-size:0.75rem; color:var(--text-light); display:block;">💧 Lemak (25%)</span>
-                                    <strong style="font-size:1rem; color:#6d28d9;" id="val-target-lem">60 g</strong>
+                                    <span style="font-size:0.75rem; color:var(--text-light); display:block;">💧 Lemak (20%)</span>
+                                    <strong style="font-size:1rem; color:#6d28d9;" id="val-target-lem">54 g</strong>
                                 </div>
                             </div>
                         </div>
@@ -356,62 +356,28 @@
                                 <div class="input-group">
                                     <label for="karbo">Karbohidrat</label>
                                     <div style="display: flex; gap: 0.5rem;">
-                                        <select id="karbo" style="flex: 2;">
-                                            <option value="0">Tanpa Nasi (0g)</option>
-                                            <option value="195" selected>Nasi Putih Pulen</option>
-                                            <option value="210">Nasi Kuning Gurih</option>
-                                            <option value="240">Nasi Goreng Gurih</option>
-                                            <option value="180">Mie Goreng / Bihun</option>
-                                            <option value="185">Kentang Panggang Wedges</option>
-                                        </select>
+                                        <input type="text" id="karbo" value="Nasi Putih Pulen" placeholder="Ketik nama makanan (contoh: Nasi Putih / Nasi Kuning / Mie Goreng)" style="flex: 2; padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1);">
                                         <input type="number" id="karbo-gram" value="150" min="0" placeholder="Gram" style="flex: 1; padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1);">
                                     </div>
                                 </div>
                                 <div class="input-group">
                                     <label for="prohew">Protein Hewani</label>
                                     <div style="display: flex; gap: 0.5rem;">
-                                        <select id="prohew" style="flex: 2;">
-                                            <option value="0">Tidak Ada</option>
-                                            <option value="215" selected>Ayam Lengkuas / Serundeng</option>
-                                            <option value="225">Paha Ayam Masak Saus</option>
-                                            <option value="230">Ayam Goreng Tepung Krispi</option>
-                                            <option value="215">Ayam Gulai / Kuah Kuning</option>
-                                            <option value="92">Telur Ceplok Balado</option>
-                                            <option value="79">Telur Rebus / Puyuh</option>
-                                            <option value="185">Semur / Rolade Daging Sapi</option>
-                                            <option value="260">Rendang Daging Sapi</option>
-                                            <option value="85">Udang Masak Kuah / Balado</option>
-                                            <option value="160">Ikan Goreng Filet Gurih</option>
-                                        </select>
+                                        <input type="text" id="prohew" value="Ayam Lengkuas" placeholder="Ketik lauk hewani (contoh: Ayam Lengkuas / Telur Balado / Ikan Goreng)" style="flex: 2; padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1);">
                                         <input type="number" id="prohew-gram" value="85" min="0" placeholder="Gram" style="flex: 1; padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1);">
                                     </div>
                                 </div>
                                 <div class="input-group">
                                     <label for="pronab">Protein Nabati</label>
                                     <div style="display: flex; gap: 0.5rem;">
-                                        <select id="pronab" style="flex: 2;">
-                                            <option value="0">Tidak Ada</option>
-                                            <option value="118" selected>Tempe Goreng Gurih</option>
-                                            <option value="110">Tempe Orek Dadu Manis</option>
-                                            <option value="80">Tahu Goreng Kotak / Sakura</option>
-                                            <option value="95">Perkedel Kentang Gurih</option>
-                                            <option value="115">Bakwan Sayur Gurih</option>
-                                            <option value="60">Kacang Edamame Rebus</option>
-                                        </select>
+                                        <input type="text" id="pronab" value="Tempe Goreng Gurih" placeholder="Ketik lauk nabati (contoh: Tempe Goreng / Tahu Goreng / Bakwan Sayur)" style="flex: 2; padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1);">
                                         <input type="number" id="pronab-gram" value="50" min="0" placeholder="Gram" style="flex: 1; padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1);">
                                     </div>
                                 </div>
                                 <div class="input-group">
                                     <label for="sayur">Sayuran</label>
                                     <div style="display: flex; gap: 0.5rem;">
-                                        <select id="sayur" style="flex: 2;">
-                                            <option value="0">Tidak Ada</option>
-                                            <option value="32" selected>Tumis Buncis Hijau</option>
-                                            <option value="35">Sayur Capcay Wortel Buncis</option>
-                                            <option value="25">Sayur Sop Wortel Kol</option>
-                                            <option value="30">Tumis Sayur Hijau (Bayam/Sawi)</option>
-                                            <option value="48">Tumis Jagung Manis & Wortel</option>
-                                        </select>
+                                        <input type="text" id="sayur" value="Tumis Buncis Hijau" placeholder="Ketik nama sayur (contoh: Tumis Buncis / Sayur Sop / Capcay)" style="flex: 2; padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1);">
                                         <input type="number" id="sayur-gram" value="75" min="0" placeholder="Gram" style="flex: 1; padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1);">
                                     </div>
                                 </div>
@@ -808,6 +774,6 @@
     </div>
 
     <!-- Scripts -->
-    <script src="app.js?v=23"></script>
+    <script src="app.js?v=20260923c"></script>
 </body>
 </html>
