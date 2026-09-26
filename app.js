@@ -74,6 +74,9 @@ document.addEventListener('DOMContentLoaded', () => {
             customAlertModal.classList.add('hidden');
         });
     }
+    window.closeCustomAlert = function() {
+        if (customAlertModal) customAlertModal.classList.add('hidden');
+    };
 
     const customPromptModal = document.getElementById('custom-prompt-modal');
     const customPromptMessage = document.getElementById('custom-prompt-message');
@@ -2193,19 +2196,28 @@ document.addEventListener('DOMContentLoaded', () => {
         if (cameraPreviewImg) cameraPreviewImg.style.display = 'none';
     }
 
-    if (btnOpenCamera) {
-        btnOpenCamera.addEventListener('click', async () => {
-            if (cameraModal) cameraModal.classList.remove('hidden');
-            if (cameraVideo) cameraVideo.style.display = 'block';
-            if (cameraPreviewImg) cameraPreviewImg.style.display = 'none';
-            if (scannerOverlay) scannerOverlay.classList.add('hidden');
-            updateVLMUI();
+    function openCameraModal() {
+        if (cameraModal) cameraModal.classList.remove('hidden');
+        if (cameraVideo) cameraVideo.style.display = 'block';
+        if (cameraPreviewImg) cameraPreviewImg.style.display = 'none';
+        if (scannerOverlay) scannerOverlay.classList.add('hidden');
+        updateVLMUI();
 
-            try {
-                currentStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-                if (cameraVideo) cameraVideo.srcObject = currentStream;
-            } catch (err) {}
-        });
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+                .then(stream => {
+                    currentStream = stream;
+                    if (cameraVideo) cameraVideo.srcObject = currentStream;
+                })
+                .catch(err => {
+                    console.log('Camera access notice:', err);
+                });
+        }
+    }
+    window.openCameraModal = openCameraModal;
+
+    if (btnOpenCamera) {
+        btnOpenCamera.addEventListener('click', openCameraModal);
     }
 
     if (btnCloseCamera) {
@@ -2214,7 +2226,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (btnCapture) {
         btnCapture.addEventListener('click', async () => {
-            if (!currentStream || !cameraVideo) {
+            if (!currentStream || !cameraVideo || !cameraVideo.videoWidth) {
+                if (uploadGallery) {
+                    uploadGallery.click();
+                    return;
+                }
                 customAlert('Kamera tidak aktif atau izin belum diberikan.<br>Silakan gunakan tombol <strong>Galeri</strong> untuk memilih foto baki MBG.');
                 return;
             }
@@ -2859,24 +2875,37 @@ Kembalikan HANYA format JSON valid persis berikut tanpa markdown atau backtick:
             });
             itemsTableHtml += '</table>';
 
+            // Total Nutrition Box in summary
+            const targetMBG = (window.currentTargetNutrition && window.currentTargetNutrition.mbgTargetKal) || 807;
+            const pctKal = Math.round((totalKal / targetMBG) * 100);
+
+            const nutritionSummaryBox = 
+                '<div style="background:rgba(16,185,129,0.1); padding:0.9rem; border-radius:10px; margin-top:0.75rem; text-align:left; font-size:0.9rem; border:1px solid rgba(16,185,129,0.25);">' +
+                    '<div style="margin-bottom:0.35rem;">🔥 <strong>Total Kalori:</strong> ' + totalKal + ' kcal <span style="float:right; color:var(--text-light); font-weight:700;">(' + pctKal + '% Target 1x MBG)</span></div>' +
+                    '<div style="margin-bottom:0.35rem;">🌾 <strong>Karbohidrat:</strong> ' + totalKar + ' g</div>' +
+                    '<div style="margin-bottom:0.35rem;">🥩 <strong>Protein:</strong> ' + totalPro + ' g</div>' +
+                    '<div>💧 <strong>Lemak:</strong> ' + totalLem + ' g</div>' +
+                '</div>';
+
             window._aiDetectionSummary = 
                 '<div style="text-align:center; margin-bottom:0.8rem;">' +
-                    '<div class="yolo-preview-container" style="border-color:#2563eb;">' +
-                        '<img src="' + snapshotThumb + '" style="width:100%; display:block;" />' +
+                    '<div class="yolo-preview-container" style="border-color:#2563eb; max-width:360px; margin:0 auto; border-radius:10px; overflow:hidden;">' +
+                        '<img src="' + snapshotThumb + '" style="width:100%; display:block; object-fit:cover; max-height:220px;" />' +
                     '</div>' +
-                    '<span style="display:inline-block; margin-top:0.2rem; background:rgba(37,99,235,0.12); color:#2563eb; padding:0.35rem 0.9rem; border-radius:20px; font-size:0.83rem; font-weight:800; border:1px solid rgba(37,99,235,0.3);">' +
+                    '<span style="display:inline-block; margin-top:0.4rem; background:rgba(37,99,235,0.12); color:#2563eb; padding:0.35rem 0.9rem; border-radius:20px; font-size:0.83rem; font-weight:800; border:1px solid rgba(37,99,235,0.3);">' +
                         engineUsedLabel +
                     '</span>' +
                 '</div>' +
                 '<div style="background:white; padding:0.9rem; border-radius:10px; border:1px solid rgba(0,0,0,0.08); margin-bottom:0.8rem;">' +
                     '<strong style="font-size:0.9rem; color:var(--text-main);"><i class="fa-solid fa-utensils"></i> Rincian Menu & Nilai Gizi:</strong>' +
                     itemsTableHtml +
+                    nutritionSummaryBox +
                     (vlmAnalysisNote ? '<p style="margin-top:0.6rem; font-size:0.82rem; color:var(--text-light); background:rgba(37,99,235,0.05); padding:0.5rem 0.7rem; border-radius:6px; border-left:3px solid #2563eb;">💡 <em>' + vlmAnalysisNote + '</em></p>' : '') +
                     '<div style="display:flex; gap:0.5rem; margin-top:0.85rem; flex-wrap:wrap;">' +
-                        '<button type="button" class="btn btn-primary" style="flex:1; font-size:0.85rem;" onclick="openScreen(\'screen-dashboard-mbg\')">' +
-                            '📊 Lihat Evaluasi Gizi di Dashboard &rarr;' +
+                        '<button type="button" class="btn btn-primary" style="flex:1; font-size:0.85rem;" onclick="if(window.closeCustomAlert) window.closeCustomAlert(); openScreen(\'screen-dashboard-mbg\')">' +
+                            '📊 Buka Dashboard Evaluasi &rarr;' +
                         '</button>' +
-                        '<button type="button" class="btn btn-secondary" style="flex:1; font-size:0.85rem;" onclick="openScreen(\'screen-jurnal\')">' +
+                        '<button type="button" class="btn btn-secondary" style="flex:1; font-size:0.85rem;" onclick="if(window.closeCustomAlert) window.closeCustomAlert(); openScreen(\'screen-jurnal\')">' +
                             '🍱 Catat ke Jurnal MBG &rarr;' +
                         '</button>' +
                     '</div>' +
@@ -2884,10 +2913,48 @@ Kembalikan HANYA format JSON valid persis berikut tanpa markdown atau backtick:
 
         } catch (err) {
             console.error('AI Scan Error:', err);
+            if (!window._aiDetectionSummary) {
+                window._aiDetectionSummary = 
+                    '<p style="color:#ef4444; font-weight:600;">⚠️ Gagal memproses citra baki: ' + (err.message || 'Koneksi terputus') + '</p>' +
+                    '<p style="font-size:0.85rem; color:#64748b;">Silakan ambil ulang foto atau pilih foto dari galeri dengan pencahayaan cukup.</p>';
+            }
         } finally {
             closeCameraModal();
             window.openScreen('screen-kalkulator');
-            window.calculateNutrition(true);
+            window.calculateNutrition(true, true);
+
+            // 1. Tampilkan kartu hasil pemindaian di kontainer auto-detection-results
+            const autoResultsEl = document.getElementById('auto-detection-results');
+            if (autoResultsEl && window._aiDetectionSummary) {
+                autoResultsEl.innerHTML = window._aiDetectionSummary;
+                autoResultsEl.classList.remove('hidden');
+                autoResultsEl.style.display = 'block';
+            }
+
+            // 2. Perbarui layar pemindai kamera (viewfinder placeholder) dengan foto baki
+            const vPlaceholder = document.getElementById('camera-viewfinder-placeholder');
+            if (vPlaceholder && window.currentMealIntake && window.currentMealIntake.photoUrl) {
+                vPlaceholder.innerHTML = 
+                    '<div style="width:100%; max-width:480px; position:relative; border-radius:12px; overflow:hidden; box-shadow:0 4px 14px rgba(0,0,0,0.35);">' +
+                        '<img src="' + window.currentMealIntake.photoUrl + '" style="width:100%; display:block; object-fit:cover; max-height:260px;" alt="Baki MBG Terpindai" />' +
+                        '<div style="position:absolute; bottom:0; left:0; right:0; background:rgba(15,23,42,0.88); backdrop-filter:blur(6px); padding:0.55rem 0.8rem; color:#f8fafc; font-size:0.83rem; font-weight:700; text-align:center;">' +
+                            '📸 Foto Baki Makanan Terpindai & Selesai Dianalisis' +
+                        '</div>' +
+                    '</div>' +
+                    '<button type="button" class="btn btn-secondary mt-3" style="font-size:0.82rem; padding:0.4rem 0.9rem;" onclick="document.getElementById(\'btn-open-camera\').click()">' +
+                        '📷 Pindai Baki Lain' +
+                    '</button>';
+            }
+
+            // 3. TAMPILKAN POP-UP MODAL HASIL DETEKSI SECARA PASTI
+            setTimeout(() => {
+                if (window._aiDetectionSummary) {
+                    customAlert(
+                        '<strong style="font-size:1.15rem; color:var(--primary-color);">Hasil Pemindaian Baki Makanan MBG</strong><br><br>' +
+                        window._aiDetectionSummary
+                    );
+                }
+            }, 300);
         }
     }
 
