@@ -22,11 +22,9 @@ export default async function handler(req, res) {
         const effectiveKey = rawKey.replace('AIzaSyAQ.', 'AQ.').trim();
 
         const modelsToTry = [
-            'gemini-flash-lite-latest',
-            'gemini-2.5-flash-lite',
-            'gemini-3.5-flash-lite',
+            'gemini-1.5-flash',
             'gemini-2.0-flash',
-            'gemini-1.5-flash'
+            'gemini-1.5-pro'
         ];
 
         // ============================================================
@@ -73,6 +71,13 @@ export default async function handler(req, res) {
                 "susu": { kal: 65, pro: 3.2, kar: 4.8, lem: 3.5 },
                 "puding": { kal: 80, pro: 1.0, kar: 18.0, lem: 0.5 },
                 "semangka": { kal: 32, pro: 0.6, kar: 7.6, lem: 0.2 },
+                "melon": { kal: 36, pro: 0.8, kar: 8.5, lem: 0.2 },
+                "sayur bayam": { kal: 20, pro: 1.6, kar: 3.5, lem: 0.3 },
+                "bayam": { kal: 20, pro: 1.6, kar: 3.5, lem: 0.3 },
+                "tumis buncis": { kal: 45, pro: 1.8, kar: 5.5, lem: 2.2 },
+                "sayur capcay": { kal: 48, pro: 1.8, kar: 6.0, lem: 2.5 },
+                "sayur sop": { kal: 25, pro: 1.3, kar: 4.5, lem: 0.5 },
+                "sayur lodeh": { kal: 70, pro: 2.0, kar: 6.0, lem: 4.5 },
                 "telur mata sapi": { kal: 185, pro: 12.4, kar: 0.8, lem: 14.2 }
             };
 
@@ -163,7 +168,11 @@ Kembalikan HANYA format JSON valid persis berikut tanpa markdown atau backtick:
         }
 
         if (!effectiveKey) {
-            return res.status(400).json({ error: 'GEMINI_API_KEY belum dikonfigurasi di Vercel atau form' });
+            return res.status(200).json({
+                success: false,
+                fallback: true,
+                message: 'GEMINI_API_KEY tidak aktif, dialihkan ke analisis visual baki cepat on-device'
+            });
         }
 
         const cleanBase64 = image.includes(',') ? image.split(',')[1] : image;
@@ -259,6 +268,8 @@ Kembalikan HANYA format JSON valid persis berikut tanpa markdown atau backtick:
 
         for (const modelName of modelsToTry) {
             try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 6000);
                 const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(effectiveKey)}`;
                 const geminiRes = await fetch(endpoint, {
                     method: 'POST',
@@ -274,8 +285,10 @@ Kembalikan HANYA format JSON valid persis berikut tanpa markdown atau backtick:
                             temperature: 0.1,
                             responseMimeType: 'application/json'
                         }
-                    })
+                    }),
+                    signal: controller.signal
                 });
+                clearTimeout(timeoutId);
 
                 if (!geminiRes.ok) {
                     const errText = await geminiRes.text();
@@ -297,8 +310,18 @@ Kembalikan HANYA format JSON valid persis berikut tanpa markdown atau backtick:
             }
         }
 
-        return res.status(500).json({ error: lastError ? lastError.message : 'Semua model Gemini gagal merespons' });
+        return res.status(200).json({
+            success: false,
+            fallback: true,
+            error: lastError ? lastError.message : 'Semua model cloud timeout',
+            message: 'Beralih ke analisis visual baki cepat on-device'
+        });
     } catch (err) {
-        return res.status(500).json({ error: err.message || 'Internal Server Error' });
+        return res.status(200).json({
+            success: false,
+            fallback: true,
+            error: err.message,
+            message: 'Beralih ke analisis visual baki cepat on-device'
+        });
     }
 }

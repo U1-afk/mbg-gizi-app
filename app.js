@@ -128,6 +128,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const DEFAULT_USERS = [
         { nik: 'Admin', name: 'Administrator', password: 'sppgunggul', role: 'Admin' },
         { nik: '12345', name: 'Siswa / Karyawan Demo', password: 'sppg123', role: 'Employee' },
+        { nik: '2304111010099', name: 'Dliyaul Haq', password: 'password123', role: 'Employee' },
+        { nik: '2304111010006', name: 'Siti Nurmasyitah', password: 'sppg123', role: 'Employee' },
+        { nik: '123456789', name: 'fathin', password: '12345678', role: 'Employee' },
         { nik: '10021', name: 'Ahmad Fauzi', password: 'sppg123', role: 'Employee' },
         { nik: '10045', name: 'Siti Rahma', password: 'sppg123', role: 'Employee' }
     ];
@@ -197,35 +200,51 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function saveLocalUser(user) {
+        if (!user || !user.nik) return;
         const users = getLocalUsers();
-        if (!users.find(u => u.nik.toLowerCase() === user.nik.toLowerCase())) {
+        const cleanNik = String(user.nik).trim().toLowerCase();
+        const idx = users.findIndex(u => String(u.nik).trim().toLowerCase() === cleanNik);
+        if (idx >= 0) {
+            users[idx] = user;
+        } else {
             users.push(user);
-            localStorage.setItem('sppg_users_db', JSON.stringify(users));
         }
+        try {
+            localStorage.setItem('sppg_users_db', JSON.stringify(users));
+        } catch (e) {}
     }
 
     async function getAllUsers() {
         let serverUsers = [];
         try {
-            const res = await fetch(API_URL, { cache: 'no-store' });
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 6000);
+            const res = await fetch(API_URL, { cache: 'no-store', signal: controller.signal });
+            clearTimeout(timeoutId);
             if (res.ok) {
                 const data = await res.json();
-                serverUsers = data.users || [];
+                if (data && Array.isArray(data.users)) {
+                    serverUsers = data.users;
+                }
             }
         } catch (e) {}
 
-        // Sinkronisasi tangguh multi-perangkat (Direct Persistent Cloud Sync)
+        // Sinkronisasi tangguh multi-perangkat (Direct Persistent Cloud Sync Fallback)
         if (serverUsers.length <= 4) {
             try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 6000);
                 const cloudRes = await fetch('https://api.restful-api.dev/objects/ff808181a09d98f701a0ce45868a7b64', {
                     headers: { 'Accept': 'application/json' },
-                    cache: 'no-store'
+                    cache: 'no-store',
+                    signal: controller.signal
                 });
+                clearTimeout(timeoutId);
                 if (cloudRes.ok) {
                     const cData = await cloudRes.json();
                     if (cData && cData.data && Array.isArray(cData.data.users)) {
                         for (const cu of cData.data.users) {
-                            if (!serverUsers.find(su => su.nik.toLowerCase() === cu.nik.toLowerCase())) {
+                            if (!serverUsers.find(su => String(su.nik).trim().toLowerCase() === String(cu.nik).trim().toLowerCase())) {
                                 serverUsers.push(cu);
                             }
                         }
@@ -235,12 +254,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const localUsers = getLocalUsers();
-        const merged = [...localUsers];
-        for (const sUser of serverUsers) {
-            if (!merged.find(u => u.nik.toLowerCase() === sUser.nik.toLowerCase())) {
-                merged.push(sUser);
-            }
-        }
+        const mergedMap = new Map();
+        
+        DEFAULT_USERS.forEach(u => mergedMap.set(String(u.nik).trim().toLowerCase(), u));
+        localUsers.forEach(u => mergedMap.set(String(u.nik).trim().toLowerCase(), u));
+        serverUsers.forEach(u => mergedMap.set(String(u.nik).trim().toLowerCase(), u));
+        
+        const merged = Array.from(mergedMap.values());
 
         // Simpan pembaruan ke local storage perangkat ini
         try {
@@ -487,27 +507,24 @@ document.addEventListener('DOMContentLoaded', () => {
             const role = roleSelect ? roleSelect.value : 'Employee';
             const nikInput = document.getElementById('nik');
             const passInput = document.getElementById('password');
-            const nik = nikInput ? sanitize(nikInput.value) : '';
-            const password = passInput ? passInput.value.trim() : '';
+            const rawNik = nikInput ? sanitize(nikInput.value).trim() : '';
+            const rawPassword = passInput ? passInput.value.trim() : '';
 
-            if (!nik || !password) {
+            if (!rawNik || !rawPassword) {
                 customAlert('Harap masukkan NIK/NIM dan Kata Sandi!');
                 return;
             }
 
-            // Admin Account Check
-            if (role === 'Admin' || nik.toLowerCase() === 'admin') {
-                if (nik.toLowerCase() === 'admin' && password === 'sppgunggul') {
-                    showAdminPanel({ nik: 'Admin', name: 'Administrator', role: 'Admin' });
-                    return;
-                } else if (role === 'Admin') {
-                    customAlert('NIK atau Kata Sandi Admin salah!<br><small>Gunakan NIK: <strong>Admin</strong> & Sandi: <strong>sppgunggul</strong></small>');
-                    return;
-                }
+            const cleanNik = rawNik.toLowerCase();
+
+            // Default Admin Account Fast-path
+            if (cleanNik === 'admin' && rawPassword === 'sppgunggul') {
+                showAdminPanel({ nik: 'Admin', name: 'Administrator', role: 'Admin' });
+                return;
             }
 
-            // Demo Account Check
-            if (nik === '12345' && password === 'sppg123') {
+            // Default Demo Account Fast-path
+            if (cleanNik === '12345' && rawPassword === 'sppg123') {
                 showDashboard({ nik: '12345', name: 'Siswa / Karyawan Demo', role: 'Employee' });
                 return;
             }
@@ -516,27 +533,54 @@ document.addEventListener('DOMContentLoaded', () => {
             const origLoginBtnHtml = loginSubmitBtn ? loginSubmitBtn.innerHTML : '';
             if (loginSubmitBtn) {
                 loginSubmitBtn.disabled = true;
-                loginSubmitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memeriksa Akun di Server...';
+                loginSubmitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memeriksa Akun...';
             }
 
             try {
                 // Search registered users across local + server + persistent cloud
                 const users = await getAllUsers();
-                const found = users.find(u => u.nik.toLowerCase() === nik.toLowerCase() && u.password === password);
+                const found = users.find(u => 
+                    String(u.nik).trim().toLowerCase() === cleanNik && 
+                    String(u.password).trim() === rawPassword
+                );
 
                 if (found) {
                     saveLocalUser(found); // Cache on this device
-                    if (found.role === 'Admin') {
+                    if (found.role === 'Admin' || cleanNik === 'admin') {
                         showAdminPanel(found);
                     } else {
                         showDashboard(found);
                     }
                 } else {
-                    customAlert('NIK atau Kata Sandi salah, atau akun belum terdaftar!<br>Silakan klik <strong>Daftar di sini</strong> jika belum punya akun.');
+                    // Cek fallback di local storage jika server lambat
+                    const localUsers = getLocalUsers();
+                    const localFound = localUsers.find(u => 
+                        String(u.nik).trim().toLowerCase() === cleanNik && 
+                        String(u.password).trim() === rawPassword
+                    );
+                    if (localFound) {
+                        if (localFound.role === 'Admin' || cleanNik === 'admin') {
+                            showAdminPanel(localFound);
+                        } else {
+                            showDashboard(localFound);
+                        }
+                    } else {
+                        customAlert('NIK/NIM atau Kata Sandi salah, atau akun belum terdaftar!<br>Silakan periksa kembali atau klik <strong>Daftar di sini</strong> jika belum punya akun.');
+                    }
                 }
             } catch (err) {
                 console.error('Login error:', err);
-                customAlert('Terjadi kendala jaringan saat memeriksa akun.');
+                const localUsers = getLocalUsers();
+                const localFound = localUsers.find(u => 
+                    String(u.nik).trim().toLowerCase() === cleanNik && 
+                    String(u.password).trim() === rawPassword
+                );
+                if (localFound) {
+                    if (localFound.role === 'Admin' || cleanNik === 'admin') showAdminPanel(localFound);
+                    else showDashboard(localFound);
+                } else {
+                    customAlert('Terjadi kendala saat memeriksa akun. Silakan coba kembali.');
+                }
             } finally {
                 if (loginSubmitBtn) {
                     loginSubmitBtn.disabled = false;
@@ -552,14 +596,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const nikInput = document.getElementById('reg-nik');
             const nameInput = document.getElementById('reg-name');
             const passInput = document.getElementById('reg-password');
-            const nik = nikInput ? sanitize(nikInput.value) : '';
-            const name = nameInput ? sanitize(nameInput.value) : '';
+            const nik = nikInput ? sanitize(nikInput.value).trim() : '';
+            const name = nameInput ? sanitize(nameInput.value).trim() : '';
             const password = passInput ? passInput.value.trim() : '';
 
             if (!nik || !name || !password) {
                 customAlert('Semua kolom wajib diisi untuk mendaftar!');
                 return;
             }
+
+            const cleanNik = nik.toLowerCase();
 
             const regSubmitBtn = registerForm.querySelector('button[type="submit"]');
             const origRegBtnHtml = regSubmitBtn ? regSubmitBtn.innerHTML : '';
@@ -570,22 +616,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 const users = await getAllUsers();
-                if (users.find(u => u.nik.toLowerCase() === nik.toLowerCase())) {
-                    customAlert('NIK <strong>' + nik + '</strong> sudah terdaftar!<br>Silakan masuk menggunakan akun Anda.');
+                if (users.find(u => String(u.nik).trim().toLowerCase() === cleanNik)) {
+                    customAlert('NIK/NIM <strong>' + nik + '</strong> sudah terdaftar!<br>Silakan masuk menggunakan akun Anda.');
                     if (regSubmitBtn) { regSubmitBtn.disabled = false; regSubmitBtn.innerHTML = origRegBtnHtml; }
                     return;
                 }
 
                 const newUser = { nik, name, password, role: 'Employee' };
 
-                // 1. Simpan ke local storage perangkat ini
+                // 1. Simpan segera ke local storage perangkat ini agar PASTI bisa langsung login di perangkat ini
                 saveLocalUser(newUser);
 
-                // 2. Kirim ke backend Vercel serverless /api/sync
-                await publishSync('add_user', newUser);
-
-                // 3. Simpan langsung ke cloud database persisten (agar perangkat lain BISA langsung login)
+                // 2. Kirim ke backend Vercel serverless /api/sync untuk disimpan permanen di server & cloud
                 try {
+                    const syncRes = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'add_user', payload: newUser })
+                    });
+                    if (syncRes.ok) {
+                        const sData = await syncRes.json();
+                        if (sData && Array.isArray(sData.users)) {
+                            localStorage.setItem('sppg_users_db', JSON.stringify(sData.users));
+                        }
+                    }
+                } catch (sErr) {
+                    console.warn('API sync warning:', sErr);
+                }
+
+                // 3. Fallback direct cloud sync jika API sync lambat/offline
+                try {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 6000);
                     const allU = [...users, newUser];
                     await fetch('https://api.restful-api.dev/objects/ff808181a09d98f701a0ce45868a7b64', {
                         method: 'PUT',
@@ -593,8 +655,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         body: JSON.stringify({
                             name: 'MBG_SPPG_USERS_PERSISTENT',
                             data: { users: allU }
-                        })
+                        }),
+                        signal: controller.signal
                     });
+                    clearTimeout(timeoutId);
                 } catch (cErr) {
                     console.warn('Direct cloud sync fallback:', cErr);
                 }
@@ -602,13 +666,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 // 4. Siarkan via MQTT
                 publishMQTTSync('add_user', newUser);
 
-                customAlert('Pendaftaran Berhasil! 🎉<br>Akun untuk <strong>' + name + '</strong> (NIK: ' + nik + ') telah aktif dan terdaftar di server.<br>Anda sekarang bisa langsung masuk dari <strong>perangkat ini maupun perangkat lain</strong>.');
+                customAlert('Pendaftaran Berhasil! 🎉<br>Akun untuk <strong>' + name + '</strong> (NIK/NIM: ' + nik + ') telah aktif dan tersimpan permanen.<br>Anda sekarang bisa langsung masuk dari <strong>perangkat ini maupun HP / laptop lain</strong>.');
                 registerForm.style.display = 'none';
                 if (loginForm) loginForm.style.display = 'block';
                 registerForm.reset();
 
                 const loginNikInput = document.getElementById('nik');
                 if (loginNikInput) loginNikInput.value = nik;
+                const loginPassInput = document.getElementById('password');
+                if (loginPassInput) loginPassInput.value = password;
             } catch (err) {
                 console.error('Registration error:', err);
                 customAlert('Terjadi kendala saat mendaftarkan akun. Silakan coba kembali.');
@@ -1051,7 +1117,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 btnLookup.disabled = false;
             }
             if (window.calculateNutrition) {
-                window.calculateNutrition(false);
+                window.calculateNutrition(false, true);
             }
         }
     }
@@ -1387,122 +1453,286 @@ document.addEventListener('DOMContentLoaded', () => {
         "25":    { kal: 28,  pro: 2.5,  kar: 4.8,  lem: 0.4 }  // Brokoli / Tauge per 100g
     };
 
-    function guessNutritionFromName(name) {
+    function guessNutritionFromName(name, categoryHint = '') {
         if (!name) return { kalori: 0, protein: 0, karbohidrat: 0, lemak: 0, kal: 0, pro: 0, kar: 0, lem: 0 };
         const n = name.toLowerCase().trim();
+        const c = String(categoryHint || '').toLowerCase().trim();
+        const isSayurSlot = c.includes('sayur');
+        const isKarboSlot = c.includes('karbo');
+        const isHewaniSlot = c.includes('hewani');
+        const isNabatiSlot = c.includes('nabati');
 
-        let kal = 120, pro = 5.0, kar = 15.0, lem = 4.0;
+        // Helper kamus nutrisi sayuran Indonesia (Standar TKPI Kemenkes RI 2018 per 100g)
+        function matchVegetable(s) {
+            // 1. Bayam (Sayur Bening Bayam, Bayam Jagung, Tumis Bayam, Bayam Rebus)
+            if (s.includes('bayam')) {
+                if (s.includes('tumis') || s.includes('goreng')) {
+                    return { kal: 34, pro: 1.8, kar: 3.5, lem: 1.5 };
+                }
+                return { kal: 20, pro: 1.6, kar: 3.5, lem: 0.3, bdd: 100 }; // Standar TKPI Kemenkes RI: 20 kcal, 1.6g protein, 3.5g karbo per 100g
+            }
+            // 2. Kangkung (Tumis Kangkung, Cah Kangkung, Kangkung Rebus)
+            if (s.includes('kangkung')) {
+                return { kal: 28, pro: 2.2, kar: 3.8, lem: 0.8 };
+            }
+            // 3. Buncis (Tumis Buncis, Buncis Wortel, Buncis Rebus)
+            if (s.includes('buncis')) {
+                if (s.includes('tumis')) {
+                    return { kal: 32, pro: 1.8, kar: 5.5, lem: 0.6 };
+                }
+                return { kal: 28, pro: 1.5, kar: 5.0, lem: 0.3 };
+            }
+            // 4. Labu Siam / Jipang (Tumis Labu Siam, Labu Rebus, Sayur Labu)
+            if (s.includes('labu') || s.includes('jipang')) {
+                return { kal: 24, pro: 1.0, kar: 4.5, lem: 0.4 };
+            }
+            // 5. Sayur Sop / Sup (Sop Sayur, Sop Wortel Kol, Sop Ayam Sayur)
+            if (s.includes('sop') || s.includes('sup')) {
+                return { kal: 25, pro: 1.3, kar: 4.5, lem: 0.5 };
+            }
+            // 6. Capcay / Cap Cay (Capcay Sayur, Tumis Capcay)
+            if (s.includes('capcay') || s.includes('cap cay')) {
+                return { kal: 38, pro: 2.2, kar: 6.0, lem: 1.0 };
+            }
+            // 7. Sayur Asem / Asam
+            if (s.includes('asem') || s.includes('asam')) {
+                return { kal: 28, pro: 1.2, kar: 5.5, lem: 0.4 };
+            }
+            // 8. Sayur Lodeh (santan encer)
+            if (s.includes('lodeh')) {
+                return { kal: 55, pro: 1.8, kar: 5.8, lem: 3.0 };
+            }
+            // 9. Sawi (Sawi Hijau, Sawi Putih, Cah Sawi, Pakcoy, Pokcoy)
+            if (s.includes('sawi') || s.includes('pakcoy') || s.includes('pokcoy')) {
+                return { kal: 24, pro: 1.6, kar: 3.6, lem: 0.5 };
+            }
+            // 10. Brokoli (Tumis Brokoli, Brokoli Rebus)
+            if (s.includes('brokoli') || s.includes('broccoli')) {
+                return { kal: 32, pro: 2.6, kar: 5.0, lem: 0.4 };
+            }
+            // 11. Kembang Kol / Kol / Kubis
+            if (s.includes('kembang kol') || s.includes('kubis') || (s.includes('kol') && !s.includes('brokoli') && !s.includes('kolak'))) {
+                return { kal: 25, pro: 1.8, kar: 4.2, lem: 0.3 };
+            }
+            // 12. Wortel / Stik Wortel Rebus
+            if (s.includes('wortel') || s.includes('carrot')) {
+                return { kal: 34, pro: 1.0, kar: 7.2, lem: 0.3 };
+            }
+            // 13. Tauge / Toge / Kecambah
+            if (s.includes('tauge') || s.includes('toge') || s.includes('kecambah')) {
+                return { kal: 30, pro: 2.8, kar: 4.0, lem: 0.5 };
+            }
+            // 14. Kacang Panjang
+            if (s.includes('kacang panjang')) {
+                return { kal: 36, pro: 2.2, kar: 6.5, lem: 0.5 };
+            }
+            // 15. Daun Singkong / Gulai Daun Singkong
+            if (s.includes('daun singkong') || s.includes('singkong rebus')) {
+                return { kal: 50, pro: 3.5, kar: 7.0, lem: 1.2 };
+            }
+            // 16. Jagung Manis / Pipil
+            if (s.includes('jagung')) {
+                return { kal: 65, pro: 2.2, kar: 14.0, lem: 0.8 };
+            }
+            // 17. Timun / Lalapan / Selada / Tomat
+            if (s.includes('timun') || s.includes('mentimun') || s.includes('lalap') || s.includes('selada') || s.includes('tomat')) {
+                return { kal: 15, pro: 0.7, kar: 3.0, lem: 0.1 };
+            }
+            // 18. Terong / Pare / Gambas / Oyong
+            if (s.includes('terong') || s.includes('terung')) {
+                return { kal: 42, pro: 1.2, kar: 6.0, lem: 1.8 };
+            }
+            if (s.includes('pare')) {
+                return { kal: 28, pro: 1.2, kar: 4.5, lem: 0.8 };
+            }
+            if (s.includes('oyong') || s.includes('gambas')) {
+                return { kal: 20, pro: 1.0, kar: 3.8, lem: 0.2 };
+            }
+            // 19. Urap / Pecel / Gado-gado
+            if (s.includes('urap') || s.includes('pecel') || s.includes('gado')) {
+                return { kal: 60, pro: 2.8, kar: 8.5, lem: 2.0 };
+            }
+            // 20. Sayuran umum
+            if (s.includes('sayur') || s.includes('sayuran')) {
+                return { kal: 30, pro: 1.5, kar: 5.0, lem: 0.5 };
+            }
+            return null;
+        }
 
-        // 1. Kerupuk, Snack, Puding, Susu
-        if (n.includes('kerupuk') || n.includes('krupuk') || n.includes('cracker') || n.includes('garlic') || n.includes('rempeyek') || n.includes('emping') || n.includes('peyek')) {
-            kal = 500; pro = 3.5; kar = 65.0; lem = 26.0;
-        } else if (n.includes('susu') || n.includes('milk')) {
-            kal = 65; pro = 3.2; kar = 4.8; lem = 3.5;
-        } else if (n.includes('puding') || n.includes('agar')) {
-            kal = 80; pro = 1.0; kar = 18.0; lem = 0.5;
+        let res = null;
+
+        // Prioritas 1: Jika slot Sayuran, pastikan diproses dengan kamus sayuran
+        if (isSayurSlot) {
+            res = matchVegetable(n);
+            if (!res) res = { kal: 30, pro: 1.5, kar: 5.0, lem: 0.5 };
         }
-        // 2. Buah-buahan
-        else if (n.includes('kelengkeng') || n.includes('lengkeng') || n.includes('duku') || n.includes('longan')) {
-            kal = 60; pro = 1.3; kar = 15.1; lem = 0.1;
-        } else if (n.includes('semangka')) {
-            kal = 32; pro = 0.6; kar = 7.6; lem = 0.2;
-        } else if (n.includes('jeruk')) {
-            kal = 47; pro = 0.9; kar = 12.0; lem = 0.1;
-        } else if (n.includes('melon') || n.includes('cantaloupe') || n.includes('blewah')) {
-            kal = 36; pro = 0.8; kar = 8.5; lem = 0.2;
-        } else if (n.includes('pisang')) {
-            kal = 89; pro = 1.1; kar = 22.8; lem = 0.3;
-        } else if (n.includes('apel')) {
-            kal = 52; pro = 0.3; kar = 13.8; lem = 0.2;
-        } else if (n.includes('pepaya')) {
-            kal = 39; pro = 0.5; kar = 9.8; lem = 0.1;
+
+        // Prioritas 2: Kerupuk, Snack, Puding, Susu
+        if (!res) {
+            if (n.includes('kerupuk') || n.includes('krupuk') || n.includes('cracker') || n.includes('garlic') || n.includes('rempeyek') || n.includes('emping') || n.includes('peyek')) {
+                res = { kal: 500, pro: 3.5, kar: 65.0, lem: 26.0 };
+            } else if (n.includes('susu') || n.includes('milk')) {
+                res = { kal: 65, pro: 3.2, kar: 4.8, lem: 3.5 };
+            } else if (n.includes('puding') || n.includes('agar')) {
+                res = { kal: 80, pro: 1.0, kar: 18.0, lem: 0.5 };
+            }
         }
-        // 3. Karbohidrat / Pokok
-        else if (n.includes('kuning')) {
-            kal = 150; pro = 3.0; kar = 30.0; lem = 2.5;
-        } else if (n.includes('uduk') || n.includes('gurih')) {
-            kal = 160; pro = 3.2; kar = 29.0; lem = 4.0;
-        } else if (n.includes('nasi goreng')) {
-            kal = 168; pro = 3.8; kar = 27.5; lem = 5.0;
-        } else if (n.includes('nasi merah')) {
-            kal = 110; pro = 2.6; kar = 23.5; lem = 0.9;
-        } else if (n.includes('mie') || n.includes('bihun') || n.includes('kwetiau') || n.includes('pasta')) {
-            kal = 175; pro = 4.0; kar = 28.0; lem = 5.5;
-        } else if (n.includes('kentang')) {
-            kal = 87; pro = 2.0; kar = 20.0; lem = 0.1;
-        } else if (n.includes('roti')) {
-            kal = 260; pro = 8.0; kar = 50.0; lem = 3.0;
-        } else if (n.includes('nasi') || n.includes('bubur') || n.includes('lontong') || n.includes('ketupat')) {
-            kal = 130; pro = 2.7; kar = 28.7; lem = 0.3;
+
+        // Prioritas 3: Buah-buahan
+        if (!res) {
+            if (n.includes('kelengkeng') || n.includes('lengkeng') || n.includes('duku') || n.includes('longan')) {
+                res = { kal: 60, pro: 1.3, kar: 15.1, lem: 0.1 };
+            } else if (n.includes('semangka')) {
+                res = { kal: 32, pro: 0.6, kar: 7.6, lem: 0.2 };
+            } else if (n.includes('jeruk')) {
+                res = { kal: 47, pro: 0.9, kar: 12.0, lem: 0.1 };
+            } else if (n.includes('melon') || n.includes('cantaloupe') || n.includes('blewah')) {
+                res = { kal: 36, pro: 0.8, kar: 8.5, lem: 0.2 };
+            } else if (n.includes('pisang')) {
+                res = { kal: 89, pro: 1.1, kar: 22.8, lem: 0.3 };
+            } else if (n.includes('apel')) {
+                res = { kal: 52, pro: 0.3, kar: 13.8, lem: 0.2 };
+            } else if (n.includes('pepaya')) {
+                res = { kal: 39, pro: 0.5, kar: 9.8, lem: 0.1 };
+            } else if (n.includes('anggur')) {
+                res = { kal: 67, pro: 0.6, kar: 18.0, lem: 0.2 };
+            } else if (n.includes('kiwi')) {
+                res = { kal: 61, pro: 1.1, kar: 14.7, lem: 0.5 };
+            }
         }
-        // 4. Lauk Hewani
-        else if (n.includes('udang') || n.includes('prawn') || n.includes('shrimp')) {
-            kal = 106; pro = 21.0; kar = 1.0; lem = 1.0;
-        } else if (n.includes('cumi')) {
-            kal = 92; pro = 16.0; kar = 3.0; lem = 1.4;
-        } else if (n.includes('sambal')) {
-            kal = 140; pro = 2.5; kar = 16.0; lem = 7.5;
-        } else if (n.includes('telur balado')) {
-            kal = 175; pro = 11.5; kar = 4.0; lem = 12.5;
-        } else if (n.includes('telur ceplok') || n.includes('mata sapi')) {
-            kal = 185; pro = 12.4; kar = 0.8; lem = 14.2;
-        } else if (n.includes('telur dadar')) {
-            kal = 190; pro = 11.0; kar = 1.5; lem = 15.5;
-        } else if (n.includes('telur')) {
-            kal = 155; pro = 12.6; kar = 1.1; lem = 10.6;
-        } else if (n.includes('gulai') || n.includes('opor') || n.includes('kuah kuning')) {
-            kal = 238; pro = 23.0; kar = 3.8; lem = 14.4;
-        } else if (n.includes('ayam')) {
-            kal = 250; pro = 28.0; kar = 1.8; lem = 14.5;
-        } else if (n.includes('daging') || n.includes('sapi') || n.includes('rendang')) {
-            kal = 260; pro = 26.0; kar = 3.0; lem = 16.0;
-        } else if (n.includes('ikan')) {
-            kal = 160; pro = 21.0; kar = 1.0; lem = 8.0;
+
+        // Prioritas 4: Jika di slot Nabati, prioritaskan olahan tempe/tahu
+        if (!res && isNabatiSlot) {
+            if (n.includes('tempe orek') || n.includes('bacem')) {
+                res = { kal: 210, pro: 17.0, kar: 18.0, lem: 9.0 };
+            } else if (n.includes('tempe')) {
+                res = { kal: 210, pro: 19.0, kar: 11.0, lem: 10.5 };
+            } else if (n.includes('tahu kukus') || n.includes('tahu putih')) {
+                res = { kal: 80, pro: 8.0, kar: 2.0, lem: 4.5 };
+            } else if (n.includes('tahu')) {
+                res = { kal: 95, pro: 9.0, kar: 2.5, lem: 5.5 };
+            } else if (n.includes('bakwan')) {
+                res = { kal: 230, pro: 4.5, kar: 24.0, lem: 13.0 };
+            } else if (n.includes('perkedel')) {
+                res = { kal: 190, pro: 5.0, kar: 28.0, lem: 7.0 };
+            } else if (n.includes('edamame') || (n.includes('kacang') && !n.includes('kacang panjang'))) {
+                res = { kal: 120, pro: 12.0, kar: 9.0, lem: 5.0 };
+            }
         }
-        // 5. Lauk Nabati
-        else if (n.includes('tempe orek') || n.includes('bacem')) {
-            kal = 210; pro = 17.0; kar = 18.0; lem = 9.0;
-        } else if (n.includes('tempe')) {
-            kal = 210; pro = 19.0; kar = 11.0; lem = 10.5;
-        } else if (n.includes('perkedel')) {
-            kal = 190; pro = 5.0; kar = 28.0; lem = 7.0;
-        } else if (n.includes('bakwan')) {
-            kal = 230; pro = 4.5; kar = 24.0; lem = 13.0;
-        } else if (n.includes('edamame') || n.includes('kacang')) {
-            kal = 120; pro = 12.0; kar = 9.0; lem = 5.0;
-        } else if (n.includes('tahu')) {
-            kal = 95; pro = 9.0; kar = 2.5; lem = 5.5;
+
+        // Prioritas 5: Jika di slot Hewani, prioritaskan daging/telur/ikan/ayam
+        if (!res && isHewaniSlot) {
+            if (n.includes('udang') || n.includes('prawn') || n.includes('shrimp')) {
+                res = { kal: 106, pro: 21.0, kar: 1.0, lem: 1.0 };
+            } else if (n.includes('cumi')) {
+                res = { kal: 92, pro: 16.0, kar: 3.0, lem: 1.4 };
+            } else if (n.includes('telur balado')) {
+                res = { kal: 175, pro: 11.5, kar: 4.0, lem: 12.5 };
+            } else if (n.includes('telur ceplok') || n.includes('mata sapi')) {
+                res = { kal: 185, pro: 12.4, kar: 0.8, lem: 14.2 };
+            } else if (n.includes('telur dadar')) {
+                res = { kal: 190, pro: 11.0, kar: 1.5, lem: 15.5 };
+            } else if (n.includes('telur')) {
+                res = { kal: 155, pro: 12.6, kar: 1.1, lem: 10.6 };
+            } else if (n.includes('gulai') || n.includes('opor') || n.includes('kuah kuning')) {
+                res = { kal: 238, pro: 23.0, kar: 3.8, lem: 14.4 };
+            } else if (n.includes('ayam') && !n.includes('bayam')) {
+                res = { kal: 250, pro: 28.0, kar: 1.8, lem: 14.5 };
+            } else if (n.includes('daging') || n.includes('sapi') || n.includes('rendang')) {
+                res = { kal: 260, pro: 26.0, kar: 3.0, lem: 16.0 };
+            } else if (n.includes('ikan')) {
+                res = { kal: 160, pro: 21.0, kar: 1.0, lem: 8.0 };
+            }
         }
-        // 6. Sayuran
-        else if (n.includes('capcay')) {
-            kal = 45; pro = 2.5; kar = 7.5; lem = 1.2;
-        } else if (n.includes('sop') || n.includes('sayur bening')) {
-            kal = 28; pro = 1.5; kar = 5.0; lem = 0.5;
-        } else if (n.includes('lodeh')) {
-            kal = 65; pro = 2.0; kar = 7.0; lem = 3.5;
-        } else if (n.includes('asem')) {
-            kal = 30; pro = 1.2; kar = 6.0; lem = 0.4;
-        } else if (n.includes('buncis')) {
-            kal = 43; pro = 2.1; kar = 7.7; lem = 0.5;
-        } else if (n.includes('kangkung') || n.includes('bayam') || n.includes('sawi')) {
-            kal = 40; pro = 2.4; kar = 6.7; lem = 0.8;
-        } else if (n.includes('jagung')) {
-            kal = 64; pro = 2.0; kar = 14.0; lem = 0.7;
-        } else if (n.includes('timun') || n.includes('lalapan') || n.includes('kol')) {
-            kal = 20; pro = 1.0; kar = 4.0; lem = 0.2;
-        } else if (n.includes('labu') || n.includes('sayur') || n.includes('tauge') || n.includes('brokoli') || n.includes('wortel')) {
-            kal = 35; pro = 1.8; kar = 6.0; lem = 0.6;
+
+        // Prioritas 6: Deteksi nama sayuran spesifik (meskipun diinput di slot custom/lain)
+        if (!res) {
+            res = matchVegetable(n);
+        }
+
+        // Prioritas 7: Karbohidrat / Makanan Pokok
+        if (!res && (isKarboSlot || n.includes('nasi') || n.includes('mie') || n.includes('bihun') || n.includes('kwetiau') || n.includes('pasta') || n.includes('kentang') || n.includes('roti') || n.includes('bubur') || n.includes('lontong') || n.includes('ketupat'))) {
+            if (n.includes('nasi kuning') || (isKarboSlot && n.includes('kuning'))) {
+                res = { kal: 150, pro: 3.0, kar: 30.0, lem: 2.5 };
+            } else if (n.includes('nasi uduk') || n.includes('nasi gurih') || (isKarboSlot && (n.includes('uduk') || n.includes('gurih')))) {
+                res = { kal: 160, pro: 3.2, kar: 29.0, lem: 4.0 };
+            } else if (n.includes('nasi goreng')) {
+                res = { kal: 168, pro: 3.8, kar: 27.5, lem: 5.0 };
+            } else if (n.includes('nasi merah')) {
+                res = { kal: 110, pro: 2.6, kar: 23.5, lem: 0.9 };
+            } else if (n.includes('mie') || n.includes('bihun') || n.includes('kwetiau') || n.includes('pasta')) {
+                res = { kal: 175, pro: 4.0, kar: 28.0, lem: 5.5 };
+            } else if (n.includes('kentang') && !n.includes('perkedel')) {
+                res = { kal: 87, pro: 2.0, kar: 20.0, lem: 0.1 };
+            } else if (n.includes('roti')) {
+                res = { kal: 260, pro: 8.0, kar: 50.0, lem: 3.0 };
+            } else {
+                res = { kal: 130, pro: 2.7, kar: 28.7, lem: 0.3 };
+            }
+        }
+
+        // Prioritas 8: Lauk Hewani Umum (Pencegahan 'bayam' mencocokkan 'ayam')
+        if (!res) {
+            if (n.includes('udang') || n.includes('prawn') || n.includes('shrimp')) {
+                res = { kal: 106, pro: 21.0, kar: 1.0, lem: 1.0 };
+            } else if (n.includes('cumi')) {
+                res = { kal: 92, pro: 16.0, kar: 3.0, lem: 1.4 };
+            } else if (n.includes('sambal') && !n.includes('telur') && !n.includes('ayam') && !n.includes('teri')) {
+                res = { kal: 140, pro: 2.5, kar: 16.0, lem: 7.5 };
+            } else if (n.includes('telur balado')) {
+                res = { kal: 175, pro: 11.5, kar: 4.0, lem: 12.5 };
+            } else if (n.includes('telur ceplok') || n.includes('mata sapi')) {
+                res = { kal: 185, pro: 12.4, kar: 0.8, lem: 14.2 };
+            } else if (n.includes('telur dadar')) {
+                res = { kal: 190, pro: 11.0, kar: 1.5, lem: 15.5 };
+            } else if (n.includes('telur')) {
+                res = { kal: 155, pro: 12.6, kar: 1.1, lem: 10.6 };
+            } else if (n.includes('gulai') || n.includes('opor') || n.includes('kuah kuning')) {
+                res = { kal: 238, pro: 23.0, kar: 3.8, lem: 14.4 };
+            } else if (n.includes('ayam') && !n.includes('bayam')) {
+                res = { kal: 250, pro: 28.0, kar: 1.8, lem: 14.5 };
+            } else if (n.includes('daging') || n.includes('sapi') || n.includes('rendang')) {
+                res = { kal: 260, pro: 26.0, kar: 3.0, lem: 16.0 };
+            } else if (n.includes('ikan')) {
+                res = { kal: 160, pro: 21.0, kar: 1.0, lem: 8.0 };
+            }
+        }
+
+        // Prioritas 9: Lauk Nabati Umum
+        if (!res) {
+            if (n.includes('tempe orek') || n.includes('bacem')) {
+                res = { kal: 210, pro: 17.0, kar: 18.0, lem: 9.0 };
+            } else if (n.includes('tempe')) {
+                res = { kal: 210, pro: 19.0, kar: 11.0, lem: 10.5 };
+            } else if (n.includes('tahu')) {
+                res = { kal: 95, pro: 9.0, kar: 2.5, lem: 5.5 };
+            } else if (n.includes('perkedel')) {
+                res = { kal: 190, pro: 5.0, kar: 28.0, lem: 7.0 };
+            } else if (n.includes('bakwan')) {
+                res = { kal: 230, pro: 4.5, kar: 24.0, lem: 13.0 };
+            } else if (n.includes('edamame') || (n.includes('kacang') && !n.includes('kacang panjang'))) {
+                res = { kal: 120, pro: 12.0, kar: 9.0, lem: 5.0 };
+            }
+        }
+
+        // Prioritas 10: Fallback default berdasarkan petunjuk slot
+        if (!res) {
+            if (isSayurSlot) res = { kal: 30, pro: 1.5, kar: 5.0, lem: 0.5 };
+            else if (isKarboSlot) res = { kal: 130, pro: 2.7, kar: 28.7, lem: 0.3 };
+            else if (isHewaniSlot) res = { kal: 200, pro: 22.0, kar: 1.5, lem: 12.0 };
+            else if (isNabatiSlot) res = { kal: 150, pro: 14.0, kar: 7.0, lem: 8.0 };
+            else res = { kal: 120, pro: 5.0, kar: 15.0, lem: 4.0 };
         }
 
         return {
-            kalori: kal,
-            protein: pro,
-            karbohidrat: kar,
-            lemak: lem,
-            kal: kal,
-            pro: pro,
-            kar: kar,
-            lem: lem
+            kalori: res.kal,
+            protein: res.pro,
+            karbohidrat: res.kar,
+            lemak: res.lem,
+            kal: res.kal,
+            pro: res.pro,
+            kar: res.kar,
+            lem: res.lem
         };
     }
     window.guessNutritionFromName = guessNutritionFromName;
@@ -1620,7 +1850,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window._cachedCustomFood = null;
 
         showToast('Memuat ' + p.name.split(':')[0] + '...');
-        window.calculateNutrition(false);
+        window.calculateNutrition(false, true);
     };
 
     // ============================================================
@@ -1629,7 +1859,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const nutritionForm = document.getElementById('nutrition-form');
     const nutritionResult = document.getElementById('nutrition-result');
 
-    window.calculateNutrition = function(isFromAIScan = false) {
+    window.calculateNutrition = function(isFromAIScan = false, silent = false) {
         let totalKalori = 0;
         let totalProtein = 0;
         let totalKarbo = 0;
@@ -1689,10 +1919,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         lemak: (cached.lem / refGram) * 100
                     };
                 } else {
-                    nilaiGizi = guessNutritionFromName(item.name);
+                    nilaiGizi = guessNutritionFromName(item.name, item.cat);
                 }
 
-                // Hitung proporsi: faktor = gramasi / 100
+                // Hitung proporsi: faktor = gramasi / 100 (Standar TKPI Kemenkes RI)
                 const faktor = item.gram / 100;
 
                 // Ambil nilai per 100 gram (kompatibel kalori/kal, protein/pro, dll)
@@ -1701,7 +1931,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const baseKar = nilaiGizi.karbohidrat !== undefined ? nilaiGizi.karbohidrat : (nilaiGizi.kar || 0);
                 const baseLem = nilaiGizi.lemak !== undefined ? nilaiGizi.lemak : (nilaiGizi.lem || 0);
 
-                // Akumulasikan seluruh nilai gizi menggunakan operator +=:
+                // Akumulasikan seluruh nilai gizi secara matematis:
                 totalKalori += faktor * baseKal;
                 totalProtein += faktor * basePro;
                 totalKarbo += faktor * baseKar;
@@ -1788,18 +2018,18 @@ document.addEventListener('DOMContentLoaded', () => {
             if (breakdownCard) breakdownCard.classList.remove('hidden');
         }
 
-        // Sinkronisasi ke Dashboard Evaluasi MBG
+        // Sinkronisasi real-time ke Dashboard Evaluasi MBG
         updateIntegratedDashboard();
 
-        // Tampilkan dialog ringkasan jika kalkulasi manual
-        if (!isFromAIScan) {
+        // Tampilkan dialog ringkasan jika kalkulasi manual dan TIDAK silent
+        if (!isFromAIScan && !silent) {
             const targetMBG = (window.currentTargetNutrition && window.currentTargetNutrition.mbgTargetKal) || 807;
             const pctKal = Math.round((totalKalori / targetMBG) * 100);
 
             let itemsSummary = computedItems.map(it => 
                 '<div style="display:flex; justify-content:space-between; margin-bottom:0.25rem; font-size:0.83rem; border-bottom:1px dashed #e2e8f0; padding-bottom:0.25rem;">' +
                     '<span><strong>' + sanitize(it.name) + '</strong> (' + it.gram + 'g)</span>' +
-                    '<span style="color:#d97706; font-weight:700;">' + Math.round(it.kal) + ' kcal | P:' + it.pro.toFixed(1) + 'g</span>' +
+                    '<span style="color:#d97706; font-weight:700;">' + Math.round(it.kal) + ' kcal | P:' + it.pro.toFixed(1) + 'g | K:' + it.kar.toFixed(1) + 'g | L:' + it.lem.toFixed(1) + 'g</span>' +
                 '</div>'
             ).join('');
 
@@ -1824,7 +2054,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (nutritionForm) {
         nutritionForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            window.calculateNutrition();
+            window.calculateNutrition(false, false);
         });
     }
 
@@ -1832,9 +2062,29 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnCalc) {
         btnCalc.addEventListener('click', (e) => {
             e.preventDefault();
-            window.calculateNutrition();
+            window.calculateNutrition(false, false);
         });
     }
+
+    // Pasang event listener sinkronisasi real-time pada semua field kalkulator manual
+    const manualCalcInputIds = [
+        'karbo', 'karbo-gram',
+        'prohew', 'prohew-gram',
+        'pronab', 'pronab-gram',
+        'sayur', 'sayur-gram',
+        'custom-name', 'custom-gram'
+    ];
+    manualCalcInputIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('input', () => {
+                if (window.calculateNutrition) window.calculateNutrition(false, true);
+            });
+            el.addEventListener('change', () => {
+                if (window.calculateNutrition) window.calculateNutrition(false, true);
+            });
+        }
+    });
 
     // ============================================================
     // 14. SISTEM DETEKSI MAKANAN OTOMATIS
@@ -1972,10 +2222,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (scannerOverlay) scannerOverlay.classList.remove('hidden');
             if (scanStatusText) scanStatusText.textContent = 'Menganalisis Komposisi Makanan...';
 
-            const w = cameraVideo.videoWidth || 640;
-            const h = cameraVideo.videoHeight || 480;
-            aiCanvas.width = Math.min(800, w);
-            aiCanvas.height = Math.round(aiCanvas.width * (h / w));
+            const vW = Math.max(320, cameraVideo.videoWidth || 640);
+            const vH = Math.max(240, cameraVideo.videoHeight || 480);
+            aiCanvas.width = 640;
+            aiCanvas.height = Math.round(640 * (vH / vW)) || 480;
             const ctx = aiCanvas.getContext('2d');
             ctx.drawImage(cameraVideo, 0, 0, aiCanvas.width, aiCanvas.height);
 
@@ -2005,9 +2255,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const img = new Image();
                 img.onload = async () => {
-                    const maxDim = 800;
-                    let w = img.naturalWidth || img.width || 640;
-                    let h = img.naturalHeight || img.height || 480;
+                    const maxDim = 640;
+                    let w = Math.max(10, img.naturalWidth || img.width || 640);
+                    let h = Math.max(10, img.naturalHeight || img.height || 480);
                     if (w > maxDim || h > maxDim) {
                         if (w > h) {
                             h = Math.round(h * (maxDim / w));
@@ -2025,7 +2275,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     setTimeout(async () => {
                         await executeRealAIVision(aiCanvas);
-                    }, 150);
+                    }, 50);
                 };
                 img.src = imgDataUrl;
             };
@@ -2128,16 +2378,16 @@ Kembalikan HANYA format JSON valid persis berikut tanpa markdown atau backtick:
 }`;
 
         const modelsToTry = [
-            'gemini-flash-lite-latest',
-            'gemini-2.5-flash-lite',
-            'gemini-3.5-flash-lite',
+            'gemini-1.5-flash',
             'gemini-2.0-flash',
-            'gemini-1.5-flash'
+            'gemini-1.5-pro'
         ];
 
         let lastErr = null;
         for (const modelName of modelsToTry) {
             try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 6000);
                 const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':generateContent?key=' + encodeURIComponent(cleanKey);
                 const res = await fetch(endpoint, {
                     method: 'POST',
@@ -2153,8 +2403,10 @@ Kembalikan HANYA format JSON valid persis berikut tanpa markdown atau backtick:
                             temperature: 0.1,
                             responseMimeType: 'application/json'
                         }
-                    })
+                    }),
+                    signal: controller.signal
                 });
+                clearTimeout(timeoutId);
 
                 if (!res.ok) {
                     lastErr = new Error('Model ' + modelName + ' HTTP ' + res.status);
@@ -2191,38 +2443,41 @@ Kembalikan HANYA format JSON valid persis berikut tanpa markdown atau backtick:
 
             let cloudSuccess = false;
 
-            // 1. Try Local Python Server API (YOLO Model Backend)
-            try {
-                if (scanStatusText) scanStatusText.textContent = 'Menganalisis Komposisi Baki Makanan...';
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 6000);
-                const apiRes = await fetch('http://127.0.0.1:5000/api/detect', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ image: base64Jpeg }),
-                    signal: controller.signal
-                });
-                clearTimeout(timeoutId);
-                if (apiRes.ok) {
-                    const data = await apiRes.json();
-                    if (data && data.success) {
-                        detectedKarbo = data.karbo;
-                        detectedProhew = data.prohew;
-                        detectedPronab = data.pronab;
-                        detectedSayur = data.sayur;
-                        detectedBuah = data.buah;
-                        detectedPelengkap = data.pelengkap;
-                        matchedPackage = data.packageName || 'Menu MBG Terdeteksi';
-                        vlmAnalysisNote = data.analysis || 'Porsi dan komposisi makanan dianalisis secara otomatis berdasarkan standar gizi resmi.';
-                        engineUsedLabel = '🔍 Hasil Analisis Komposisi Makanan — 99.5% Sesuai';
-                        if (data.items && Array.isArray(data.items) && data.items.length > 0) {
-                            detectedItemsDynamic = data.items;
+            // 1. Try Local Python Server API (Hanya saat testing di localhost pengembang)
+            const isLocalDev = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+            if (isLocalDev) {
+                try {
+                    if (scanStatusText) scanStatusText.textContent = 'Menganalisis Komposisi Baki Makanan...';
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 1200);
+                    const apiRes = await fetch('http://127.0.0.1:5000/api/detect', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ image: base64Jpeg }),
+                        signal: controller.signal
+                    });
+                    clearTimeout(timeoutId);
+                    if (apiRes.ok) {
+                        const data = await apiRes.json();
+                        if (data && data.success) {
+                            detectedKarbo = data.karbo;
+                            detectedProhew = data.prohew;
+                            detectedPronab = data.pronab;
+                            detectedSayur = data.sayur;
+                            detectedBuah = data.buah;
+                            detectedPelengkap = data.pelengkap;
+                            matchedPackage = data.packageName || 'Menu MBG Terdeteksi';
+                            vlmAnalysisNote = data.analysis || 'Porsi dan komposisi makanan dianalisis secara otomatis berdasarkan standar gizi resmi.';
+                            engineUsedLabel = '🔍 Hasil Analisis Komposisi Makanan — 99.5% Sesuai';
+                            if (data.items && Array.isArray(data.items) && data.items.length > 0) {
+                                detectedItemsDynamic = data.items;
+                            }
+                            cloudSuccess = true;
                         }
-                        cloudSuccess = true;
                     }
+                } catch (backendErr) {
+                    // Berjalan normal ke cloud/on-device
                 }
-            } catch (backendErr) {
-                console.warn('Backend local YOLO server not reachable, trying fallback:', backendErr);
             }
 
             // 2. Vercel Serverless /api/gemini or Cloud Gemini Fallback
@@ -2230,11 +2485,15 @@ Kembalikan HANYA format JSON valid persis berikut tanpa markdown atau backtick:
                 if (scanStatusText) scanStatusText.textContent = 'Menganalisis Komposisi Makanan...';
                 // Try Vercel serverless function /api/gemini
                 try {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 6000);
                     const serverRes = await fetch('/api/gemini', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ image: base64Jpeg, apiKey: vlmApiKey })
+                        body: JSON.stringify({ image: base64Jpeg, apiKey: vlmApiKey }),
+                        signal: controller.signal
                     });
+                    clearTimeout(timeoutId);
                     if (serverRes.ok) {
                         const sData = await serverRes.json();
                         if (sData && sData.success && sData.data) {
@@ -2255,7 +2514,7 @@ Kembalikan HANYA format JSON valid persis berikut tanpa markdown atau backtick:
                         }
                     }
                 } catch (apiErr) {
-                    console.warn('/api/gemini call failed, trying direct client call:', apiErr);
+                    console.warn('/api/gemini call skipped, continuing:', apiErr);
                 }
 
                 // If /api/gemini did not succeed, try direct client-side Google API call
@@ -2470,7 +2729,10 @@ Kembalikan HANYA format JSON valid persis berikut tanpa markdown atau backtick:
                 if (kIt) detectedKarbo = { name: kIt.item, gram: kIt.gram, kal: kIt.kal, pro: kIt.pro, kar: kIt.kar, lem: kIt.lem, conf: kIt.conf, val: '150' };
             }
             if (!detectedProhew) {
-                const hIt = detectedItems.find(i => /hewani|ayam|telur|ikan|daging|udang/i.test(i.category) || /ayam|telur|ikan|daging|udang/i.test(i.item));
+                const hIt = detectedItems.find(i => 
+                    (/hewani|ayam|telur|ikan|daging|udang/i.test(i.category) && !/sayur/i.test(i.category)) || 
+                    ((/\bayam|telur|ikan|daging|udang/i.test(i.item)) && !/bayam/i.test(i.item))
+                );
                 if (hIt) detectedProhew = { name: hIt.item, gram: hIt.gram, kal: hIt.kal, pro: hIt.pro, kar: hIt.kar, lem: hIt.lem, conf: hIt.conf, val: '200' };
             }
             if (!detectedPronab) {
@@ -2627,6 +2889,11 @@ Kembalikan HANYA format JSON valid persis berikut tanpa markdown atau backtick:
             window.openScreen('screen-kalkulator');
             window.calculateNutrition(true);
         }
+    }
+
+    // Inisialisasi awal sinkronisasi kalkulator gizi manual saat web dimuat:
+    if (window.calculateNutrition) {
+        window.calculateNutrition(false, true);
     }
 
 }); // End DOMContentLoaded

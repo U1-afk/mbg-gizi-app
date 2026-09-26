@@ -58,7 +58,10 @@ let db = {
     ],
     users: [
         { nik: 'Admin', name: 'Administrator', password: 'sppgunggul', role: 'Admin' },
-        { nik: '12345', name: 'Karyawan Demo', password: 'sppg123', role: 'Employee' },
+        { nik: '12345', name: 'Siswa / Karyawan Demo', password: 'sppg123', role: 'Employee' },
+        { nik: '2304111010099', name: 'Dliyaul Haq', password: 'password123', role: 'Employee' },
+        { nik: '2304111010006', name: 'Siti Nurmasyitah', password: 'sppg123', role: 'Employee' },
+        { nik: '123456789', name: 'fathin', password: '12345678', role: 'Employee' },
         { nik: '10021', name: 'Ahmad Fauzi', password: 'sppg123', role: 'Employee' },
         { nik: '10045', name: 'Siti Rahma', password: 'sppg123', role: 'Employee' }
     ]
@@ -72,7 +75,7 @@ function sanitizeString(str) {
 async function fetchCloudUsers() {
     try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2000);
+        const timeoutId = setTimeout(() => controller.abort(), 6000);
         const res = await fetch(`https://api.restful-api.dev/objects/${CLOUD_USERS_ID}`, {
             headers: { 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0' },
             signal: controller.signal
@@ -90,14 +93,18 @@ async function fetchCloudUsers() {
 
 async function saveCloudUsers(usersList) {
     try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 6000);
         await fetch(`https://api.restful-api.dev/objects/${CLOUD_USERS_ID}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0' },
             body: JSON.stringify({
                 name: 'MBG_SPPG_USERS_PERSISTENT',
                 data: { users: usersList }
-            })
+            }),
+            signal: controller.signal
         });
+        clearTimeout(timeoutId);
     } catch (e) {}
 }
 
@@ -222,11 +229,29 @@ export default async function handler(req, res) {
             p.nik = sanitizeString(p.nik);
             p.name = sanitizeString(p.name);
             p.password = sanitizeString(p.password);
-            if (!db.users.find(u => u.nik.toLowerCase() === p.nik.toLowerCase())) {
+            p.role = p.role || 'Employee';
+
+            // Ambil data terbaru dari cloud terlebih dahulu agar akun lain tidak tertimpa!
+            const cloudUsers = await fetchCloudUsers();
+            if (cloudUsers && Array.isArray(cloudUsers)) {
+                for (const cu of cloudUsers) {
+                    if (cu && cu.nik && !db.users.find(u => String(u.nik).toLowerCase() === String(cu.nik).toLowerCase())) {
+                        db.users.push(cu);
+                    }
+                }
+            }
+
+            const existingIdx = db.users.findIndex(u => String(u.nik).toLowerCase() === String(p.nik).toLowerCase());
+            if (existingIdx >= 0) {
+                db.users[existingIdx] = p;
+            } else {
                 db.users.push(p);
             }
+
             // Simpan permanen ke cloud store
             await saveCloudUsers(db.users);
+            res.status(200).json({ success: true, user: p, users: db.users });
+            return;
         } else if (body.action === 'add_history' && body.payload) {
             const h = body.payload;
             h.user = sanitizeString(h.user);
