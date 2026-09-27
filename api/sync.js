@@ -57,15 +57,39 @@ let db = {
         }
     ],
     users: [
-        { nik: 'Admin', name: 'Administrator', password: 'sppgunggul', role: 'Admin' },
-        { nik: '12345', name: 'Siswa / Karyawan Demo', password: 'sppg123', role: 'Employee' },
-        { nik: '2304111010099', name: 'Dliyaul Haq', password: 'password123', role: 'Employee' },
-        { nik: '2304111010006', name: 'Siti Nurmasyitah', password: 'sppg123', role: 'Employee' },
-        { nik: '123456789', name: 'fathin', password: '12345678', role: 'Employee' },
-        { nik: '10021', name: 'Ahmad Fauzi', password: 'sppg123', role: 'Employee' },
-        { nik: '10045', name: 'Siti Rahma', password: 'sppg123', role: 'Employee' }
+        { nik: 'Admin', username: 'admin', name: 'Administrator', password: 'sppgunggul', role: 'Admin' },
+        { nik: '12345', username: 'demo', name: 'Siswa / Karyawan Demo', password: 'sppg123', role: 'Employee' },
+        { nik: '2304111010099', username: 'dliyaul', name: 'Dliyaul Haq', password: 'password123', role: 'Employee' },
+        { nik: '2304111010006', username: 'siti', name: 'Siti Nurmasyitah', password: 'sppg123', role: 'Employee' },
+        { nik: '123456789', username: 'fathin', name: 'fathin', password: '12345678', role: 'Employee' },
+        { nik: '10021', username: 'ahmad', name: 'Ahmad Fauzi', password: 'sppg123', role: 'Employee' },
+        { nik: '10045', username: 'rahma', name: 'Siti Rahma', password: 'sppg123', role: 'Employee' },
+        { nik: '300666', username: 'yaka', name: 'yaka', password: 'terserah', role: 'Employee' }
     ]
 };
+
+function isUserMatch(u, identifier) {
+    if (!u || !identifier) return false;
+    const target = String(identifier).trim().toLowerCase();
+    if (!target) return false;
+    const targetNoSpace = target.replace(/\s+/g, '');
+
+    if (u.nik) {
+        const uNik = String(u.nik).trim().toLowerCase();
+        if (uNik === target || uNik.replace(/\s+/g, '') === targetNoSpace) return true;
+    }
+    if (u.username) {
+        const uUser = String(u.username).trim().toLowerCase();
+        if (uUser === target || uUser.replace(/\s+/g, '') === targetNoSpace) return true;
+    }
+    if (u.name) {
+        const uName = String(u.name).trim().toLowerCase();
+        if (uName === target || uName.replace(/\s+/g, '') === targetNoSpace) return true;
+        const firstName = uName.split(/\s+/)[0];
+        if (firstName && firstName === target) return true;
+    }
+    return false;
+}
 
 function sanitizeString(str) {
     if (typeof str !== 'string') return str;
@@ -230,20 +254,28 @@ export default async function handler(req, res) {
             p.name = sanitizeString(p.name);
             p.password = sanitizeString(p.password);
             p.role = p.role || 'Employee';
+            if (!p.username) {
+                p.username = isNaN(p.nik) ? String(p.nik).toLowerCase() : (p.name ? String(p.name).toLowerCase().replace(/\s+/g, '') : String(p.nik));
+            } else {
+                p.username = sanitizeString(p.username);
+            }
 
             // Ambil data terbaru dari cloud terlebih dahulu agar akun lain tidak tertimpa!
             const cloudUsers = await fetchCloudUsers();
             if (cloudUsers && Array.isArray(cloudUsers)) {
                 for (const cu of cloudUsers) {
-                    if (cu && cu.nik && !db.users.find(u => String(u.nik).toLowerCase() === String(cu.nik).toLowerCase())) {
+                    if (cu && cu.nik && !db.users.find(u => isUserMatch(u, cu.nik) || (cu.username && isUserMatch(u, cu.username)))) {
+                        if (!cu.username) {
+                            cu.username = isNaN(cu.nik) ? String(cu.nik).toLowerCase() : (cu.name ? String(cu.name).toLowerCase().replace(/\s+/g, '') : String(cu.nik));
+                        }
                         db.users.push(cu);
                     }
                 }
             }
 
-            const existingIdx = db.users.findIndex(u => String(u.nik).toLowerCase() === String(p.nik).toLowerCase());
+            const existingIdx = db.users.findIndex(u => isUserMatch(u, p.nik) || (p.username && isUserMatch(u, p.username)));
             if (existingIdx >= 0) {
-                db.users[existingIdx] = p;
+                db.users[existingIdx] = { ...db.users[existingIdx], ...p };
             } else {
                 db.users.push(p);
             }
