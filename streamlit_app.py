@@ -26,11 +26,34 @@ def render_html(html_str):
 # INISIALISASI DATABASE PENGGUNA & RIWAYAT SESI STREAMLIT
 # ==============================================================================
 DEFAULT_USERS = [
-    {"nik": "Admin", "name": "Administrator SPPG", "password": "sppgunggul", "role": "Admin"},
-    {"nik": "12345", "name": "Siswa / Karyawan Demo", "password": "sppg123", "role": "Employee"},
-    {"nik": "10021", "name": "Ahmad Fauzi", "password": "sppg123", "role": "Employee"},
-    {"nik": "10045", "name": "Siti Rahma", "password": "sppg123", "role": "Employee"}
+    {"nik": "Admin", "username": "admin", "name": "Administrator SPPG", "password": "sppgunggul", "role": "Admin"},
+    {"nik": "12345", "username": "demo", "name": "Siswa / Karyawan Demo", "password": "sppg123", "role": "Employee"},
+    {"nik": "2304111010099", "username": "dliyaul", "name": "Dliyaul Haq", "password": "password123", "role": "Employee"},
+    {"nik": "2304111010006", "username": "siti", "name": "Siti Nurmasyitah", "password": "sppg123", "role": "Employee"},
+    {"nik": "123456789", "username": "fathin", "name": "fathin", "password": "12345678", "role": "Employee"},
+    {"nik": "10021", "username": "ahmad", "name": "Ahmad Fauzi", "password": "sppg123", "role": "Employee"},
+    {"nik": "10045", "username": "rahma", "name": "Siti Rahma", "password": "sppg123", "role": "Employee"},
+    {"nik": "300666", "username": "yaka", "name": "yaka", "password": "terserah", "role": "Employee"}
 ]
+
+def check_user_match(u, identifier):
+    if not u or not identifier:
+        return False
+    target = str(identifier).strip().lower()
+    target_no_space = target.replace(" ", "")
+    u_nik = str(u.get("nik", "")).strip().lower()
+    if u_nik == target or u_nik.replace(" ", "") == target_no_space:
+        return True
+    u_uname = str(u.get("username", "")).strip().lower()
+    if u_uname == target or u_uname.replace(" ", "") == target_no_space:
+        return True
+    u_name = str(u.get("name", "")).strip().lower()
+    if u_name == target or u_name.replace(" ", "") == target_no_space:
+        return True
+    first_name = u_name.split()[0] if u_name else ""
+    if first_name and first_name == target:
+        return True
+    return False
 
 if "users_db" not in st.session_state:
     st.session_state.users_db = [dict(u) for u in DEFAULT_USERS]
@@ -812,21 +835,35 @@ if not st.session_state.logged_in:
                 clean_pass = pass_val.strip()
                 
                 if not clean_nik or not clean_pass:
-                    st.warning("⚠️ Harap masukkan NIK/Username dan Kata Sandi!")
-                elif (target_role == "Admin" or clean_nik.lower() == "admin") and clean_nik.lower() == "admin" and clean_pass == "sppgunggul":
-                    st.session_state.logged_in = True
-                    st.session_state.current_user = {"nik": "Admin", "name": "Administrator SPPG", "role": "Admin"}
-                    st.rerun()
-                elif target_role == "Admin":
-                    st.error("❌ NIK atau Sandi Admin salah! Gunakan NIK: Admin & Sandi: sppgunggul")
-                else:
-                    user_match = next((u for u in st.session_state.users_db if u["nik"].lower() == clean_nik.lower() and u["password"] == clean_pass), None)
-                    if user_match:
-                        st.session_state.logged_in = True
-                        st.session_state.current_user = user_match
-                        st.rerun()
+                    st.warning("⚠️ Harap masukkan NIK atau Username dan Kata Sandi!")
+                elif (clean_nik.lower() in ["admin", "administrator"]) and clean_pass == "sppgunggul":
+                    if target_role != "Admin":
+                        st.warning("⚠️ Akun ini adalah Administrator. Silakan ubah pilihan 'Masuk Sebagai' menjadi '👑 Administrator (Admin SPPG)'.")
                     else:
-                        st.error("❌ NIK atau Kata Sandi salah, atau belum terdaftar!")
+                        st.session_state.logged_in = True
+                        st.session_state.current_user = {"nik": "Admin", "username": "admin", "name": "Administrator SPPG", "role": "Admin"}
+                        st.rerun()
+                elif (clean_nik.lower() in ["12345", "demo", "pengguna", "karyawan demo"]) and clean_pass == "sppg123":
+                    if target_role == "Admin":
+                        st.error("⛔ Akses Ditolak! Akun demo ini adalah akun Pengguna (Siswa/Karyawan), bukan Administrator. Silakan pilih 'Masuk Sebagai: 👤 Pengguna'.")
+                    else:
+                        st.session_state.logged_in = True
+                        st.session_state.current_user = {"nik": "12345", "username": "demo", "name": "Siswa / Karyawan Demo", "role": "Employee"}
+                        st.rerun()
+                else:
+                    user_match = next((u for u in st.session_state.users_db if check_user_match(u, clean_nik) and str(u.get("password", "")).strip() == clean_pass), None)
+                    if user_match:
+                        is_user_admin = user_match.get("role") == "Admin" or clean_nik.lower() == "admin"
+                        if target_role == "Admin" and not is_user_admin:
+                            st.error(f"⛔ Akses Ditolak! Akun '{user_match.get('name')}' tidak memiliki hak akses sebagai Administrator. Silakan ubah 'Masuk Sebagai' menjadi '👤 Pengguna'.")
+                        elif target_role == "Employee" and is_user_admin:
+                            st.warning("⚠️ Akun ini memiliki hak akses Administrator. Silakan ubah 'Masuk Sebagai' menjadi '👑 Administrator'.")
+                        else:
+                            st.session_state.logged_in = True
+                            st.session_state.current_user = user_match
+                            st.rerun()
+                    else:
+                        st.error("❌ NIK/Username atau Kata Sandi salah, atau belum terdaftar!")
             
             render_html("<div style='text-align:center; font-size:0.78rem; font-weight:700; color:#64748b; margin:1rem 0 0.4rem 0;'>ATAU AKSES CEPAT (1 KLIK LANGSUNG UJI):</div>")
             c_btn1, c_btn2 = st.columns(2)
@@ -850,24 +887,28 @@ if not st.session_state.logged_in:
             """)
             
         with auth_tab_reg:
-            reg_nik = st.text_input("Buat NIK / NIM Baru:", placeholder="Contoh: 10099", key="reg_nik_input")
+            reg_nik = st.text_input("Buat NIK / Username Baru:", placeholder="Contoh: 10099", key="reg_nik_input")
             reg_name = st.text_input("Nama Lengkap Siswa / Pegawai:", placeholder="Contoh: Dliyaul Haq", key="reg_name_input")
             reg_pass = st.text_input("Buat Kata Sandi:", type="password", placeholder="Minimal 6 karakter", key="reg_pass_input")
             
             if st.button("Daftar Akun Baru ✨", type="secondary", use_container_width=True):
                 if not reg_nik or not reg_name or not reg_pass:
                     st.warning("⚠️ Semua kolom wajib diisi untuk mendaftar!")
-                elif any(u["nik"].lower() == reg_nik.strip().lower() for u in st.session_state.users_db):
-                    st.warning(f"⚠️ NIK {reg_nik} sudah terdaftar di sistem!")
+                elif any(check_user_match(u, reg_nik) for u in st.session_state.users_db):
+                    st.warning(f"⚠️ NIK atau Username '{reg_nik}' sudah terdaftar di sistem!")
                 else:
+                    uname = reg_nik.strip().lower().replace(" ", "")
+                    if reg_nik.strip().isdigit() and reg_name.strip():
+                        uname = reg_name.strip().lower().replace(" ", "")
                     new_user = {
                         "nik": reg_nik.strip(),
+                        "username": uname,
                         "name": reg_name.strip(),
                         "password": reg_pass.strip(),
                         "role": "Employee"
                     }
                     st.session_state.users_db.append(new_user)
-                    st.success(f"🎉 Pendaftaran Berhasil untuk {reg_name}! Silakan buka tab 'Masuk Akun' untuk login.")
+                    st.success(f"🎉 Pendaftaran Berhasil untuk {reg_name}! Anda dapat login dengan NIK ({reg_nik}) atau Username ({uname}).")
                     
     render_html("""
     <div style="text-align:center; padding:2rem 0 1rem 0; color:#64748b; font-size:0.82rem;">
@@ -1175,7 +1216,7 @@ def calculate_custom_food_nutrition(food_name, grams, vlm_api_key=None):
     Mendukung pencarian di basis data MBG, standar TKPI Kemenkes RI, maupun internet/Gemini AI.
     """
     if not food_name or grams <= 0:
-        return {"kal": 0.0, "pro": 0.0, "kar": 0.0, "lem": 0.0, "source": "none", "matched": ""}
+        return {"kal": 0.0, "kalori": 0.0, "pro": 0.0, "protein": 0.0, "kar": 0.0, "karbohidrat": 0.0, "lem": 0.0, "lemak": 0.0, "source": "none", "matched": ""}
     
     clean_name = food_name.strip().lower()
     ratio = grams / 100.0
@@ -1186,17 +1227,48 @@ def calculate_custom_food_nutrition(food_name, grams, vlm_api_key=None):
             if clean_name in item_name.lower():
                 base_g = data.get("gram", 100)
                 scale = grams / base_g if base_g > 0 else ratio
+                k = round(data["kal"] * scale, 1)
+                p = round(data["pro"] * scale, 1)
+                c = round(data["kar"] * scale, 1)
+                l = round(data["lem"] * scale, 1)
                 return {
-                    "kal": round(data["kal"] * scale, 1),
-                    "pro": round(data["pro"] * scale, 1),
-                    "kar": round(data["kar"] * scale, 1),
-                    "lem": round(data["lem"] * scale, 1),
+                    "kal": k, "kalori": k,
+                    "pro": p, "protein": p,
+                    "kar": c, "karbohidrat": c,
+                    "lem": l, "lemak": l,
                     "source": "Basis Data Resmi MBG",
                     "matched": item_name
                 }
     
     # 2. Kamus Kuliner Populer Nusantara (TKPI Kemenkes RI)
     TKPI_LOOKUP = {
+        # Sayuran Tradisional & Menu Sehat MBG (TKPI 2018 per 100g)
+        "sayur bayam": {"kal": 20, "pro": 1.6, "kar": 3.5, "lem": 0.3},
+        "sayur bening": {"kal": 20, "pro": 1.6, "kar": 3.5, "lem": 0.3},
+        "bayam": {"kal": 20, "pro": 1.6, "kar": 3.5, "lem": 0.3},
+        "tumis buncis": {"kal": 32, "pro": 1.8, "kar": 5.5, "lem": 0.6},
+        "buncis": {"kal": 32, "pro": 1.8, "kar": 5.5, "lem": 0.6},
+        "sayur sop": {"kal": 25, "pro": 1.3, "kar": 4.5, "lem": 0.5},
+        "sop": {"kal": 25, "pro": 1.3, "kar": 4.5, "lem": 0.5},
+        "sayur capcay": {"kal": 38, "pro": 2.2, "kar": 6.0, "lem": 1.0},
+        "capcay": {"kal": 38, "pro": 2.2, "kar": 6.0, "lem": 1.0},
+        "tumis kangkung": {"kal": 28, "pro": 2.2, "kar": 3.8, "lem": 0.8},
+        "kangkung": {"kal": 28, "pro": 2.2, "kar": 3.8, "lem": 0.8},
+        "tumis labu siam": {"kal": 24, "pro": 1.0, "kar": 4.5, "lem": 0.4},
+        "labu siam": {"kal": 24, "pro": 1.0, "kar": 4.5, "lem": 0.4},
+        "sayur lodeh": {"kal": 55, "pro": 1.8, "kar": 5.8, "lem": 3.0},
+        "sayur asem": {"kal": 28, "pro": 1.2, "kar": 5.5, "lem": 0.4},
+        "tumis sawi": {"kal": 24, "pro": 1.6, "kar": 3.6, "lem": 0.5},
+        "sawi": {"kal": 24, "pro": 1.6, "kar": 3.6, "lem": 0.5},
+        "tumis tauge": {"kal": 30, "pro": 2.8, "kar": 4.0, "lem": 0.5},
+        "tauge": {"kal": 30, "pro": 2.8, "kar": 4.0, "lem": 0.5},
+        "tumis brokoli": {"kal": 32, "pro": 2.6, "kar": 5.0, "lem": 0.4},
+        "brokoli": {"kal": 32, "pro": 2.6, "kar": 5.0, "lem": 0.4},
+        "kembang kol": {"kal": 25, "pro": 1.8, "kar": 4.2, "lem": 0.3},
+        "wortel": {"kal": 34, "pro": 1.0, "kar": 7.2, "lem": 0.3},
+        "lalapan timun": {"kal": 15, "pro": 0.7, "kar": 3.0, "lem": 0.1},
+        "timun": {"kal": 15, "pro": 0.7, "kar": 3.0, "lem": 0.1},
+        # Hidangan Populer
         "bubur ayam": {"kal": 155, "pro": 6.5, "kar": 24.0, "lem": 3.8},
         "soto ayam": {"kal": 120, "pro": 9.5, "kar": 6.0, "lem": 6.5},
         "bakso": {"kal": 190, "pro": 12.0, "kar": 14.0, "lem": 9.5},
@@ -1223,15 +1295,19 @@ def calculate_custom_food_nutrition(food_name, grams, vlm_api_key=None):
         "pisang goreng": {"kal": 195, "pro": 2.0, "kar": 35.0, "lem": 5.5},
         "kacang hijau": {"kal": 140, "pro": 7.0, "kar": 24.0, "lem": 1.5}
     }
-    for k, v in TKPI_LOOKUP.items():
-        if k in clean_name:
+    for k_item, v_item in TKPI_LOOKUP.items():
+        if k_item in clean_name:
+            k = round(v_item["kal"] * ratio, 1)
+            p = round(v_item["pro"] * ratio, 1)
+            c = round(v_item["kar"] * ratio, 1)
+            l = round(v_item["lem"] * ratio, 1)
             return {
-                "kal": round(v["kal"] * ratio, 1),
-                "pro": round(v["pro"] * ratio, 1),
-                "kar": round(v["kar"] * ratio, 1),
-                "lem": round(v["lem"] * ratio, 1),
+                "kal": k, "kalori": k,
+                "pro": p, "protein": p,
+                "kar": c, "karbohidrat": c,
+                "lem": l, "lemak": l,
                 "source": "Standar TKPI Kemenkes RI",
-                "matched": k.title()
+                "matched": k_item.title()
             }
             
     # 3. Jika Kunci Gemini VLM Aktif: Ambil data gizi otomatis dari internet AI
@@ -1250,33 +1326,41 @@ def calculate_custom_food_nutrition(food_name, grams, vlm_api_key=None):
                 m = re.search(r"\{.*?\}", txt, re.DOTALL)
                 if m:
                     res_json = json.loads(m.group(0))
+                    k = round(float(res_json.get("kal", 150)) * ratio, 1)
+                    p = round(float(res_json.get("pro", 6.0)) * ratio, 1)
+                    c = round(float(res_json.get("kar", 20.0)) * ratio, 1)
+                    l = round(float(res_json.get("lem", 4.0)) * ratio, 1)
                     return {
-                        "kal": round(float(res_json.get("kal", 150)) * ratio, 1),
-                        "pro": round(float(res_json.get("pro", 6.0)) * ratio, 1),
-                        "kar": round(float(res_json.get("kar", 20.0)) * ratio, 1),
-                        "lem": round(float(res_json.get("lem", 4.0)) * ratio, 1),
+                        "kal": k, "kalori": k,
+                        "pro": p, "protein": p,
+                        "kar": c, "karbohidrat": c,
+                        "lem": l, "lemak": l,
                         "source": "Kecerdasan AI Google Gemini & Internet",
                         "matched": food_name.title()
                     }
         except Exception:
             pass
 
-    # 4. Estimasi Heuristik Ilmiah
+    # 4. Estimasi Heuristik Ilmiah (Pencegahan 'bayam' mencocokkan 'ayam')
     base_kal, base_pro, base_kar, base_lem = 150.0, 5.0, 22.0, 4.0
-    if any(w in clean_name for w in ["daging", "ayam", "sapi", "kambing", "ikan", "udang", "telur"]):
+    if any(w in clean_name for w in ["sayur", "sup", "sop", "bayam", "kangkung", "wortel", "buncis", "labu", "sawi", "tauge", "brokoli"]):
+        base_kal, base_pro, base_kar, base_lem = 30.0, 1.8, 5.0, 0.5
+    elif any(w in clean_name for w in ["daging", "sapi", "kambing", "ikan", "udang", "telur"]) or ("ayam" in clean_name and "bayam" not in clean_name):
         base_kal, base_pro, base_kar, base_lem = 210.0, 20.0, 3.0, 13.0
     elif any(w in clean_name for w in ["nasi", "mie", "roti", "bihun", "ubi", "singkong", "kentang"]):
         base_kal, base_pro, base_kar, base_lem = 175.0, 4.0, 36.0, 1.5
-    elif any(w in clean_name for w in ["sayur", "sup", "sop", "bayam", "kangkung", "wortel"]):
-        base_kal, base_pro, base_kar, base_lem = 45.0, 2.0, 7.0, 0.5
     elif any(w in clean_name for w in ["buah", "apel", "jeruk", "semangka", "pisang", "melon"]):
         base_kal, base_pro, base_kar, base_lem = 60.0, 1.0, 14.0, 0.3
         
+    k = round(base_kal * ratio, 1)
+    p = round(base_pro * ratio, 1)
+    c = round(base_kar * ratio, 1)
+    l = round(base_lem * ratio, 1)
     return {
-        "kal": round(base_kal * ratio, 1),
-        "pro": round(base_pro * ratio, 1),
-        "kar": round(base_kar * ratio, 1),
-        "lem": round(base_lem * ratio, 1),
+        "kal": k, "kalori": k,
+        "pro": p, "protein": p,
+        "kar": c, "karbohidrat": c,
+        "lem": l, "lemak": l,
         "source": "Estimasi Komposisi Pangan Terstandarisasi",
         "matched": food_name.title()
     }
@@ -2064,12 +2148,25 @@ def classify_status_gizi(umur_bulan, jk_code, bb, tb):
     if not majority_label:
         majority_label = pmk_eval["label"]
 
-    # 3. Perhitungan Kebutuhan Energi (BMR & TDEE Standar Kemenkes RI)
-    if jk_code == 0:
-        base_kal = (10 * bb) + (6.25 * tb) - (5 * (umur_bulan / 12.0)) + 5
-    else:
-        base_kal = (10 * bb) + (6.25 * tb) - (5 * (umur_bulan / 12.0)) - 161
-    tdee = base_kal * 1.35
+    # 3. Perhitungan Kebutuhan Energi (Formula Schofield 3-18 Tahun & Standar Kemenkes RI)
+    umur_tahun = umur_bulan / 12.0
+    if 3.0 <= umur_tahun <= 10.0:
+        if jk_code == 0:  # Laki-laki
+            base_kal = (22.706 * bb) + 504.3
+        else:  # Perempuan
+            base_kal = (20.315 * bb) + 485.9
+    elif 10.0 < umur_tahun <= 18.0:
+        if jk_code == 0:  # Laki-laki
+            base_kal = (17.686 * bb) + 658.2
+        else:  # Perempuan
+            base_kal = (13.384 * bb) + 692.6
+    else:  # Dewasa (> 18 Tahun - Fallback)
+        if jk_code == 0:
+            base_kal = (10 * bb) + (6.25 * tb) - (5 * umur_tahun) + 5
+        else:
+            base_kal = (10 * bb) + (6.25 * tb) - (5 * umur_tahun) - 161
+
+    tdee = base_kal * 1.55
     target_mbg = round(tdee * 0.33)
 
     return {
@@ -3011,11 +3108,38 @@ elif st.session_state.active_screen == "kalkulator":
             with st.spinner(f"🔍 Mengolah nutrisi '{custom_name}' dengan AI & Basis Data Gizi..."):
                 nut_custom = calculate_custom_food_nutrition(custom_name.strip(), custom_gram, saved_key)
 
-        # Total Akumulasi
-        total_kal = round(nut_karbo["kalori"] + nut_prohew["kalori"] + nut_pronab["kalori"] + nut_sayur["kalori"] + nut_custom["kalori"])
-        total_pro = round(nut_karbo["protein"] + nut_prohew["protein"] + nut_pronab["protein"] + nut_sayur["protein"] + nut_custom["protein"], 1)
-        total_kar = round(nut_karbo["karbohidrat"] + nut_prohew["karbohidrat"] + nut_pronab["karbohidrat"] + nut_sayur["karbohidrat"] + nut_custom["karbohidrat"], 1)
-        total_lem = round(nut_karbo["lemak"] + nut_prohew["lemak"] + nut_pronab["lemak"] + nut_sayur["lemak"] + nut_custom["lemak"], 1)
+        # Total Akumulasi (Formula Gizi Standar TKPI Kemenkes RI)
+        total_kal = round(
+            nut_karbo.get("kalori", nut_karbo.get("kal", 0.0)) +
+            nut_prohew.get("kalori", nut_prohew.get("kal", 0.0)) +
+            nut_pronab.get("kalori", nut_pronab.get("kal", 0.0)) +
+            nut_sayur.get("kalori", nut_sayur.get("kal", 0.0)) +
+            nut_custom.get("kalori", nut_custom.get("kal", 0.0))
+        )
+        total_pro = round(
+            nut_karbo.get("protein", nut_karbo.get("pro", 0.0)) +
+            nut_prohew.get("protein", nut_prohew.get("pro", 0.0)) +
+            nut_pronab.get("protein", nut_pronab.get("pro", 0.0)) +
+            nut_sayur.get("protein", nut_sayur.get("pro", 0.0)) +
+            nut_custom.get("protein", nut_custom.get("pro", 0.0)),
+            1
+        )
+        total_kar = round(
+            nut_karbo.get("karbohidrat", nut_karbo.get("kar", 0.0)) +
+            nut_prohew.get("karbohidrat", nut_prohew.get("kar", 0.0)) +
+            nut_pronab.get("karbohidrat", nut_pronab.get("kar", 0.0)) +
+            nut_sayur.get("karbohidrat", nut_sayur.get("kar", 0.0)) +
+            nut_custom.get("karbohidrat", nut_custom.get("kar", 0.0)),
+            1
+        )
+        total_lem = round(
+            nut_karbo.get("lemak", nut_karbo.get("lem", 0.0)) +
+            nut_prohew.get("lemak", nut_prohew.get("lem", 0.0)) +
+            nut_pronab.get("lemak", nut_pronab.get("lem", 0.0)) +
+            nut_sayur.get("lemak", nut_sayur.get("lem", 0.0)) +
+            nut_custom.get("lemak", nut_custom.get("lem", 0.0)),
+            1
+        )
 
         # Simpan ke active_meal_nutrition agar sinkron ke Dashboard Evaluasi Gizi
         meal_desc = f"{sel_karbo} + {sel_prohew} + {sel_pronab} + {sel_sayur}"
@@ -3184,14 +3308,26 @@ elif st.session_state.active_screen == "status_gizi":
         border_col = "#7c3aed"
         rec_text = "Indeks massa tubuh tergolong obesitas. Disarankan rutin berolahraga aerobik dan menjaga keseimbangan porsi makan sesuai pedoman gizi seimbang."
 
-    # Hitung Target MBG (~33% Kebutuhan Harian / TDEE)
+    # Hitung Target MBG (Formula Schofield 3-18 Tahun + PAL 1.55 + 33% MBG)
     is_pria = "Laki-laki" in in_sg_jk
-    if is_pria:
-        bmr = (10 * in_sg_bb) + (6.25 * in_sg_tb) - (5 * in_sg_age) + 5
+    if 3 <= in_sg_age <= 10:
+        if is_pria:
+            bmr = (22.706 * in_sg_bb) + 504.3
+        else:
+            bmr = (20.315 * in_sg_bb) + 485.9
+    elif 10 < in_sg_age <= 18:
+        if is_pria:
+            bmr = (17.686 * in_sg_bb) + 658.2
+        else:
+            bmr = (13.384 * in_sg_bb) + 692.6
     else:
-        bmr = (10 * in_sg_bb) + (6.25 * in_sg_tb) - (5 * in_sg_age) - 161
+        if is_pria:
+            bmr = (10 * in_sg_bb) + (6.25 * in_sg_tb) - (5 * in_sg_age) + 5
+        else:
+            bmr = (10 * in_sg_bb) + (6.25 * in_sg_tb) - (5 * in_sg_age) - 161
+
     tdee = round(bmr * 1.55)
-    target_mbg_kal = 661 if (in_sg_age == 16 and in_sg_bb == 52.0 and in_sg_tb == 162.0) else round(tdee * 0.33)
+    target_mbg_kal = round(tdee * 0.33)
     target_pro = round((target_mbg_kal * 0.15) / 4, 1)
     target_kar = round((target_mbg_kal * 0.60) / 4, 1)
     target_lem = round((target_mbg_kal * 0.25) / 9, 1)
@@ -3278,10 +3414,10 @@ elif st.session_state.active_screen == "dashboard":
 
     s_name = prof.get("name", "Siswa / Karyawan Demo")
     s_status = prof.get("status", "Normal / Gizi Baik").split("(")[0].strip()
-    target_kal = prof.get("target_mbg_kalori", 661)
-    target_pro = prof.get("target_pro", 24.8)
-    target_kar = prof.get("target_kar", 99.3)
-    target_lem = prof.get("target_lem", 18.5)
+    target_kal = prof.get("target_mbg_kalori", 807)
+    target_pro = prof.get("target_pro", 40.4)
+    target_kar = prof.get("target_kar", 121.1)
+    target_lem = prof.get("target_lem", 17.9)
 
     actual_kal = act.get("kal", 0)
     actual_pro = act.get("pro", 0.0)
