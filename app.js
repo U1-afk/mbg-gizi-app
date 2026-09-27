@@ -25,11 +25,11 @@ window.currentTargetNutrition = {
     tdee: 2446,
     mbgTargetKal: 807,
     targetKarbo: 367,
-    targetPro: 122,
-    targetLem: 54,
+    targetPro: 92,
+    targetLem: 68,
     mbgTargetKar: 121,
-    mbgTargetPro: 40,
-    mbgTargetLem: 18
+    mbgTargetPro: 30,
+    mbgTargetLem: 22
 };
 
 window.currentMealIntake = {
@@ -970,22 +970,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     window.calculateBMR = calculateBMR;
 
-    // Helper Fungsi Perhitungan Kebutuhan Energi & Makronutrien Harian (Standar MBG 60:20:20)
+    // Helper Fungsi Perhitungan Kebutuhan Energi & Makronutrien Harian (Standar MBG 60:15:25)
     function calculateDailyEnergyAndMacro(bmr, activity = 1.55) {
         // TEE / Kebutuhan Energi Harian = BMR * Faktor Aktivitas (PAL 1,55)
         const tee = Math.round(bmr * activity);
         // Target 1x Porsi MBG = 33% kebutuhan energi harian
         const mbgTarget = Math.round(tee * 0.33);
 
-        // Pembagian Makronutrien Harian (Karbo 60% @ 4 kkal/g, Protein 20% @ 4 kkal/g, Lemak 20% @ 9 kkal/g):
+        // Pembagian Makronutrien Harian (Karbo 60% @ 4 kkal/g, Protein 15% @ 4 kkal/g, Lemak 25% @ 9 kkal/g):
         const targetKarbo = Math.round((tee * 0.60) / 4);
-        const targetPro = Math.round((tee * 0.20) / 4);
-        const targetLem = Math.round((tee * 0.20) / 9);
+        const targetPro = Math.round((tee * 0.15) / 4);
+        const targetLem = Math.round((tee * 0.25) / 9);
 
         // Target Makronutrien 1x Porsi MBG (33% porsi makan siang):
         const mbgTargetKar = Math.round((mbgTarget * 0.60) / 4);
-        const mbgTargetPro = Math.round((mbgTarget * 0.20) / 4);
-        const mbgTargetLem = Math.round((mbgTarget * 0.20) / 9);
+        const mbgTargetPro = Math.round((mbgTarget * 0.15) / 4);
+        const mbgTargetLem = Math.round((mbgTarget * 0.25) / 9);
 
         return {
             bmr: Math.round(bmr),
@@ -1144,9 +1144,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 1x Porsi MBG Target (33% porsi makan siang)
         const targetKal = tgt.mbgTargetKal || 807;
-        const targetPro = tgt.mbgTargetPro || Math.round((targetKal * 0.20) / 4) || 40;
+        const targetPro = tgt.mbgTargetPro || Math.round((targetKal * 0.15) / 4) || 30;
         const targetKar = tgt.mbgTargetKar || Math.round((targetKal * 0.60) / 4) || 121;
-        const targetLem = tgt.mbgTargetLem || Math.round((targetKal * 0.20) / 9) || 18;
+        const targetLem = tgt.mbgTargetLem || Math.round((targetKal * 0.25) / 9) || 22;
 
         const currentKal = intake.kalori || 0;
         const currentPro = intake.protein || 0;
@@ -2506,66 +2506,66 @@ Kembalikan HANYA format JSON valid persis berikut tanpa markdown atau backtick:
                 }
             }
 
-            // 2. Google Gemini Vision (Vercel Serverless /api/gemini or Direct API Fallback)
+            // 2. Google Gemini Vision (Direct Google API for Ultra-Fast 1-2s Response)
             const activeKey = (vlmApiKey || localStorage.getItem('mbg_vlm_api_key') || localStorage.getItem('gemini_api_key') || localStorage.getItem('sppg_vlm_key') || _DEFAULT_AI_KEY).replace(/^["']|["']$/g, '').trim();
-            if (!cloudSuccess) {
-                if (scanStatusText) scanStatusText.textContent = 'Menganalisis dengan Google Gemini AI...';
+            if (!cloudSuccess && activeKey) {
+                if (scanStatusText) scanStatusText.textContent = 'Menganalisis Cerdas dengan Google Gemini AI...';
                 
-                // Try Vercel serverless function /api/gemini
+                // Prioritize Direct Google Gemini API (Fastest: ~1.5 - 2.5 detik)
                 try {
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 14000);
-                    const serverRes = await fetch('/api/gemini', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ image: base64Jpeg, apiKey: activeKey }),
-                        signal: controller.signal
-                    });
-                    clearTimeout(timeoutId);
-                    if (serverRes.ok) {
-                        const sData = await serverRes.json();
-                        if (sData && sData.success && sData.data) {
-                            const vlmRes = sData.data;
-                            detectedKarbo = vlmRes.karbo;
-                            detectedProhew = vlmRes.prohew;
-                            detectedPronab = vlmRes.pronab;
-                            detectedSayur = vlmRes.sayur;
-                            detectedBuah = vlmRes.buah;
-                            detectedPelengkap = vlmRes.pelengkap;
-                            matchedPackage = vlmRes.packageName || 'Menu MBG Terdeteksi';
-                            vlmAnalysisNote = vlmRes.analysis || 'Porsi dan komposisi makanan teranalisis otomatis sesuai standar gizi resmi Kemenkes RI.';
-                            engineUsedLabel = '✨ Dianalisis Cerdas oleh Google Gemini Vision AI (' + (sData.model || 'Gemini Flash') + ')';
-                            if (vlmRes.items && Array.isArray(vlmRes.items) && vlmRes.items.length > 0) {
-                                detectedItemsDynamic = vlmRes.items;
-                            }
-                            cloudSuccess = true;
+                    const vlmRes = await queryCloudGeminiVLM(base64Jpeg, activeKey);
+                    if (vlmRes && (vlmRes.items || vlmRes.prohew || vlmRes.karbo)) {
+                        detectedKarbo = vlmRes.karbo;
+                        detectedProhew = vlmRes.prohew;
+                        detectedPronab = vlmRes.pronab;
+                        detectedSayur = vlmRes.sayur;
+                        detectedBuah = vlmRes.buah;
+                        detectedPelengkap = vlmRes.pelengkap;
+                        matchedPackage = vlmRes.packageName || 'Menu MBG Terdeteksi';
+                        vlmAnalysisNote = vlmRes.analysis || 'Porsi dan komposisi makanan teranalisis otomatis sesuai standar gizi resmi Kemenkes RI.';
+                        engineUsedLabel = '✨ Dianalisis Cerdas oleh Google Gemini Vision AI';
+                        if (vlmRes.items && Array.isArray(vlmRes.items) && vlmRes.items.length > 0) {
+                            detectedItemsDynamic = vlmRes.items;
                         }
+                        cloudSuccess = true;
                     }
-                } catch (apiErr) {
-                    console.warn('/api/gemini call skipped, continuing:', apiErr);
+                } catch (directErr) {
+                    console.warn('Direct Google API failed, falling back to /api/gemini:', directErr);
                 }
 
-                // If /api/gemini did not succeed, try direct client-side Google Gemini Vision call
-                if (!cloudSuccess && activeKey) {
+                // Fallback to Vercel Serverless Function /api/gemini if Direct Call Failed
+                if (!cloudSuccess) {
                     try {
-                        const vlmRes = await queryCloudGeminiVLM(base64Jpeg, activeKey);
-                        if (vlmRes && (vlmRes.items || vlmRes.prohew || vlmRes.karbo)) {
-                            detectedKarbo = vlmRes.karbo;
-                            detectedProhew = vlmRes.prohew;
-                            detectedPronab = vlmRes.pronab;
-                            detectedSayur = vlmRes.sayur;
-                            detectedBuah = vlmRes.buah;
-                            detectedPelengkap = vlmRes.pelengkap;
-                            matchedPackage = vlmRes.packageName || 'Menu MBG Terdeteksi';
-                            vlmAnalysisNote = vlmRes.analysis || 'Porsi dan komposisi makanan teranalisis otomatis sesuai standar gizi resmi Kemenkes RI.';
-                            engineUsedLabel = '✨ Dianalisis Cerdas oleh Google Gemini Vision AI';
-                            if (vlmRes.items && Array.isArray(vlmRes.items) && vlmRes.items.length > 0) {
-                                detectedItemsDynamic = vlmRes.items;
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), 6000);
+                        const serverRes = await fetch('/api/gemini', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ image: base64Jpeg, apiKey: activeKey }),
+                            signal: controller.signal
+                        });
+                        clearTimeout(timeoutId);
+                        if (serverRes.ok) {
+                            const sData = await serverRes.json();
+                            if (sData && sData.success && sData.data) {
+                                const vlmRes = sData.data;
+                                detectedKarbo = vlmRes.karbo;
+                                detectedProhew = vlmRes.prohew;
+                                detectedPronab = vlmRes.pronab;
+                                detectedSayur = vlmRes.sayur;
+                                detectedBuah = vlmRes.buah;
+                                detectedPelengkap = vlmRes.pelengkap;
+                                matchedPackage = vlmRes.packageName || 'Menu MBG Terdeteksi';
+                                vlmAnalysisNote = vlmRes.analysis || 'Porsi dan komposisi makanan teranalisis otomatis sesuai standar gizi resmi Kemenkes RI.';
+                                engineUsedLabel = '✨ Dianalisis Cerdas oleh Google Gemini Vision AI (' + (sData.model || 'Gemini Flash') + ')';
+                                if (vlmRes.items && Array.isArray(vlmRes.items) && vlmRes.items.length > 0) {
+                                    detectedItemsDynamic = vlmRes.items;
+                                }
+                                cloudSuccess = true;
                             }
-                            cloudSuccess = true;
                         }
-                    } catch (vlmErr) {
-                        console.warn('Direct Google API fallback error:', vlmErr);
+                    } catch (apiErr) {
+                        console.warn('/api/gemini call skipped, continuing:', apiErr);
                     }
                 }
             }
