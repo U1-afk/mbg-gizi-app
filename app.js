@@ -129,14 +129,47 @@ document.addEventListener('DOMContentLoaded', () => {
     // 2. USER DATABASE & LOCAL PERSISTENCE FALLBACK DATASET
     // ============================================================
     const DEFAULT_USERS = [
-        { nik: 'Admin', name: 'Administrator', password: 'sppgunggul', role: 'Admin' },
-        { nik: '12345', name: 'Siswa / Karyawan Demo', password: 'sppg123', role: 'Employee' },
-        { nik: '2304111010099', name: 'Dliyaul Haq', password: 'password123', role: 'Employee' },
-        { nik: '2304111010006', name: 'Siti Nurmasyitah', password: 'sppg123', role: 'Employee' },
-        { nik: '123456789', name: 'fathin', password: '12345678', role: 'Employee' },
-        { nik: '10021', name: 'Ahmad Fauzi', password: 'sppg123', role: 'Employee' },
-        { nik: '10045', name: 'Siti Rahma', password: 'sppg123', role: 'Employee' }
+        { nik: 'Admin', username: 'admin', name: 'Administrator', password: 'sppgunggul', role: 'Admin' },
+        { nik: '12345', username: 'demo', name: 'Siswa / Karyawan Demo', password: 'sppg123', role: 'Employee' },
+        { nik: '2304111010099', username: 'dliyaul', name: 'Dliyaul Haq', password: 'password123', role: 'Employee' },
+        { nik: '2304111010006', username: 'siti', name: 'Siti Nurmasyitah', password: 'sppg123', role: 'Employee' },
+        { nik: '123456789', username: 'fathin', name: 'fathin', password: '12345678', role: 'Employee' },
+        { nik: '10021', username: 'ahmad', name: 'Ahmad Fauzi', password: 'sppg123', role: 'Employee' },
+        { nik: '10045', username: 'rahma', name: 'Siti Rahma', password: 'sppg123', role: 'Employee' },
+        { nik: '300666', username: 'yaka', name: 'yaka', password: 'terserah', role: 'Employee' }
     ];
+
+    // Helper pencocokan cerdas: mendukung input berupa NIK, Username, maupun Nama Lengkap
+    function isUserMatch(u, identifier) {
+        if (!u || !identifier) return false;
+        const target = String(identifier).trim().toLowerCase();
+        if (!target) return false;
+        const targetNoSpace = target.replace(/\s+/g, '');
+
+        // 1. Cek NIK
+        if (u.nik) {
+            const uNik = String(u.nik).trim().toLowerCase();
+            if (uNik === target || uNik.replace(/\s+/g, '') === targetNoSpace) return true;
+        }
+
+        // 2. Cek Username
+        if (u.username) {
+            const uUser = String(u.username).trim().toLowerCase();
+            if (uUser === target || uUser.replace(/\s+/g, '') === targetNoSpace) return true;
+        }
+
+        // 3. Cek Nama Lengkap / Panggilan
+        if (u.name) {
+            const uName = String(u.name).trim().toLowerCase();
+            if (uName === target || uName.replace(/\s+/g, '') === targetNoSpace) return true;
+            
+            // Cocokkan juga dengan kata pertama jika target satu kata (misal "dliyaul", "ahmad", "siti", "yaka")
+            const firstName = uName.split(/\s+/)[0];
+            if (firstName && firstName === target) return true;
+        }
+
+        return false;
+    }
 
     const DEFAULT_HISTORY = [
         {
@@ -195,7 +228,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const raw = localStorage.getItem('sppg_users_db');
             if (raw) {
                 const parsed = JSON.parse(raw);
-                if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    return parsed.map(u => {
+                        if (!u.username) {
+                            u.username = isNaN(u.nik) ? String(u.nik).toLowerCase() : (u.name ? String(u.name).toLowerCase().replace(/\s+/g, '') : String(u.nik));
+                        }
+                        return u;
+                    });
+                }
             }
         } catch (e) {}
         localStorage.setItem('sppg_users_db', JSON.stringify(DEFAULT_USERS));
@@ -203,12 +243,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function saveLocalUser(user) {
-        if (!user || !user.nik) return;
+        if (!user || (!user.nik && !user.username)) return;
+        if (!user.username) {
+            user.username = isNaN(user.nik) ? String(user.nik).toLowerCase() : (user.name ? String(user.name).toLowerCase().replace(/\s+/g, '') : String(user.nik));
+        }
         const users = getLocalUsers();
-        const cleanNik = String(user.nik).trim().toLowerCase();
-        const idx = users.findIndex(u => String(u.nik).trim().toLowerCase() === cleanNik);
+        const idx = users.findIndex(u => isUserMatch(u, user.nik) || (user.username && isUserMatch(u, user.username)));
         if (idx >= 0) {
-            users[idx] = user;
+            users[idx] = { ...users[idx], ...user };
         } else {
             users.push(user);
         }
@@ -247,7 +289,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const cData = await cloudRes.json();
                     if (cData && cData.data && Array.isArray(cData.data.users)) {
                         for (const cu of cData.data.users) {
-                            if (!serverUsers.find(su => String(su.nik).trim().toLowerCase() === String(cu.nik).trim().toLowerCase())) {
+                            if (!serverUsers.find(su => isUserMatch(su, cu.nik) || (cu.username && isUserMatch(su, cu.username)))) {
                                 serverUsers.push(cu);
                             }
                         }
@@ -257,20 +299,30 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const localUsers = getLocalUsers();
-        const mergedMap = new Map();
-        
-        DEFAULT_USERS.forEach(u => mergedMap.set(String(u.nik).trim().toLowerCase(), u));
-        localUsers.forEach(u => mergedMap.set(String(u.nik).trim().toLowerCase(), u));
-        serverUsers.forEach(u => mergedMap.set(String(u.nik).trim().toLowerCase(), u));
-        
-        const merged = Array.from(mergedMap.values());
+        const mergedList = [...DEFAULT_USERS];
+
+        const mergeUser = (u) => {
+            if (!u) return;
+            if (!u.username) {
+                u.username = isNaN(u.nik) ? String(u.nik).toLowerCase() : (u.name ? String(u.name).toLowerCase().replace(/\s+/g, '') : String(u.nik));
+            }
+            const existingIdx = mergedList.findIndex(item => isUserMatch(item, u.nik) || (u.username && isUserMatch(item, u.username)));
+            if (existingIdx >= 0) {
+                mergedList[existingIdx] = { ...mergedList[existingIdx], ...u };
+            } else {
+                mergedList.push(u);
+            }
+        };
+
+        localUsers.forEach(mergeUser);
+        serverUsers.forEach(mergeUser);
 
         // Simpan pembaruan ke local storage perangkat ini
         try {
-            localStorage.setItem('sppg_users_db', JSON.stringify(merged));
+            localStorage.setItem('sppg_users_db', JSON.stringify(mergedList));
         } catch (e) {}
 
-        return merged;
+        return mergedList;
     }
 
     // ============================================================
@@ -507,28 +559,36 @@ document.addEventListener('DOMContentLoaded', () => {
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const roleSelect = document.getElementById('login-role');
-            const role = roleSelect ? roleSelect.value : 'Employee';
+            const selectedRole = roleSelect ? roleSelect.value : 'Employee';
             const nikInput = document.getElementById('nik');
             const passInput = document.getElementById('password');
             const rawNik = nikInput ? sanitize(nikInput.value).trim() : '';
             const rawPassword = passInput ? passInput.value.trim() : '';
 
             if (!rawNik || !rawPassword) {
-                customAlert('Harap masukkan NIK/NIM dan Kata Sandi!');
+                customAlert('Harap masukkan NIK atau Username dan Kata Sandi!');
                 return;
             }
 
             const cleanNik = rawNik.toLowerCase();
 
             // Default Admin Account Fast-path
-            if (cleanNik === 'admin' && rawPassword === 'sppgunggul') {
-                showAdminPanel({ nik: 'Admin', name: 'Administrator', role: 'Admin' });
+            if ((cleanNik === 'admin' || cleanNik === 'administrator') && rawPassword === 'sppgunggul') {
+                if (selectedRole !== 'Admin') {
+                    customAlert('Akun ini adalah akun <strong>Administrator</strong>.<br>Silakan ubah pilihan <strong>"Masuk Sebagai"</strong> menjadi <strong>"Administrator"</strong>.');
+                    return;
+                }
+                showAdminPanel({ nik: 'Admin', username: 'admin', name: 'Administrator', role: 'Admin' });
                 return;
             }
 
             // Default Demo Account Fast-path
-            if (cleanNik === '12345' && rawPassword === 'sppg123') {
-                showDashboard({ nik: '12345', name: 'Siswa / Karyawan Demo', role: 'Employee' });
+            if ((cleanNik === '12345' || cleanNik === 'demo' || cleanNik === 'pengguna' || cleanNik === 'karyawan demo') && rawPassword === 'sppg123') {
+                if (selectedRole === 'Admin') {
+                    customAlert('Akses Ditolak! Akun demo ini adalah akun <strong>Pengguna (Siswa/Karyawan)</strong>, bukan Administrator.<br>Silakan pilih <strong>"Masuk Sebagai: Pengguna"</strong> atau gunakan akun Admin (Admin | sppgunggul).');
+                    return;
+                }
+                showDashboard({ nik: '12345', username: 'demo', name: 'Siswa / Karyawan Demo', role: 'Employee' });
                 return;
             }
 
@@ -543,13 +603,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Search registered users across local + server + persistent cloud
                 const users = await getAllUsers();
                 const found = users.find(u => 
-                    String(u.nik).trim().toLowerCase() === cleanNik && 
+                    isUserMatch(u, cleanNik) && 
                     String(u.password).trim() === rawPassword
                 );
 
                 if (found) {
+                    const isAccountAdmin = found.role === 'Admin' || cleanNik === 'admin' || (found.username && found.username.toLowerCase() === 'admin');
+
+                    if (selectedRole === 'Admin' && !isAccountAdmin) {
+                        customAlert('Akses Ditolak! Akun <strong>' + sanitize(found.name) + '</strong> tidak memiliki hak akses sebagai Administrator.<br>Silakan ubah pilihan <strong>"Masuk Sebagai"</strong> menjadi <strong>"Pengguna"</strong>.');
+                        return;
+                    }
+
+                    if (selectedRole === 'Employee' && isAccountAdmin) {
+                        customAlert('Akun ini terdaftar sebagai <strong>Administrator</strong>.<br>Silakan ubah pilihan <strong>"Masuk Sebagai"</strong> menjadi <strong>"Administrator"</strong>.');
+                        return;
+                    }
+
                     saveLocalUser(found); // Cache on this device
-                    if (found.role === 'Admin' || cleanNik === 'admin') {
+                    if (isAccountAdmin) {
                         showAdminPanel(found);
                     } else {
                         showDashboard(found);
@@ -558,28 +630,52 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Cek fallback di local storage jika server lambat
                     const localUsers = getLocalUsers();
                     const localFound = localUsers.find(u => 
-                        String(u.nik).trim().toLowerCase() === cleanNik && 
+                        isUserMatch(u, cleanNik) && 
                         String(u.password).trim() === rawPassword
                     );
                     if (localFound) {
-                        if (localFound.role === 'Admin' || cleanNik === 'admin') {
+                        const isAccountAdmin = localFound.role === 'Admin' || cleanNik === 'admin' || (localFound.username && localFound.username.toLowerCase() === 'admin');
+
+                        if (selectedRole === 'Admin' && !isAccountAdmin) {
+                            customAlert('Akses Ditolak! Akun <strong>' + sanitize(localFound.name) + '</strong> tidak memiliki hak akses sebagai Administrator.<br>Silakan ubah pilihan <strong>"Masuk Sebagai"</strong> menjadi <strong>"Pengguna"</strong>.');
+                            return;
+                        }
+
+                        if (selectedRole === 'Employee' && isAccountAdmin) {
+                            customAlert('Akun ini terdaftar sebagai <strong>Administrator</strong>.<br>Silakan ubah pilihan <strong>"Masuk Sebagai"</strong> menjadi <strong>"Administrator"</strong>.');
+                            return;
+                        }
+
+                        if (isAccountAdmin) {
                             showAdminPanel(localFound);
                         } else {
                             showDashboard(localFound);
                         }
                     } else {
-                        customAlert('NIK/NIM atau Kata Sandi salah, atau akun belum terdaftar!<br>Silakan periksa kembali atau klik <strong>Daftar di sini</strong> jika belum punya akun.');
+                        customAlert('NIK/Username atau Kata Sandi salah, atau akun belum terdaftar!<br>Silakan periksa kembali atau klik <strong>Daftar di sini</strong> jika belum punya akun.');
                     }
                 }
             } catch (err) {
                 console.error('Login error:', err);
                 const localUsers = getLocalUsers();
                 const localFound = localUsers.find(u => 
-                    String(u.nik).trim().toLowerCase() === cleanNik && 
+                    isUserMatch(u, cleanNik) && 
                     String(u.password).trim() === rawPassword
                 );
                 if (localFound) {
-                    if (localFound.role === 'Admin' || cleanNik === 'admin') showAdminPanel(localFound);
+                    const isAccountAdmin = localFound.role === 'Admin' || cleanNik === 'admin' || (localFound.username && localFound.username.toLowerCase() === 'admin');
+
+                    if (selectedRole === 'Admin' && !isAccountAdmin) {
+                        customAlert('Akses Ditolak! Akun <strong>' + sanitize(localFound.name) + '</strong> tidak memiliki hak akses sebagai Administrator.<br>Silakan ubah pilihan <strong>"Masuk Sebagai"</strong> menjadi <strong>"Pengguna"</strong>.');
+                        return;
+                    }
+
+                    if (selectedRole === 'Employee' && isAccountAdmin) {
+                        customAlert('Akun ini terdaftar sebagai <strong>Administrator</strong>.<br>Silakan ubah pilihan <strong>"Masuk Sebagai"</strong> menjadi <strong>"Administrator"</strong>.');
+                        return;
+                    }
+
+                    if (isAccountAdmin) showAdminPanel(localFound);
                     else showDashboard(localFound);
                 } else {
                     customAlert('Terjadi kendala saat memeriksa akun. Silakan coba kembali.');
@@ -609,6 +705,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const cleanNik = nik.toLowerCase();
+            let usernameVal = cleanNik.replace(/\s+/g, '');
+            if (/^\d+$/.test(nik) && name) {
+                usernameVal = name.toLowerCase().replace(/\s+/g, '');
+            }
 
             const regSubmitBtn = registerForm.querySelector('button[type="submit"]');
             const origRegBtnHtml = regSubmitBtn ? regSubmitBtn.innerHTML : '';
@@ -619,13 +719,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 const users = await getAllUsers();
-                if (users.find(u => String(u.nik).trim().toLowerCase() === cleanNik)) {
-                    customAlert('NIK/NIM <strong>' + nik + '</strong> sudah terdaftar!<br>Silakan masuk menggunakan akun Anda.');
+                if (users.find(u => isUserMatch(u, nik) || isUserMatch(u, usernameVal))) {
+                    customAlert('NIK atau Username <strong>' + nik + '</strong> sudah terdaftar!<br>Silakan masuk menggunakan akun Anda.');
                     if (regSubmitBtn) { regSubmitBtn.disabled = false; regSubmitBtn.innerHTML = origRegBtnHtml; }
                     return;
                 }
 
-                const newUser = { nik, name, password, role: 'Employee' };
+                const newUser = { nik, username: usernameVal, name, password, role: 'Employee' };
 
                 // 1. Simpan segera ke local storage perangkat ini agar PASTI bisa langsung login di perangkat ini
                 saveLocalUser(newUser);
@@ -669,13 +769,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 // 4. Siarkan via MQTT
                 publishMQTTSync('add_user', newUser);
 
-                customAlert('Pendaftaran Berhasil! 🎉<br>Akun untuk <strong>' + name + '</strong> (NIK/NIM: ' + nik + ') telah aktif dan tersimpan permanen.<br>Anda sekarang bisa langsung masuk dari <strong>perangkat ini maupun HP / laptop lain</strong>.');
+                customAlert('Pendaftaran Berhasil! 🎉<br>Akun untuk <strong>' + name + '</strong> telah aktif dan tersimpan permanen.<br>Anda sekarang bisa langsung masuk menggunakan <strong>NIK (' + nik + ')</strong> maupun <strong>Username (' + usernameVal + ')</strong>.');
                 registerForm.style.display = 'none';
                 if (loginForm) loginForm.style.display = 'block';
                 registerForm.reset();
 
                 const loginNikInput = document.getElementById('nik');
-                if (loginNikInput) loginNikInput.value = nik;
+                if (loginNikInput) loginNikInput.value = usernameVal || nik;
                 const loginPassInput = document.getElementById('password');
                 if (loginPassInput) loginPassInput.value = password;
             } catch (err) {
@@ -2896,7 +2996,7 @@ Kembalikan HANYA format JSON valid persis berikut tanpa markdown atau backtick:
             let itemsTableHtml = '<table style="width:100%; border-collapse:collapse; margin-top:0.6rem; font-size:0.84rem;">' +
                 '<tr style="border-bottom:1.5px solid rgba(0,0,0,0.1); text-align:left; color:var(--text-light);">' +
                     '<th style="padding:0.4rem 0;">Komposisi Makanan</th>' +
-                    '<th style="text-align:center;">Kesesuaian</th>' +
+                    '<th style="text-align:center;">Keyakinan Model</th>' +
                     '<th style="text-align:right;">Kalori</th>' +
                     '<th style="text-align:right;">Protein</th>' +
                 '</tr>';
@@ -2907,7 +3007,7 @@ Kembalikan HANYA format JSON valid persis berikut tanpa markdown atau backtick:
                         '<span style="font-size:0.75rem; color:#2563eb; font-weight:700; display:block;">' + it.category + '</span>' +
                         '<strong>' + it.item + '</strong> <span style="font-size:0.75rem; color:var(--text-light);">(' + it.gram + 'g)</span>' +
                     '</td>' +
-                    '<td style="text-align:center;"><span style="background:rgba(37,99,235,0.1); color:#2563eb; padding:0.15rem 0.45rem; border-radius:10px; font-weight:700; font-size:0.76rem;">' + it.conf + ' Sesuai</span></td>' +
+                    '<td style="text-align:center;"><span style="background:rgba(37,99,235,0.1); color:#2563eb; padding:0.15rem 0.45rem; border-radius:10px; font-weight:700; font-size:0.76rem;">' + it.conf + ' Terdeteksi</span></td>' +
                     '<td style="text-align:right; font-weight:600;">' + Math.round(it.kal) + ' kcal</td>' +
                     '<td style="text-align:right; color:#1d4ed8; font-weight:600;">' + it.pro.toFixed(1) + 'g</td>' +
                 '</tr>';
