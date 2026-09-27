@@ -552,7 +552,9 @@
                             <span class="badge-ta badge-ta-1" style="margin-top:0.3rem;">Pindai Makanan Otomatis</span>
                         </div>
                         <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
-                            <button type="button" id="btn-open-vlm-modal" style="display:none;"></button>
+                            <button type="button" id="btn-open-vlm-key-main" class="btn btn-secondary" style="font-size: 0.82rem; padding: 0.45rem 0.9rem;" onclick="if(window.openVLMModal) window.openVLMModal(); else document.getElementById('vlm-config-modal').classList.remove('hidden');">
+                                <i class="fa-solid fa-key" style="color:var(--primary-color);"></i> Kunci Gemini AI
+                            </button>
                             <button type="button" id="btn-open-camera" class="btn btn-primary" style="font-size: 0.82rem; padding: 0.45rem 0.9rem; background:#2563eb; border-color:#2563eb;">
                                 <i class="fa-solid fa-camera"></i> Pindai Baki Makanan
                             </button>
@@ -673,7 +675,7 @@
 
             <div class="camera-container">
                 <video id="camera-video" autoplay playsinline></video>
-                <img id="camera-preview-img" style="display: none; width: 100%; height: 100%; object-fit: cover; border-radius: 12px;" alt="Preview Foto">
+                <img id="camera-preview-img" style="display: none; width: 100%; height: auto; max-height: 65vh; object-fit: contain; border-radius: 12px; background: #000;" alt="Preview Foto">
                 <div class="scanner-overlay hidden" id="scanner-overlay">
                     <div class="scan-line"></div>
                     <p id="scan-status-text">Menganalisis Komposisi Makanan...</p>
@@ -756,6 +758,6 @@
     </div>
 
     <!-- Scripts -->
-    <script src="app.js?v=20260926_popup_final"></script>
+    <script src="app.js?v=20260926_final_v2"></script>
 </body>
 </html>

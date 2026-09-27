@@ -18,12 +18,12 @@ export default async function handler(req, res) {
     try {
         const { image, apiKey, action, foodName, gram } = req.body || {};
 
-        const rawKey = apiKey || process.env.GEMINI_API_KEY || '';
-        const effectiveKey = rawKey.replace('AIzaSyAQ.', 'AQ.').trim();
+        const effectiveKey = String(apiKey || process.env.GEMINI_API_KEY || '').trim();
 
         const modelsToTry = [
             'gemini-1.5-flash',
             'gemini-2.0-flash',
+            'gemini-1.5-flash-8b',
             'gemini-1.5-pro'
         ];
 
@@ -269,7 +269,7 @@ Kembalikan HANYA format JSON valid persis berikut tanpa markdown atau backtick:
         for (const modelName of modelsToTry) {
             try {
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 6000);
+                const timeoutId = setTimeout(() => controller.abort(), 12000);
                 const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(effectiveKey)}`;
                 const geminiRes = await fetch(endpoint, {
                     method: 'POST',
@@ -278,7 +278,7 @@ Kembalikan HANYA format JSON valid persis berikut tanpa markdown atau backtick:
                         contents: [{
                             parts: [
                                 { text: promptText },
-                                { inline_data: { mime_type: 'image/jpeg', data: cleanBase64 } }
+                                { inlineData: { mimeType: 'image/jpeg', data: cleanBase64 } }
                             ]
                         }],
                         generationConfig: {
@@ -303,7 +303,14 @@ Kembalikan HANYA format JSON valid persis berikut tanpa markdown atau backtick:
                     continue;
                 }
 
-                const cleanedJson = JSON.parse(rawText.replace(/```json|```/g, '').trim());
+                let cleanedJson;
+                try {
+                    cleanedJson = JSON.parse(rawText.replace(/```json/gi, '').replace(/```/g, '').trim());
+                } catch (parseE) {
+                    const match = rawText.match(/\{[\s\S]*\}/);
+                    if (match) cleanedJson = JSON.parse(match[0]);
+                    else throw parseE;
+                }
                 return res.status(200).json({ success: true, data: cleanedJson, model: modelName });
             } catch (mErr) {
                 lastError = mErr;
