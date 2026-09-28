@@ -22,11 +22,12 @@ export default async function handler(req, res) {
         const effectiveKey = String(apiKey || process.env.GEMINI_API_KEY || defaultKey).replace(/^["']|["']$/g, '').trim();
 
         const modelsToTry = [
+            'gemini-flash-lite-latest',
+            'gemini-3.1-flash-lite',
+            'gemini-3.5-flash-lite',
+            'gemini-3.7-flash',
             'gemini-3.6-flash',
-            'gemini-flash-latest',
-            'gemini-3.8-flash',
-            'gemini-3.5-flash',
-            'gemini-3.1-pro-preview'
+            'gemini-flash-latest'
         ];
 
         // ============================================================
@@ -181,16 +182,15 @@ Kembalikan HANYA format JSON valid persis berikut tanpa markdown atau backtick:
 
         const promptText = `Kamu adalah pakar computer vision dan sistem visual multimodal AI gizi Program Makan Bergizi Gratis (MBG) Kemenkes RI.
 Tugasmu adalah menganalisis citra baki makanan kompartemen stainless ini secara sangat cermat, objektif, dan mendalam.
-Kenali SETIAP makanan, lauk, sayur, buah, minuman, maupun kemasan kerupuk/snack/puding yang ada di SEMUA sekat baki.
+Kenali SETIAP makanan, lauk, sayur, buah, minuman, maupun kemasan kerupuk/snack/puding/susu yang ada di SEMUA sekat baki.
 
 ATURAN DETEKSI LENGKAP:
-1. Kemasan / Kerupuk / Camilan: Periksa sekat yang berisi kemasan bungkusan makanan, kerupuk, keripik, atau snack! Baca teks/merek pada kemasan jika ada (misal: 'FINNA Garlic Crackers / Kerupuk Bawang Goreng', 'Kerupuk Udang', 'Kerupuk Putih', dll.). JANGAN LEWATKAN kemasan kerupuk atau camilan ini!
-2. Susu / Puding / Pencuci Mulut: Jika ada susu kemasan kotak (UHT), susu cup, atau puding/agar-agar cup, identifikasi jenis dan rasanya.
-3. Makanan Pokok: Identifikasi jenis & bentuk nasi (misal: Nasi Kuning Gurih, Nasi Putih Pulen Bentuk Hati, Nasi Goreng, Mie, Kentang, dll.).
-4. Lauk Hewani: Kenali olahan lauk hewani secara tepat (Telur Mata Sapi / Ceplok, Paha Ayam Masak Saus Gurih, Ayam Lengkuas, Daging Semur/Rendang, Udang, Ikan Filet, dll.).
-5. Lauk Nabati: (Tempe Orek Dadu, Tempe Goreng Gurih, Tahu Goreng Kotak, Perkedel, dll.).
-6. Sayuran: (Tumis Buncis Hijau, Sayur Capcay, Sayur Sop, Lalapan Selada/Timun, dll.).
-7. Buah-buahan: Kenali buah dan warnanya (Buah Semangka Kuning Segar jika daging buahnya kuning, Semangka Merah, Buah Kelengkeng Segar, Jeruk, Pisang, dll.).
+1. Makanan Pokok / Karbohidrat: Identifikasi secara akurat jenis karbohidrat utama (Spaghetti / Pasta / Mie Kuning / Bihun / Kwetiau jika berupa helaian mie atau pasta; Nasi Putih Pulen jika nasi putih; Nasi Kuning jika kuning; Kentang, dll.). JANGAN sebut nasi jika visualnya mie atau pasta!
+2. Buah-buahan: Kenali buah segar (Buah Jeruk Segar Manis jika jeruk bulat, Semangka Merah/Kuning, Kelengkeng, Pisang, Melon, dll.).
+3. Sayuran: (Tumis Buncis & Wortel, Sayur Capcay, Sayur Sop, Bayam, dll.).
+4. Lauk Nabati / Pelengkap: (Kerupuk Pangsit Goreng Renyah, Kerupuk Bawang Finna, Tempe Goreng, Tahu Kotak, dll.).
+5. Sambal / Saus: (Saus Pasta Bolognese / Saus Sambal Tomat, dll.).
+6. Lauk Hewani: Kenali olahan lauk hewani jika ada (Telur Mata Sapi, Paha Ayam, Ayam Lengkuas, Daging Semur/Rendang, Udang, Ikan Filet, dll.). JIKA TIDAK ADA lauk hewani di baki, isi 'prohew': null, JANGAN MENGARANG ATAU MEMAKSAKAN AYAM/DAGING JIKA TIDAK ADA!
 
 Kembalikan HANYA format JSON valid persis berikut tanpa markdown atau backtick:
 {
@@ -198,71 +198,61 @@ Kembalikan HANYA format JSON valid persis berikut tanpa markdown atau backtick:
   "items": [
     {
       "category": "Makanan Pokok / Karbohidrat",
-      "name": "Nama Makanan Pokok Spesifik",
+      "name": "Spaghetti Pasta Gurih",
       "gram": 150,
-      "kal": 210,
-      "pro": 4.2,
-      "kar": 41.5,
-      "lem": 3.2,
+      "kal": 220,
+      "pro": 6.5,
+      "kar": 38.0,
+      "lem": 4.5,
       "conf": "99.2%"
-    },
-    {
-      "category": "Protein Hewani",
-      "name": "Nama Lauk Hewani",
-      "gram": 60,
-      "kal": 95,
-      "pro": 6.3,
-      "kar": 0.6,
-      "lem": 7.2,
-      "conf": "99.5%"
-    },
-    {
-      "category": "Protein Nabati",
-      "name": "Nama Lauk Nabati",
-      "gram": 45,
-      "kal": 105,
-      "pro": 8.5,
-      "kar": 7.5,
-      "lem": 4.8,
-      "conf": "98.2%"
     },
     {
       "category": "Sayuran",
-      "name": "Nama Sayuran",
+      "name": "Tumis Buncis & Wortel",
       "gram": 75,
-      "kal": 25,
-      "pro": 1.2,
-      "kar": 4.5,
-      "lem": 0.5,
-      "conf": "98.7%"
+      "kal": 34,
+      "pro": 1.8,
+      "kar": 5.5,
+      "lem": 0.8,
+      "conf": "98.8%"
     },
     {
       "category": "Buah-buahan",
-      "name": "Nama Buah (misal: Buah Semangka Kuning Segar)",
+      "name": "Buah Jeruk Segar Manis",
       "gram": 100,
-      "kal": 30,
-      "pro": 0.6,
-      "kar": 7.5,
-      "lem": 0.2,
-      "conf": "99.2%"
+      "kal": 47,
+      "pro": 0.9,
+      "kar": 12.0,
+      "lem": 0.1,
+      "conf": "99.0%"
     },
     {
-      "category": "Pelengkap / Kerupuk",
-      "name": "Kerupuk Bawang Finna (Garlic Crackers)",
-      "gram": 15,
-      "kal": 70,
-      "pro": 0.5,
-      "kar": 11.0,
-      "lem": 2.8,
-      "conf": "99.0%"
+      "category": "Lauk Nabati / Pelengkap",
+      "name": "Kerupuk Pangsit Goreng Renyah",
+      "gram": 30,
+      "kal": 135,
+      "pro": 2.8,
+      "kar": 17.5,
+      "lem": 6.2,
+      "conf": "98.5%"
+    },
+    {
+      "category": "Pelengkap / Saus",
+      "name": "Saus Pasta / Sambal Tomat",
+      "gram": 25,
+      "kal": 28,
+      "pro": 0.6,
+      "kar": 4.5,
+      "lem": 0.9,
+      "conf": "98.0%"
     }
   ],
-  "karbo": {"name": "Nasi Kuning Gurih", "val": "210", "gram": 150, "kal": 210, "pro": 4.2, "kar": 41.5, "lem": 3.2, "conf": "99.2%"},
-  "prohew": {"name": "Telur Mata Sapi", "val": "92", "gram": 60, "kal": 95, "pro": 6.3, "kar": 0.6, "lem": 7.2, "conf": "99.5%"},
-  "pronab": {"name": "Tempe Orek Dadu", "val": "110", "gram": 45, "kal": 105, "pro": 8.5, "kar": 7.5, "lem": 4.8, "conf": "98.2%"},
-  "sayur": {"name": "Tumis Buncis Hijau", "val": "32", "gram": 75, "kal": 25, "pro": 1.2, "kar": 4.5, "lem": 0.5, "conf": "98.7%"},
-  "buah": {"name": "Buah Semangka Kuning Segar", "gram": 100, "kal": 30, "pro": 0.6, "kar": 7.5, "lem": 0.2, "conf": "99.2%"},
-  "pelengkap": {"name": "Kerupuk Bawang Finna (Garlic Crackers)", "gram": 15, "kal": 70, "pro": 0.5, "kar": 11.0, "lem": 2.8, "conf": "99.0%"},
+  "karbo": {"name": "Spaghetti Pasta Gurih", "gram": 150, "kal": 220, "pro": 6.5, "kar": 38.0, "lem": 4.5, "conf": "99.2%"},
+  "prohew": null,
+  "pronab": {"name": "Kerupuk Pangsit Goreng Renyah", "gram": 30, "kal": 135, "pro": 2.8, "kar": 17.5, "lem": 6.2, "conf": "98.5%"},
+  "sayur": {"name": "Tumis Buncis & Wortel", "gram": 75, "kal": 34, "pro": 1.8, "kar": 5.5, "lem": 0.8, "conf": "98.8%"},
+  "buah": {"name": "Buah Jeruk Segar Manis", "gram": 100, "kal": 47, "pro": 0.9, "kar": 12.0, "lem": 0.1, "conf": "99.0%"},
+  "pelengkap": {"name": "Saus Pasta / Sambal Tomat", "gram": 25, "kal": 28, "pro": 0.6, "kar": 4.5, "lem": 0.9, "conf": "98.0%"},
   "analysis": "Porsi dan komposisi makanan teranalisis otomatis sesuai standar gizi resmi Kemenkes RI."
 }`;
 
