@@ -617,14 +617,14 @@
                             <button type="button" id="btn-open-vlm-key-main" class="btn btn-secondary" style="font-size: 0.82rem; padding: 0.45rem 0.9rem;" onclick="if(window.openVLMModal) window.openVLMModal(); else document.getElementById('vlm-config-modal').classList.remove('hidden');">
                                 <i class="fa-solid fa-key" style="color:var(--primary-color);"></i> Kunci Gemini AI
                             </button>
-                            <button type="button" id="btn-open-camera" class="btn btn-primary" style="font-size: 0.82rem; padding: 0.45rem 0.9rem; background:#2563eb; border-color:#2563eb;">
+                            <button type="button" id="btn-open-camera" class="btn btn-primary" style="font-size: 0.82rem; padding: 0.45rem 0.9rem; background:#2563eb; border-color:#2563eb;" onclick="if(window.openCameraModal) window.openCameraModal(); else { const m = document.getElementById('camera-modal'); if(m) m.classList.remove('hidden'); }">
                                 <i class="fa-solid fa-camera"></i> Pindai Baki Makanan
                             </button>
                         </div>
                     </div>
 
                     <!-- Camera Viewfinder Placeholder Box -->
-                    <div id="camera-viewfinder-placeholder" onclick="document.getElementById('btn-open-camera').click()" style="margin-top: 1.2rem; cursor: pointer; background: #0f172a; border-radius: 16px; min-height: 280px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px dashed rgba(255,255,255,0.25); text-align: center; padding: 2rem; color: #94a3b8; position: relative; overflow: hidden; box-shadow: inset 0 2px 8px rgba(0,0,0,0.5);" title="Klik untuk memindai baki makanan">
+                    <div id="camera-viewfinder-placeholder" onclick="if(window.openCameraModal) window.openCameraModal(); else { const m = document.getElementById('camera-modal'); if(m) m.classList.remove('hidden'); }" style="margin-top: 1.2rem; cursor: pointer; background: #0f172a; border-radius: 16px; min-height: 280px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px dashed rgba(255,255,255,0.25); text-align: center; padding: 2rem; color: #94a3b8; position: relative; overflow: hidden; box-shadow: inset 0 2px 8px rgba(0,0,0,0.5);" title="Klik untuk memindai baki makanan">
                         <div style="width: 72px; height: 72px; border-radius: 50%; background: rgba(59, 130, 246, 0.15); display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; color: #3b82f6; font-size: 2.2rem;">
                             <i class="fa-solid fa-camera"></i>
                         </div>
@@ -768,7 +768,7 @@
                 <button type="button" class="btn btn-secondary" style="flex: 1; min-width: 80px; background: var(--secondary-color); color: white;" onclick="document.getElementById('upload-gallery').click()">
                     <i class="fa-solid fa-image"></i> Galeri
                 </button>
-                <button type="button" id="btn-close-camera" class="btn btn-secondary" style="flex: 1; min-width: 80px;">
+                <button type="button" id="btn-close-camera" class="btn btn-secondary" style="flex: 1; min-width: 80px;" onclick="if(window.closeCameraModal) window.closeCameraModal(); else { const m = document.getElementById('camera-modal'); if(m) m.classList.add('hidden'); }">
                     <i class="fa-solid fa-arrow-left"></i> Kembali
                 </button>
                 <input type="file" id="upload-gallery" accept="image/*" style="display: none;">
@@ -836,6 +836,6 @@
     </div>
 
     <!-- Scripts -->
-    <script src="app.js?v=20260929_dual_key_pool_v11"></script>
+    <script src="app.js?v=20260929_fix_click_v12"></script>
 </body>
 </html>

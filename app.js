@@ -2204,6 +2204,9 @@ document.addEventListener('DOMContentLoaded', () => {
     ];
     const _DEFAULT_AI_KEY = _POOL_AI_KEYS[0];
 
+    // Inisialisasi awal vlmApiKey aman dari TDZ
+    let vlmApiKey = (localStorage.getItem('mbg_vlm_api_key') || localStorage.getItem('gemini_api_key') || localStorage.getItem('sppg_vlm_key') || '').replace(/^["']|["']$/g, '').trim();
+
     function getAllAvailableAIKeys() {
         const customCandidates = [
             vlmApiKey,
@@ -2232,7 +2235,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const allKeys = getAllAvailableAIKeys();
         return allKeys[0] || _DEFAULT_AI_KEY;
     }
-    let vlmApiKey = getCleanAIApiKey();
+    if (!vlmApiKey || vlmApiKey.length < 10) {
+        vlmApiKey = getCleanAIApiKey();
+    }
 
     function updateVLMUI() {
         const btnVLM = document.getElementById('btn-mode-vlm');
