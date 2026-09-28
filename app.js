@@ -2696,17 +2696,18 @@ Kembalikan HANYA format JSON valid tanpa markdown atau backtick dengan struktur:
 }`;
 
         const modelsToTry = [
+            'gemini-3-flash-preview',
+            'gemini-3.1-flash-lite-preview',
+            'gemini-3.1-flash-lite',
             'gemini-3.8-flash',
-            'gemini-3.7-flash',
-            'gemini-3.5-flash-lite',
-            'gemini-flash-lite-latest'
+            'gemini-3.7-flash'
         ];
 
         let lastErr = null;
         for (const modelName of modelsToTry) {
             try {
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 6000);
+                const timeoutId = setTimeout(() => controller.abort(), 7000);
                 const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':generateContent?key=' + encodeURIComponent(cleanKey);
                 const res = await fetch(endpoint, {
                     method: 'POST',
@@ -2818,9 +2819,10 @@ Kembalikan HANYA format JSON valid tanpa markdown atau backtick dengan struktur:
                 // Prioritaskan Panggilan Langsung Google Gemini API
                 try {
                     const vlmRes = await queryCloudGeminiVLM(base64Jpeg, activeKey);
-                    if (vlmRes && Array.isArray(vlmRes.items)) {
-                        rawDetectedItems = vlmRes.items;
-                        matchedPackage = vlmRes.packageName || 'Menu MBG Terdeteksi';
+                    const vItems = (vlmRes && (vlmRes.items || vlmRes.makanan || vlmRes.food_items)) || [];
+                    if (Array.isArray(vItems) && vItems.length > 0) {
+                        rawDetectedItems = vItems;
+                        matchedPackage = vlmRes.packageName || vlmRes.package_name || 'Menu MBG Terdeteksi';
                         vlmAnalysisNote = vlmRes.analysis || 'Porsi dan komposisi makanan teranalisis otomatis.';
                         engineUsedLabel = '✨ Dianalisis Cerdas oleh Google Gemini Vision AI';
                         cloudSuccess = true;
@@ -2833,7 +2835,7 @@ Kembalikan HANYA format JSON valid tanpa markdown atau backtick dengan struktur:
                 if (!cloudSuccess) {
                     try {
                         const controller = new AbortController();
-                        const timeoutId = setTimeout(() => controller.abort(), 6000);
+                        const timeoutId = setTimeout(() => controller.abort(), 7000);
                         const serverRes = await fetch('/api/gemini', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -2843,9 +2845,10 @@ Kembalikan HANYA format JSON valid tanpa markdown atau backtick dengan struktur:
                         clearTimeout(timeoutId);
                         if (serverRes.ok) {
                             const sData = await serverRes.json();
-                            if (sData && sData.success && sData.data && Array.isArray(sData.data.items)) {
-                                rawDetectedItems = sData.data.items;
-                                matchedPackage = sData.data.packageName || 'Menu MBG Terdeteksi';
+                            const sItems = (sData && sData.success && sData.data && (sData.data.items || sData.data.makanan || sData.data.food_items)) || [];
+                            if (Array.isArray(sItems) && sItems.length > 0) {
+                                rawDetectedItems = sItems;
+                                matchedPackage = sData.data.packageName || sData.data.package_name || 'Menu MBG Terdeteksi';
                                 vlmAnalysisNote = sData.data.analysis || 'Porsi dan komposisi makanan teranalisis otomatis.';
                                 engineUsedLabel = '✨ Dianalisis Cerdas oleh Google Gemini Vision AI (' + (sData.model || 'Gemini Flash') + ')';
                                 cloudSuccess = true;
@@ -3037,10 +3040,15 @@ Kembalikan HANYA format JSON valid tanpa markdown atau backtick dengan struktur:
 
         } catch (err) {
             console.error('AI Scan Error:', err);
+            const isQuotaErr = (err && err.message && (err.message.includes('429') || err.message.includes('quota') || err.message.includes('Resource Exhausted')));
+            const errDetail = isQuotaErr 
+                ? 'Layanan AI sedang padat (kuota penuh). Silakan tunggu sebentar lalu coba scan kembali.' 
+                : 'Silakan coba scan kembali atau ambil foto baki dengan pencahayaan jelas.';
+
             window._aiDetectionSummary = 
                 '<div style="background:#fef2f2; border:1px solid #fecaca; border-radius:10px; padding:1.2rem; text-align:center;">' +
                     '<p style="color:#ef4444; font-weight:700; font-size:1.05rem; margin:0 0 0.5rem 0;">⚠️ Analisis AI gagal</p>' +
-                    '<p style="font-size:0.88rem; color:#64748b; margin:0;">Silakan coba scan kembali atau ambil foto baki dengan pencahayaan jelas.</p>' +
+                    '<p style="font-size:0.88rem; color:#64748b; margin:0;">' + errDetail + '</p>' +
                 '</div>';
             window.currentMealIntake = null;
         } finally {
