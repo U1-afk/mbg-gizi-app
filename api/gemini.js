@@ -22,12 +22,10 @@ export default async function handler(req, res) {
         const effectiveKey = String(apiKey || process.env.GEMINI_API_KEY || defaultKey).replace(/^["']|["']$/g, '').trim();
 
         const modelsToTry = [
-            'gemini-flash-lite-latest',
-            'gemini-3.1-flash-lite',
-            'gemini-3.5-flash-lite',
+            'gemini-3.8-flash',
             'gemini-3.7-flash',
-            'gemini-3.6-flash',
-            'gemini-flash-latest'
+            'gemini-3.5-flash-lite',
+            'gemini-flash-lite-latest'
         ];
 
         // ============================================================
@@ -65,19 +63,29 @@ export default async function handler(req, res) {
                 "pisang goreng": { kal: 195, pro: 2.0, kar: 35.0, lem: 5.5 },
                 "kacang hijau": { kal: 140, pro: 7.0, kar: 24.0, lem: 1.5 },
                 "ayam goreng": { kal: 230, pro: 22.5, kar: 8.0, lem: 12.0 },
+                "ayam lengkuas": { kal: 245, pro: 26.0, kar: 2.0, lem: 13.5 },
                 "telur dadar": { kal: 150, pro: 10.0, kar: 2.0, lem: 11.5 },
-                "tempe orek": { kal: 180, pro: 14.0, kar: 12.0, lem: 8.0 },
+                "telur ceplok": { kal: 185, pro: 12.4, kar: 0.8, lem: 14.2 },
+                "tempe orek": { kal: 210, pro: 17.0, kar: 18.0, lem: 9.0 },
                 "tahu isi": { kal: 160, pro: 8.0, kar: 15.0, lem: 7.5 },
-                "kerupuk": { kal: 500, pro: 3.5, kar: 65.0, lem: 26.0 },
+                "tahu goreng": { kal: 95, pro: 9.0, kar: 2.5, lem: 5.5 },
+                "kerupuk": { kal: 480, pro: 3.5, kar: 65.0, lem: 24.0 },
+                "kerupuk bawang": { kal: 480, pro: 3.5, kar: 65.0, lem: 24.0 },
+                "kerupuk pangsit": { kal: 480, pro: 4.5, kar: 65.0, lem: 22.0 },
                 "crackers": { kal: 500, pro: 3.5, kar: 65.0, lem: 26.0 },
-                "finna": { kal: 500, pro: 3.5, kar: 65.0, lem: 26.0 },
+                "finna": { kal: 480, pro: 3.5, kar: 65.0, lem: 24.0 },
                 "susu": { kal: 65, pro: 3.2, kar: 4.8, lem: 3.5 },
                 "puding": { kal: 80, pro: 1.0, kar: 18.0, lem: 0.5 },
+                "kelengkeng": { kal: 60, pro: 1.3, kar: 15.1, lem: 0.1 },
+                "lengkeng": { kal: 60, pro: 1.3, kar: 15.1, lem: 0.1 },
+                "salak": { kal: 77, pro: 0.4, kar: 20.9, lem: 0.2 },
                 "semangka": { kal: 32, pro: 0.6, kar: 7.6, lem: 0.2 },
                 "melon": { kal: 36, pro: 0.8, kar: 8.5, lem: 0.2 },
                 "sayur bayam": { kal: 20, pro: 1.6, kar: 3.5, lem: 0.3 },
                 "bayam": { kal: 20, pro: 1.6, kar: 3.5, lem: 0.3 },
                 "tumis buncis": { kal: 45, pro: 1.8, kar: 5.5, lem: 2.2 },
+                "tumis jagung": { kal: 65, pro: 2.2, kar: 14.0, lem: 0.8 },
+                "jagung manis": { kal: 65, pro: 2.2, kar: 14.0, lem: 0.8 },
                 "sayur capcay": { kal: 48, pro: 1.8, kar: 6.0, lem: 2.5 },
                 "sayur sop": { kal: 25, pro: 1.3, kar: 4.5, lem: 0.5 },
                 "sayur lodeh": { kal: 70, pro: 2.0, kar: 6.0, lem: 4.5 },
@@ -180,80 +188,39 @@ Kembalikan HANYA format JSON valid persis berikut tanpa markdown atau backtick:
 
         const cleanBase64 = image.includes(',') ? image.split(',')[1] : image;
 
-        const promptText = `Kamu adalah pakar computer vision dan sistem visual multimodal AI gizi Program Makan Bergizi Gratis (MBG) Kemenkes RI.
-Tugasmu adalah menganalisis citra baki makanan kompartemen stainless ini secara sangat cermat, objektif, dan mendalam.
-Kenali SETIAP makanan, lauk, sayur, buah, minuman, maupun kemasan kerupuk/snack/puding/susu yang ada di SEMUA sekat baki.
+        const promptText = `Kamu adalah sistem vision AI untuk analisis visual makanan Program Makan Bergizi Gratis (MBG).
+Tugasmu adalah menganalisis citra foto baki makanan bersekat/kompartemen ini secara cermat, objektif, dan murni berdasarkan apa yang tampak di foto tanpa mengarang.
 
-ATURAN DETEKSI LENGKAP:
-1. Makanan Pokok / Karbohidrat: Identifikasi secara akurat jenis karbohidrat utama (Spaghetti / Pasta / Mie Kuning / Bihun / Kwetiau jika berupa helaian mie atau pasta; Nasi Putih Pulen jika nasi putih; Nasi Kuning jika kuning; Kentang, dll.). JANGAN sebut nasi jika visualnya mie atau pasta!
-2. Buah-buahan: Kenali buah segar (Buah Jeruk Segar Manis jika jeruk bulat, Semangka Merah/Kuning, Kelengkeng, Pisang, Melon, dll.).
-3. Sayuran: (Tumis Buncis & Wortel, Sayur Capcay, Sayur Sop, Bayam, dll.).
-4. Lauk Nabati / Pelengkap: (Kerupuk Pangsit Goreng Renyah, Kerupuk Bawang Finna, Tempe Goreng, Tahu Kotak, dll.).
-5. Sambal / Saus: (Saus Pasta Bolognese / Saus Sambal Tomat, dll.).
-6. Lauk Hewani: Kenali olahan lauk hewani jika ada (Telur Mata Sapi, Paha Ayam, Ayam Lengkuas, Daging Semur/Rendang, Udang, Ikan Filet, dll.). JIKA TIDAK ADA lauk hewani di baki, isi 'prohew': null, JANGAN MENGARANG ATAU MEMAKSAKAN AYAM/DAGING JIKA TIDAK ADA!
+Instruksi Analisis:
+1. Identifikasi setiap jenis makanan yang benar-benar tampak di foto baki (seperti makanan pokok/karbohidrat, lauk hewani, lauk nabati, sayuran, buah-buahan, camilan/kerupuk, atau susu).
+2. Tuliskan nama makanan secara spesifik apa adanya sesuai wujud aslinya (misalnya: "nasi putih", "kelengkeng", "telur ceplok", "tempe orek", "tumis jagung", dsb.).
+3. JANGAN mengarang makanan yang tidak terlihat di foto. JANGAN mengubah identifikasi makanan menjadi makanan lain karena contoh atau asumsi.
+4. Estimasi berat porsi makanan dalam gram (estimated_grams) yang realistis untuk porsi makan siang anak sekolah (angka > 0).
+5. Berikan detection confidence (confidence: desimal 0.0 - 1.0) untuk ketepatan identifikasi visual makanan.
+6. Untuk setiap makanan, berikan estimasi nilai gizi per 100 gram (nutrition_per_100g: energy_kcal, protein_g, carbohydrate_g, fat_g) berdasarkan pengetahuan nutrisi umum sebagai fallback jika makanan belum ada di database lokal.
+7. Sediakan nutrition_confidence (desimal 0.0 - 1.0) dan tandai nutrition_source: "AI_ESTIMATE". Nilai tersebut hanya merupakan estimasi dan bukan pengganti data laboratorium atau database nutrisi resmi.
+8. Jika baki kosong, buram parah, atau makanan tidak dapat diidentifikasi dengan yakin, kembalikan items kosong [] dan jelaskan di analysis bahwa foto kurang jelas.
 
-Kembalikan HANYA format JSON valid persis berikut tanpa markdown atau backtick:
+Kembalikan HANYA format JSON valid tanpa markdown atau backtick dengan struktur:
 {
-  "packageName": "Nama Menu Lengkap MBG (sebutkan semua komponen termasuk kerupuk/pelengkap)",
+  "packageName": "Ringkasan Menu MBG Terdeteksi",
   "items": [
     {
-      "category": "Makanan Pokok / Karbohidrat",
-      "name": "Spaghetti Pasta Gurih",
-      "gram": 150,
-      "kal": 220,
-      "pro": 6.5,
-      "kar": 38.0,
-      "lem": 4.5,
-      "conf": "99.2%"
-    },
-    {
-      "category": "Sayuran",
-      "name": "Tumis Buncis & Wortel",
-      "gram": 75,
-      "kal": 34,
-      "pro": 1.8,
-      "kar": 5.5,
-      "lem": 0.8,
-      "conf": "98.8%"
-    },
-    {
-      "category": "Buah-buahan",
-      "name": "Buah Jeruk Segar Manis",
-      "gram": 100,
-      "kal": 47,
-      "pro": 0.9,
-      "kar": 12.0,
-      "lem": 0.1,
-      "conf": "99.0%"
-    },
-    {
-      "category": "Lauk Nabati / Pelengkap",
-      "name": "Kerupuk Pangsit Goreng Renyah",
-      "gram": 30,
-      "kal": 135,
-      "pro": 2.8,
-      "kar": 17.5,
-      "lem": 6.2,
-      "conf": "98.5%"
-    },
-    {
-      "category": "Pelengkap / Saus",
-      "name": "Saus Pasta / Sambal Tomat",
-      "gram": 25,
-      "kal": 28,
-      "pro": 0.6,
-      "kar": 4.5,
-      "lem": 0.9,
-      "conf": "98.0%"
+      "name": "nama makanan",
+      "category": "karbohidrat | hewani | nabati | sayur | buah | pelengkap",
+      "estimated_grams": 100,
+      "confidence": 0.85,
+      "nutrition_per_100g": {
+        "energy_kcal": 60.0,
+        "protein_g": 1.3,
+        "carbohydrate_g": 15.0,
+        "fat_g": 0.1
+      },
+      "nutrition_confidence": 0.70,
+      "nutrition_source": "AI_ESTIMATE"
     }
   ],
-  "karbo": {"name": "Spaghetti Pasta Gurih", "gram": 150, "kal": 220, "pro": 6.5, "kar": 38.0, "lem": 4.5, "conf": "99.2%"},
-  "prohew": null,
-  "pronab": {"name": "Kerupuk Pangsit Goreng Renyah", "gram": 30, "kal": 135, "pro": 2.8, "kar": 17.5, "lem": 6.2, "conf": "98.5%"},
-  "sayur": {"name": "Tumis Buncis & Wortel", "gram": 75, "kal": 34, "pro": 1.8, "kar": 5.5, "lem": 0.8, "conf": "98.8%"},
-  "buah": {"name": "Buah Jeruk Segar Manis", "gram": 100, "kal": 47, "pro": 0.9, "kar": 12.0, "lem": 0.1, "conf": "99.0%"},
-  "pelengkap": {"name": "Saus Pasta / Sambal Tomat", "gram": 25, "kal": 28, "pro": 0.6, "kar": 4.5, "lem": 0.9, "conf": "98.0%"},
-  "analysis": "Porsi dan komposisi makanan teranalisis otomatis sesuai standar gizi resmi Kemenkes RI."
+  "analysis": "Deskripsi singkat hasil pengamatan visual baki makanan."
 }`;
 
         let lastError = null;
@@ -261,7 +228,7 @@ Kembalikan HANYA format JSON valid persis berikut tanpa markdown atau backtick:
         for (const modelName of modelsToTry) {
             try {
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 12000);
+                const timeoutId = setTimeout(() => controller.abort(), 6000);
                 const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(effectiveKey)}`;
                 const geminiRes = await fetch(endpoint, {
                     method: 'POST',
