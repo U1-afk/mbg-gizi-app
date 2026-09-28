@@ -2197,23 +2197,40 @@ document.addEventListener('DOMContentLoaded', () => {
     // 14. SISTEM DETEKSI MAKANAN OTOMATIS
     // ============================================================
     let activeAIEngine = localStorage.getItem('mbg_ai_engine') || 'vlm';
-    const _DEFAULT_AI_KEY = (typeof atob === 'function') ? atob('QVEuQWI4Uk42SXhRQjdtZWZDajlLMDdoTVRKaXo1SzgweUZON3JDTkJTRFpsdzM5NmVHaFE=') : '';
-    function getCleanAIApiKey() {
-        const candidates = [
+    // Pool Multi-Kunci AI Gemini (Kunci 2 Baru + Kunci 1 Cadangan)
+    const _POOL_AI_KEYS = [
+        (typeof atob === 'function') ? atob('QVEuQWI4Uk42SjJHZzZqTGxmcVB5RGdoV2hodDVqS3Y0cjNTSDBuUlRPN2NQdjNGOWtLckE=') : '', // Key 2 (Aktif Utama)
+        (typeof atob === 'function') ? atob('QVEuQWI4Uk42SXhRQjdtZWZDajlLMDdoTVRKaXo1SzgweUZON3JDTkJTRFpsdzM5NmVHaFE=') : ''  // Key 1 (Cadangan Pool)
+    ];
+    const _DEFAULT_AI_KEY = _POOL_AI_KEYS[0];
+
+    function getAllAvailableAIKeys() {
+        const customCandidates = [
             vlmApiKey,
             localStorage.getItem('mbg_vlm_api_key'),
             localStorage.getItem('gemini_api_key'),
             localStorage.getItem('sppg_vlm_key')
         ];
-        for (const c of candidates) {
+        const keys = [];
+        for (const c of customCandidates) {
             if (typeof c === 'string') {
                 const trimmed = c.replace(/^["']|["']$/g, '').trim();
-                if (trimmed.length > 10 && trimmed !== 'null' && trimmed !== 'undefined') {
-                    return trimmed;
+                if (trimmed.length > 10 && trimmed !== 'null' && trimmed !== 'undefined' && !keys.includes(trimmed)) {
+                    keys.push(trimmed);
                 }
             }
         }
-        return _DEFAULT_AI_KEY;
+        for (const p of _POOL_AI_KEYS) {
+            if (p && !keys.includes(p)) {
+                keys.push(p);
+            }
+        }
+        return keys;
+    }
+
+    function getCleanAIApiKey() {
+        const allKeys = getAllAvailableAIKeys();
+        return allKeys[0] || _DEFAULT_AI_KEY;
     }
     let vlmApiKey = getCleanAIApiKey();
 
@@ -2672,10 +2689,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     window.processDetectedFoodItem = processDetectedFoodItem;
 
-    // Cloud Vision API Caller (Tanpa Anchoring & Fallback Nilai Gizi per 100g)
+    // Cloud Vision API Caller dengan Rotasi Multi-Kunci & Auto-Failover
     async function queryCloudGeminiVLM(base64Jpeg, apiKey) {
-        const cleanKey = String(apiKey || '').replace(/^["']|["']$/g, '').trim();
-        if (!cleanKey) throw new Error('Kunci API Gemini belum diatur atau kosong');
+        const availableKeys = getAllAvailableAIKeys();
+        const primaryKey = String(apiKey || '').replace(/^["']|["']$/g, '').trim();
+        if (primaryKey && !availableKeys.includes(primaryKey)) {
+            availableKeys.unshift(primaryKey);
+        }
+        if (availableKeys.length === 0) throw new Error('Kunci API Gemini belum diatur atau kosong');
 
         const promptText = `Kamu adalah sistem vision AI untuk analisis visual makanan Program Makan Bergizi Gratis (MBG).
 Tugasmu adalah menganalisis citra foto baki makanan bersekat/kompartemen ini secara cermat, objektif, dan murni berdasarkan apa yang tampak di foto tanpa mengarang.
@@ -2722,56 +2743,64 @@ Kembalikan HANYA format JSON valid tanpa markdown atau backtick dengan struktur:
         ];
 
         let lastErr = null;
-        for (const modelName of modelsToTry) {
-            try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 3500);
-                const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':generateContent?key=' + encodeURIComponent(cleanKey);
-                const res = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{
-                            parts: [
-                                { text: promptText },
-                                { inlineData: { mimeType: 'image/jpeg', data: base64Jpeg } }
-                            ]
-                        }],
-                        generationConfig: {
-                            temperature: 0.1,
-                            responseMimeType: 'application/json'
-                        }
-                    }),
-                    signal: controller.signal
-                });
-                clearTimeout(timeoutId);
-
-                if (!res.ok) {
-                    const errBody = await res.text();
-                    lastErr = new Error('Model ' + modelName + ' HTTP ' + res.status + ': ' + errBody);
-                    continue;
-                }
-                const data = await res.json();
-                const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                if (!rawText) {
-                    lastErr = new Error('Empty response from ' + modelName);
-                    continue;
-                }
-
-                let parsedResult;
+        for (const currentKey of availableKeys) {
+            for (const modelName of modelsToTry) {
                 try {
-                    parsedResult = JSON.parse(rawText.replace(/```json/gi, '').replace(/```/g, '').trim());
-                } catch (parseE) {
-                    const match = rawText.match(/\{[\s\S]*\}/);
-                    if (match) parsedResult = JSON.parse(match[0]);
-                    else throw parseE;
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 3500);
+                    const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':generateContent?key=' + encodeURIComponent(currentKey);
+                    const res = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{
+                                parts: [
+                                    { text: promptText },
+                                    { inlineData: { mimeType: 'image/jpeg', data: base64Jpeg } }
+                                ]
+                            }],
+                            generationConfig: {
+                                temperature: 0.1,
+                                responseMimeType: 'application/json'
+                            }
+                        }),
+                        signal: controller.signal
+                    });
+                    clearTimeout(timeoutId);
+
+                    if (res.status === 429) {
+                        console.warn(`Key ${currentKey.slice(0, 10)}... terkena rate limit (429), beralih ke kunci pool berikutnya...`);
+                        lastErr = new Error('Rate limit 429');
+                        break; // Coba key berikutnya di availableKeys
+                    }
+
+                    if (!res.ok) {
+                        const errBody = await res.text();
+                        lastErr = new Error('Model ' + modelName + ' HTTP ' + res.status + ': ' + errBody);
+                        continue;
+                    }
+                    const data = await res.json();
+                    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (!rawText) {
+                        lastErr = new Error('Empty response from ' + modelName);
+                        continue;
+                    }
+
+                    let parsedResult;
+                    try {
+                        parsedResult = JSON.parse(rawText.replace(/```json/gi, '').replace(/```/g, '').trim());
+                    } catch (parseE) {
+                        const match = rawText.match(/\{[\s\S]*\}/);
+                        if (match) parsedResult = JSON.parse(match[0]);
+                        else throw parseE;
+                    }
+                    return parsedResult;
+                } catch (err) {
+                    lastErr = err;
                 }
-                return parsedResult;
-            } catch (err) {
-                lastErr = err;
             }
         }
-        throw lastErr || new Error('Semua model Gemini gagal');
+        throw lastErr || new Error('Semua model dan kunci Gemini gagal');
     }
 
     // SISTEM PEMINDAIAN & ANALISIS MAKANAN
