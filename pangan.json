@@ -274,5 +274,29 @@
     "karbohidrat": 22.8,
     "bdd": 100,
     "sumber": "TKPI Kemenkes RI"
+  },
+  {
+    "id": "karbo_spaghetti_05",
+    "nama": "spaghetti pasta",
+    "aliases": ["spaghetti", "pasta", "spageti", "mie spaghetti", "spaghetti pasta gurih"],
+    "kategori": "Karbohidrat",
+    "kalori": 158,
+    "protein": 5.8,
+    "lemak": 1.5,
+    "karbohidrat": 30.0,
+    "bdd": 100,
+    "sumber": "TKPI Kemenkes RI"
+  },
+  {
+    "id": "pelengkap_pangsit_06",
+    "nama": "kerupuk pangsit",
+    "aliases": ["kerupuk pangsit", "pangsit goreng", "kulit pangsit", "kerupuk pangsit goreng renyah"],
+    "kategori": "Pelengkap",
+    "kalori": 480,
+    "protein": 4.5,
+    "lemak": 22.0,
+    "karbohidrat": 65.0,
+    "bdd": 100,
+    "sumber": "TKPI Kemenkes RI"
   }
 ]
