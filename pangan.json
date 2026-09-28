@@ -298,5 +298,65 @@
     "karbohidrat": 65.0,
     "bdd": 100,
     "sumber": "TKPI Kemenkes RI"
+  },
+  {
+    "id": "hewan_telur_ceplok_04",
+    "nama": "telur ceplok",
+    "aliases": ["telur ceplok", "telur mata sapi", "telur ceplok balado", "ceplok"],
+    "kategori": "Protein Hewani",
+    "kalori": 185,
+    "protein": 12.4,
+    "lemak": 14.2,
+    "karbohidrat": 0.8,
+    "bdd": 100,
+    "sumber": "TKPI Kemenkes RI"
+  },
+  {
+    "id": "nabati_tempe_orek_03",
+    "nama": "tempe orek",
+    "aliases": ["tempe orek", "tempe orek dadu", "orek tempe", "tempe orek manis"],
+    "kategori": "Protein Nabati",
+    "kalori": 210,
+    "protein": 17.0,
+    "lemak": 9.0,
+    "karbohidrat": 18.0,
+    "bdd": 100,
+    "sumber": "TKPI Kemenkes RI"
+  },
+  {
+    "id": "sayur_jagung_manis_02",
+    "nama": "tumis jagung manis",
+    "aliases": ["tumis jagung manis", "jagung manis", "jagung pipil", "tumis jagung"],
+    "kategori": "Sayuran",
+    "kalori": 65,
+    "protein": 2.2,
+    "lemak": 0.8,
+    "karbohidrat": 14.0,
+    "bdd": 100,
+    "sumber": "TKPI Kemenkes RI"
+  },
+  {
+    "id": "hewan_ayam_lengkuas_05",
+    "nama": "ayam goreng lengkuas",
+    "aliases": ["ayam lengkuas", "ayam goreng lengkuas", "ayam bumbu lengkuas"],
+    "kategori": "Protein Hewani",
+    "kalori": 245,
+    "protein": 26.0,
+    "lemak": 13.5,
+    "karbohidrat": 2.0,
+    "bdd": 100,
+    "sumber": "TKPI Kemenkes RI"
+  },
+  {
+    "id": "pelengkap_kerupuk_bawang_07",
+    "nama": "kerupuk bawang",
+    "aliases": ["kerupuk bawang", "kerupuk bawang finna", "kerupuk putih", "kerupuk"],
+    "kategori": "Pelengkap",
+    "kalori": 480,
+    "protein": 3.5,
+    "lemak": 24.0,
+    "karbohidrat": 65.0,
+    "bdd": 100,
+    "sumber": "TKPI Kemenkes RI"
   }
 ]
