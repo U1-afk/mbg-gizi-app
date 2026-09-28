@@ -168,9 +168,21 @@
     "sumber": "TKPI Kemenkes RI"
   },
   {
+    "id": "karbo_kentang_goreng_05",
+    "nama": "kentang goreng",
+    "aliases": ["kentang goreng", "kentang wedges", "wedges", "kentang panggang", "kentang goreng wedges", "french fries"],
+    "kategori": "Karbohidrat",
+    "kalori": 210,
+    "protein": 3.5,
+    "lemak": 9.5,
+    "karbohidrat": 30.0,
+    "bdd": 100,
+    "sumber": "TKPI Kemenkes RI"
+  },
+  {
     "id": "hewan_ayam_goreng_01",
     "nama": "ayam goreng",
-    "aliases": ["ayam goreng", "ayam lengkuas", "ayam kremes", "ayam"],
+    "aliases": ["ayam goreng", "ayam lengkuas", "ayam kremes", "ayam", "paha ayam", "ayam krispi", "ayam goreng krispi", "ayam goreng tepung", "ayam kfc", "potongan ayam"],
     "kategori": "Protein Hewani",
     "kalori": 250,
     "protein": 28.0,
@@ -254,7 +266,7 @@
   {
     "id": "buah_jeruk_03",
     "nama": "buah jeruk",
-    "aliases": ["buah jeruk", "jeruk"],
+    "aliases": ["buah jeruk", "jeruk", "jeruk manis", "jeruk sunkist", "jeruk medan", "jeruk segar", "buah jeruk utuh"],
     "kategori": "Buah",
     "kalori": 47,
     "protein": 0.9,
@@ -326,7 +338,7 @@
   {
     "id": "sayur_jagung_manis_02",
     "nama": "tumis jagung manis",
-    "aliases": ["tumis jagung manis", "jagung manis", "jagung pipil", "tumis jagung"],
+    "aliases": ["tumis jagung manis", "jagung manis", "jagung pipil", "tumis jagung", "tumis sayuran", "tumis jagung wortel", "sayur jagung", "sayur campur"],
     "kategori": "Sayuran",
     "kalori": 65,
     "protein": 2.2,

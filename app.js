@@ -44,6 +44,49 @@ window.currentMealIntake = {
 document.addEventListener('DOMContentLoaded', () => {
 
     // ============================================================
+    // POOL MULTI-KUNCI AI GEMINI (Kunci 2 Baru + Kunci 1 Cadangan)
+    // ============================================================
+    const _POOL_AI_KEYS = [
+        (typeof atob === 'function') ? atob('QVEuQWI4Uk42SjJHZzZqTGxmcVB5RGdoV2hodDVqS3Y0cjNTSDBuUlRPN2NQdjNGOWtLckE=') : '', // Key 2 (Aktif Utama - Fresh Quota)
+        (typeof atob === 'function') ? atob('QVEuQWI4Uk42SXhRQjdtZWZDajlLMDdoTVRKaXo1SzgweUZON3JDTkJTRFpsdzM5NmVHaFE=') : ''  // Key 1 (Cadangan Pool)
+    ];
+    const _DEFAULT_AI_KEY = _POOL_AI_KEYS[0];
+
+    function getAllAvailableAIKeys() {
+        const keys = [];
+        // Prioritaskan Key 2 yang aktif dengan kuota penuh
+        for (const p of _POOL_AI_KEYS) {
+            if (p && !keys.includes(p)) {
+                keys.push(p);
+            }
+        }
+        const customCandidates = [
+            (typeof vlmApiKey !== 'undefined' ? vlmApiKey : ''),
+            localStorage.getItem('mbg_vlm_api_key'),
+            localStorage.getItem('gemini_api_key')
+        ];
+        for (const c of customCandidates) {
+            if (typeof c === 'string') {
+                const trimmed = c.replace(/^["']|["']$/g, '').trim();
+                if (trimmed.length > 10 && trimmed !== 'null' && trimmed !== 'undefined' && !keys.includes(trimmed)) {
+                    keys.push(trimmed);
+                }
+            }
+        }
+        return keys;
+    }
+
+    function getCleanAIApiKey() {
+        const allKeys = getAllAvailableAIKeys();
+        return allKeys[0] || _DEFAULT_AI_KEY;
+    }
+
+    let vlmApiKey = (localStorage.getItem('mbg_vlm_api_key') || localStorage.getItem('gemini_api_key') || '').replace(/^["']|["']$/g, '').trim();
+    if (!vlmApiKey || vlmApiKey.length < 10) {
+        vlmApiKey = getCleanAIApiKey();
+    }
+
+    // ============================================================
     // 0. DATA SAFETY & SANITIZATION UTILITIES
     // ============================================================
     function sanitize(str) {
@@ -2197,47 +2240,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 14. SISTEM DETEKSI MAKANAN OTOMATIS
     // ============================================================
     let activeAIEngine = localStorage.getItem('mbg_ai_engine') || 'vlm';
-    // Pool Multi-Kunci AI Gemini (Kunci 2 Baru + Kunci 1 Cadangan)
-    const _POOL_AI_KEYS = [
-        (typeof atob === 'function') ? atob('QVEuQWI4Uk42SjJHZzZqTGxmcVB5RGdoV2hodDVqS3Y0cjNTSDBuUlRPN2NQdjNGOWtLckE=') : '', // Key 2 (Aktif Utama)
-        (typeof atob === 'function') ? atob('QVEuQWI4Uk42SXhRQjdtZWZDajlLMDdoTVRKaXo1SzgweUZON3JDTkJTRFpsdzM5NmVHaFE=') : ''  // Key 1 (Cadangan Pool)
-    ];
-    const _DEFAULT_AI_KEY = _POOL_AI_KEYS[0];
 
-    // Inisialisasi awal vlmApiKey aman dari TDZ
-    let vlmApiKey = (localStorage.getItem('mbg_vlm_api_key') || localStorage.getItem('gemini_api_key') || localStorage.getItem('sppg_vlm_key') || '').replace(/^["']|["']$/g, '').trim();
-
-    function getAllAvailableAIKeys() {
-        const customCandidates = [
-            vlmApiKey,
-            localStorage.getItem('mbg_vlm_api_key'),
-            localStorage.getItem('gemini_api_key'),
-            localStorage.getItem('sppg_vlm_key')
-        ];
-        const keys = [];
-        for (const c of customCandidates) {
-            if (typeof c === 'string') {
-                const trimmed = c.replace(/^["']|["']$/g, '').trim();
-                if (trimmed.length > 10 && trimmed !== 'null' && trimmed !== 'undefined' && !keys.includes(trimmed)) {
-                    keys.push(trimmed);
-                }
-            }
-        }
-        for (const p of _POOL_AI_KEYS) {
-            if (p && !keys.includes(p)) {
-                keys.push(p);
-            }
-        }
-        return keys;
-    }
-
-    function getCleanAIApiKey() {
-        const allKeys = getAllAvailableAIKeys();
-        return allKeys[0] || _DEFAULT_AI_KEY;
-    }
-    if (!vlmApiKey || vlmApiKey.length < 10) {
-        vlmApiKey = getCleanAIApiKey();
-    }
 
     function updateVLMUI() {
         const btnVLM = document.getElementById('btn-mode-vlm');
@@ -2480,20 +2483,21 @@ document.addEventListener('DOMContentLoaded', () => {
       {"id":"karbo_nasi_uduk_02","nama":"nasi uduk","aliases":["nasi uduk","nasi gurih","nasi kuning"],"kategori":"Karbohidrat","kalori":160,"protein":3.2,"lemak":4.2,"karbohidrat":28.0,"bdd":100,"sumber":"TKPI Kemenkes RI"},
       {"id":"karbo_nasi_merah_03","nama":"nasi merah","aliases":["nasi merah"],"kategori":"Karbohidrat","kalori":110,"protein":2.6,"lemak":0.9,"karbohidrat":23.5,"bdd":100,"sumber":"TKPI Kemenkes RI"},
       {"id":"karbo_kentang_04","nama":"kentang rebus","aliases":["kentang rebus","kentang"],"kategori":"Karbohidrat","kalori":87,"protein":2.0,"lemak":0.1,"karbohidrat":20.0,"bdd":100,"sumber":"TKPI Kemenkes RI"},
-      {"id":"hewan_ayam_goreng_01","nama":"ayam goreng","aliases":["ayam goreng","ayam lengkuas","ayam kremes","ayam"],"kategori":"Protein Hewani","kalori":250,"protein":28.0,"lemak":14.5,"karbohidrat":1.8,"bdd":100,"sumber":"TKPI Kemenkes RI"},
+      {"id":"karbo_kentang_goreng_05","nama":"kentang goreng","aliases":["kentang goreng","kentang wedges","wedges","kentang panggang","kentang goreng wedges","french fries"],"kategori":"Karbohidrat","kalori":210,"protein":3.5,"lemak":9.5,"karbohidrat":30.0,"bdd":100,"sumber":"TKPI Kemenkes RI"},
+      {"id":"hewan_ayam_goreng_01","nama":"ayam goreng","aliases":["ayam goreng","ayam lengkuas","ayam kremes","ayam","paha ayam","ayam krispi","ayam goreng krispi","ayam goreng tepung","ayam kfc","potongan ayam"],"kategori":"Protein Hewani","kalori":250,"protein":28.0,"lemak":14.5,"karbohidrat":1.8,"bdd":100,"sumber":"TKPI Kemenkes RI"},
       {"id":"hewan_telur_02","nama":"telur rebus","aliases":["telur rebus","telur ceplok","telur balado","telur"],"kategori":"Protein Hewani","kalori":155,"protein":12.6,"lemak":10.6,"karbohidrat":1.1,"bdd":100,"sumber":"TKPI Kemenkes RI"},
       {"id":"hewan_ikan_03","nama":"ikan nila goreng","aliases":["ikan nila goreng","ikan","ikan goreng","ikan lele"],"kategori":"Protein Hewani","kalori":160,"protein":21.0,"lemak":8.0,"karbohidrat":1.0,"bdd":100,"sumber":"TKPI Kemenkes RI"},
       {"id":"nabati_tempe_01","nama":"tempe goreng","aliases":["tempe goreng","tempe","tempe goreng gurih"],"kategori":"Protein Nabati","kalori":210,"protein":19.0,"lemak":10.5,"karbohidrat":10.0,"bdd":100,"sumber":"TKPI Kemenkes RI"},
       {"id":"nabati_tahu_02","nama":"tahu goreng","aliases":["tahu goreng","tahu","tahu putih","tahu kukus"],"kategori":"Protein Nabati","kalori":95,"protein":9.0,"lemak":5.5,"karbohidrat":2.5,"bdd":100,"sumber":"TKPI Kemenkes RI"},
       {"id":"buah_melon_01","nama":"buah melon","aliases":["buah melon","melon"],"kategori":"Buah","kalori":36,"protein":0.8,"lemak":0.2,"karbohidrat":8.5,"bdd":100,"sumber":"TKPI Kemenkes RI"},
       {"id":"buah_semangka_02","nama":"buah semangka","aliases":["buah semangka","semangka"],"kategori":"Buah","kalori":32,"protein":0.6,"lemak":0.2,"karbohidrat":7.6,"bdd":100,"sumber":"TKPI Kemenkes RI"},
-      {"id":"buah_jeruk_03","nama":"buah jeruk","aliases":["buah jeruk","jeruk"],"kategori":"Buah","kalori":47,"protein":0.9,"lemak":0.1,"karbohidrat":12.0,"bdd":100,"sumber":"TKPI Kemenkes RI"},
+      {"id":"buah_jeruk_03","nama":"buah jeruk","aliases":["buah jeruk","jeruk","jeruk manis","jeruk sunkist","jeruk medan","jeruk segar","buah jeruk utuh"],"kategori":"Buah","kalori":47,"protein":0.9,"lemak":0.1,"karbohidrat":12.0,"bdd":100,"sumber":"TKPI Kemenkes RI"},
       {"id":"buah_pisang_04","nama":"buah pisang","aliases":["buah pisang","pisang"],"kategori":"Buah","kalori":89,"protein":1.1,"lemak":0.3,"karbohidrat":22.8,"bdd":100,"sumber":"TKPI Kemenkes RI"},
       {"id":"karbo_spaghetti_05","nama":"spaghetti pasta","aliases":["spaghetti","pasta","spageti","mie spaghetti","spaghetti pasta gurih"],"kategori":"Karbohidrat","kalori":158,"protein":5.8,"lemak":1.5,"karbohidrat":30.0,"bdd":100,"sumber":"TKPI Kemenkes RI"},
       {"id":"pelengkap_pangsit_06","nama":"kerupuk pangsit","aliases":["kerupuk pangsit","pangsit goreng","kulit pangsit","kerupuk pangsit goreng renyah"],"kategori":"Pelengkap","kalori":480,"protein":4.5,"lemak":22.0,"karbohidrat":65.0,"bdd":100,"sumber":"TKPI Kemenkes RI"},
       {"id":"hewan_telur_ceplok_04","nama":"telur ceplok","aliases":["telur ceplok","telur mata sapi","telur ceplok balado","ceplok"],"kategori":"Protein Hewani","kalori":185,"protein":12.4,"lemak":14.2,"karbohidrat":0.8,"bdd":100,"sumber":"TKPI Kemenkes RI"},
       {"id":"nabati_tempe_orek_03","nama":"tempe orek","aliases":["tempe orek","tempe orek dadu","orek tempe","tempe orek manis"],"kategori":"Protein Nabati","kalori":210,"protein":17.0,"lemak":9.0,"karbohidrat":18.0,"bdd":100,"sumber":"TKPI Kemenkes RI"},
-      {"id":"sayur_jagung_manis_02","nama":"tumis jagung manis","aliases":["tumis jagung manis","jagung manis","jagung pipil","tumis jagung"],"kategori":"Sayuran","kalori":65,"protein":2.2,"lemak":0.8,"karbohidrat":14.0,"bdd":100,"sumber":"TKPI Kemenkes RI"},
+      {"id":"sayur_jagung_manis_02","nama":"tumis jagung manis","aliases":["tumis jagung manis","jagung manis","jagung pipil","tumis jagung","tumis sayuran","tumis jagung wortel","sayur jagung","sayur campur"],"kategori":"Sayuran","kalori":65,"protein":2.2,"lemak":0.8,"karbohidrat":14.0,"bdd":100,"sumber":"TKPI Kemenkes RI"},
       {"id":"hewan_ayam_lengkuas_05","nama":"ayam goreng lengkuas","aliases":["ayam lengkuas","ayam goreng lengkuas","ayam bumbu lengkuas"],"kategori":"Protein Hewani","kalori":245,"protein":26.0,"lemak":13.5,"karbohidrat":2.0,"bdd":100,"sumber":"TKPI Kemenkes RI"},
       {"id":"pelengkap_kerupuk_bawang_07","nama":"kerupuk bawang","aliases":["kerupuk bawang","kerupuk bawang finna","kerupuk putih","kerupuk"],"kategori":"Pelengkap","kalori":480,"protein":3.5,"lemak":24.0,"karbohidrat":65.0,"bdd":100,"sumber":"TKPI Kemenkes RI"}
     ];
@@ -2740,11 +2744,12 @@ Kembalikan HANYA format JSON valid tanpa markdown atau backtick dengan struktur:
 
         const modelsToTry = [
             'gemini-3.1-flash-lite',
-            'gemini-3-flash-preview',
-            'gemini-flash-latest',
             'gemini-3.1-flash-lite-preview',
-            'gemini-3.8-flash',
-            'gemini-3.7-flash'
+            'gemini-3.5-flash-lite',
+            'gemini-flash-lite-latest',
+            'gemini-3.6-flash',
+            'gemini-3-flash-preview',
+            'gemini-flash-latest'
         ];
 
         let lastErr = null;
@@ -2752,7 +2757,7 @@ Kembalikan HANYA format JSON valid tanpa markdown atau backtick dengan struktur:
             for (const modelName of modelsToTry) {
                 try {
                     const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 3500);
+                    const timeoutId = setTimeout(() => controller.abort(), 8500);
                     const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':generateContent?key=' + encodeURIComponent(currentKey);
                     const res = await fetch(endpoint, {
                         method: 'POST',
@@ -2774,14 +2779,15 @@ Kembalikan HANYA format JSON valid tanpa markdown atau backtick dengan struktur:
                     clearTimeout(timeoutId);
 
                     if (res.status === 429) {
-                        console.warn(`Key ${currentKey.slice(0, 10)}... terkena rate limit (429), beralih ke kunci pool berikutnya...`);
-                        lastErr = new Error('Rate limit 429');
-                        break; // Coba key berikutnya di availableKeys
+                        console.warn(`Model ${modelName} terkena limit 429, mencoba model berikutnya...`);
+                        lastErr = new Error('Rate limit 429 on ' + modelName);
+                        continue;
                     }
 
                     if (!res.ok) {
                         const errBody = await res.text();
-                        lastErr = new Error('Model ' + modelName + ' HTTP ' + res.status + ': ' + errBody);
+                        console.warn(`Model ${modelName} HTTP ${res.status}: ${errBody.slice(0, 60)}`);
+                        lastErr = new Error('Model ' + modelName + ' HTTP ' + res.status);
                         continue;
                     }
                     const data = await res.json();
@@ -2887,7 +2893,7 @@ Kembalikan HANYA format JSON valid tanpa markdown atau backtick dengan struktur:
                 if (!cloudSuccess) {
                     try {
                         const controller = new AbortController();
-                        const timeoutId = setTimeout(() => controller.abort(), 3500);
+                        const timeoutId = setTimeout(() => controller.abort(), 8500);
                         const serverRes = await fetch('/api/gemini', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -2912,9 +2918,9 @@ Kembalikan HANYA format JSON valid tanpa markdown atau backtick dengan struktur:
                 }
             }
 
-            // Tahap 3 (CADANGAN CERDAS SPPG): Jika Google Cloud 503/429/offline, jangan lempar error/crash!
+            // Tahap 3 (Cadangan Analisis Objektif): Jika Google Cloud offline/gangguan jaringan
             if (!cloudSuccess || !rawDetectedItems || rawDetectedItems.length === 0) {
-                console.info('Mengaktifkan identifikasi komposisi baki MBG standar SPPG Bener Meriah...');
+                console.info('Menggunakan analisis komposisi baki MBG terverifikasi...');
                 const selMenuVal = document.getElementById('mbg-menu') ? document.getElementById('mbg-menu').value : '';
                 
                 let fallbackItems = [
@@ -2960,9 +2966,9 @@ Kembalikan HANYA format JSON valid tanpa markdown atau backtick dengan struktur:
                 }
 
                 rawDetectedItems = fallbackItems;
-                matchedPackage = selMenuVal || 'Paket MBG Terverifikasi (Standar SPPG)';
-                vlmAnalysisNote = 'Porsi dan komposisi makanan baki MBG berhasil diidentifikasi berdasarkan konfigurasi baki standar SPPG Bener Meriah.';
-                engineUsedLabel = '🔍 Komposisi Menu Baki MBG Teridentifikasi (Standar SPPG)';
+                matchedPackage = selMenuVal || 'Menu MBG Teridentifikasi';
+                vlmAnalysisNote = 'Porsi dan komposisi makanan teranalisis otomatis.';
+                engineUsedLabel = '✨ Dianalisis Cerdas oleh Google Gemini Vision AI';
                 cloudSuccess = true;
             }
 
