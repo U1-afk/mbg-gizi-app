@@ -18,8 +18,17 @@ export default async function handler(req, res) {
     try {
         const { image, apiKey, action, foodName, gram } = req.body || {};
 
-        const defaultKey = Buffer.from('QVEuQWI4Uk42SXhRQjdtZWZDajlLMDdoTVRKaXo1SzgweUZON3JDTkJTRFpsdzM5NmVHaFE=', 'base64').toString('utf-8');
-        const effectiveKey = String(apiKey || process.env.GEMINI_API_KEY || defaultKey).replace(/^["']|["']$/g, '').trim();
+        const poolKeys = [
+            Buffer.from('QVEuQWI4Uk42SjJHZzZqTGxmcVB5RGdoV2hodDVqS3Y0cjNTSDBuUlRPN2NQdjNGOWtLckE=', 'base64').toString('utf-8'), // Key 2
+            Buffer.from('QVEuQWI4Uk42SXhRQjdtZWZDajlLMDdoTVRKaXo1SzgweUZON3JDTkJTRFpsdzM5NmVHaFE=', 'base64').toString('utf-8')  // Key 1
+        ];
+        const keysToTry = [];
+        if (apiKey && String(apiKey).trim().length > 10) keysToTry.push(String(apiKey).trim());
+        if (process.env.GEMINI_API_KEY && String(process.env.GEMINI_API_KEY).trim().length > 10) keysToTry.push(String(process.env.GEMINI_API_KEY).trim());
+        for (const pk of poolKeys) {
+            if (!keysToTry.includes(pk)) keysToTry.push(pk);
+        }
+        const effectiveKey = keysToTry[0];
 
         const modelsToTry = [
             'gemini-3.1-flash-lite',
@@ -227,54 +236,61 @@ Kembalikan HANYA format JSON valid tanpa markdown atau backtick dengan struktur:
 
         let lastError = null;
 
-        for (const modelName of modelsToTry) {
-            try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 3500);
-                const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(effectiveKey)}`;
-                const geminiRes = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{
-                            parts: [
-                                { text: promptText },
-                                { inlineData: { mimeType: 'image/jpeg', data: cleanBase64 } }
-                            ]
-                        }],
-                        generationConfig: {
-                            temperature: 0.1,
-                            responseMimeType: 'application/json'
-                        }
-                    }),
-                    signal: controller.signal
-                });
-                clearTimeout(timeoutId);
-
-                if (!geminiRes.ok) {
-                    const errText = await geminiRes.text();
-                    lastError = new Error(`Model ${modelName} returned HTTP ${geminiRes.status}: ${errText}`);
-                    continue;
-                }
-
-                const data = await geminiRes.json();
-                const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                if (!rawText) {
-                    lastError = new Error(`Empty response from ${modelName}`);
-                    continue;
-                }
-
-                let cleanedJson;
+        for (const currentKey of keysToTry) {
+            for (const modelName of modelsToTry) {
                 try {
-                    cleanedJson = JSON.parse(rawText.replace(/```json/gi, '').replace(/```/g, '').trim());
-                } catch (parseE) {
-                    const match = rawText.match(/\{[\s\S]*\}/);
-                    if (match) cleanedJson = JSON.parse(match[0]);
-                    else throw parseE;
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 3500);
+                    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(currentKey)}`;
+                    const geminiRes = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{
+                                parts: [
+                                    { text: promptText },
+                                    { inlineData: { mimeType: 'image/jpeg', data: cleanBase64 } }
+                                ]
+                            }],
+                            generationConfig: {
+                                temperature: 0.1,
+                                responseMimeType: 'application/json'
+                            }
+                        }),
+                        signal: controller.signal
+                    });
+                    clearTimeout(timeoutId);
+
+                    if (geminiRes.status === 429) {
+                        lastError = new Error('Rate limit 429');
+                        break; // Coba key berikutnya di keysToTry
+                    }
+
+                    if (!geminiRes.ok) {
+                        const errText = await geminiRes.text();
+                        lastError = new Error(`Model ${modelName} returned HTTP ${geminiRes.status}: ${errText}`);
+                        continue;
+                    }
+
+                    const data = await geminiRes.json();
+                    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (!rawText) {
+                        lastError = new Error(`Empty response from ${modelName}`);
+                        continue;
+                    }
+
+                    let cleanedJson;
+                    try {
+                        cleanedJson = JSON.parse(rawText.replace(/```json/gi, '').replace(/```/g, '').trim());
+                    } catch (parseE) {
+                        const match = rawText.match(/\{[\s\S]*\}/);
+                        if (match) cleanedJson = JSON.parse(match[0]);
+                        else throw parseE;
+                    }
+                    return res.status(200).json({ success: true, data: cleanedJson, model: modelName });
+                } catch (mErr) {
+                    lastError = mErr;
                 }
-                return res.status(200).json({ success: true, data: cleanedJson, model: modelName });
-            } catch (mErr) {
-                lastError = mErr;
             }
         }
 
