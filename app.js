@@ -2745,75 +2745,90 @@ Kembalikan HANYA format JSON valid tanpa markdown atau backtick dengan struktur:
   "analysis": "Deskripsi singkat hasil pengamatan visual baki makanan."
 }`;
 
-        const modelsToTry = [
-            'gemini-3.1-flash-lite',
-            'gemini-3.1-flash-lite-preview',
-            'gemini-3.5-flash-lite',
-            'gemini-flash-lite-latest',
-            'gemini-3.6-flash',
-            'gemini-3-flash-preview',
-            'gemini-flash-latest'
-        ];
+const modelsToTry = [
+    'gemini-3.1-flash-lite',
+    'gemini-3.6-flash',
+    'gemini-flash-latest'
+];
 
-        let lastErr = null;
-        for (const currentKey of availableKeys) {
-            for (const modelName of modelsToTry) {
-                try {
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 8500);
-                    const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':generateContent?key=' + encodeURIComponent(currentKey);
-                    const res = await fetch(endpoint, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            contents: [{
-                                parts: [
-                                    { text: promptText },
-                                    { inlineData: { mimeType: 'image/jpeg', data: base64Jpeg } }
-                                ]
-                            }],
-                            generationConfig: {
-                                temperature: 0.1,
-                                responseMimeType: 'application/json'
-                            }
-                        }),
-                        signal: controller.signal
-                    });
-                    clearTimeout(timeoutId);
+        const requestBody = JSON.stringify({
+            contents: [{
+                parts: [
+                    { text: promptText },
+                    { inlineData: { mimeType: 'image/jpeg', data: base64Jpeg } }
+                ]
+            }],
+            generationConfig: {
+                temperature: 0.1,
+                responseMimeType: 'application/json'
+            }
+        });
 
-                    if (res.status === 429) {
-                        console.warn(`Model ${modelName} terkena limit 429, mencoba model berikutnya...`);
-                        lastErr = new Error('Rate limit 429 on ' + modelName);
-                        continue;
-                    }
-
-                    if (!res.ok) {
-                        const errBody = await res.text();
-                        console.warn(`Model ${modelName} HTTP ${res.status}: ${errBody.slice(0, 60)}`);
-                        lastErr = new Error('Model ' + modelName + ' HTTP ' + res.status);
-                        continue;
-                    }
-                    const data = await res.json();
-                    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                    if (!rawText) {
-                        lastErr = new Error('Empty response from ' + modelName);
-                        continue;
-                    }
-
-                    let parsedResult;
-                    try {
-                        parsedResult = JSON.parse(rawText.replace(/```json/gi, '').replace(/```/g, '').trim());
-                    } catch (parseE) {
-                        const match = rawText.match(/\{[\s\S]*\}/);
-                        if (match) parsedResult = JSON.parse(match[0]);
-                        else throw parseE;
-                    }
-                    return parsedResult;
-                } catch (err) {
-                    lastErr = err;
+        // Satu percobaan (kunci + model). Melempar error jika gagal.
+        const attemptOnce = async (currentKey, modelName, controller) => {
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
+            try {
+                const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':generateContent?key=' + encodeURIComponent(currentKey);
+                const res = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: requestBody,
+                    signal: controller.signal
+                });
+                if (!res.ok) {
+                    console.warn('Model ' + modelName + ' HTTP ' + res.status);
+                    throw new Error('Model ' + modelName + ' HTTP ' + res.status);
                 }
+                const data = await res.json();
+                const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (!rawText) throw new Error('Empty response from ' + modelName);
+
+                let parsedResult;
+                try {
+                    parsedResult = JSON.parse(rawText.replace(/```json/gi, '').replace(/```/g, '').trim());
+                } catch (parseE) {
+                    const match = rawText.match(/\{[\s\S]*\}/);
+                    if (match) parsedResult = JSON.parse(match[0]);
+                    else throw parseE;
+                }
+                return { result: parsedResult, key: currentKey, model: modelName };
+            } finally {
+                clearTimeout(timeoutId);
+            }
+        };
+
+        // Susun daftar percobaan: kombinasi kunci+model yang terakhir berhasil dicoba paling dulu
+        const last = window._lastGoodVLM;
+        const hasLast = !!(last && availableKeys.includes(last.key) && modelsToTry.includes(last.model));
+        const candidates = [];
+        for (const m of modelsToTry) {
+            for (const k of availableKeys) {
+                if (hasLast && last.key === k && last.model === m) continue;
+                candidates.push([k, m]);
             }
         }
+
+        // Batch 1 = hanya kombinasi terakhir yang berhasil (cepat, hemat kuota).
+        // Batch berikutnya = 3 percobaan PARALEL; yang pertama sukses langsung dipakai.
+        const batches = [];
+        if (hasLast) batches.push([[last.key, last.model]]);
+        for (let i = 0; i < candidates.length && batches.length < 4; i += 3) {
+            batches.push(candidates.slice(i, i + 3));
+        }
+
+        let lastErr = null;
+        for (const batch of batches) {
+            const controllers = batch.map(() => new AbortController());
+            try {
+                const winner = await Promise.any(batch.map(([k, m], i) => attemptOnce(k, m, controllers[i])));
+                controllers.forEach(c => { try { c.abort(); } catch (e) {} });
+                window._lastGoodVLM = { key: winner.key, model: winner.model };
+                return winner.result;
+            } catch (aggErr) {
+                lastErr = (aggErr && aggErr.errors && aggErr.errors[0]) || aggErr;
+            }
+        }
+        window._lastGoodVLM = null;
         throw lastErr || new Error('Semua model dan kunci Gemini gagal');
     }
 
@@ -2834,7 +2849,7 @@ Kembalikan HANYA format JSON valid tanpa markdown atau backtick dengan struktur:
             const ctx = canvasElement.getContext('2d');
             const W = canvasElement.width;
             const H = canvasElement.height;
-            const snapshotThumb = canvasElement.toDataURL('image/jpeg', 0.6);
+            const snapshotThumb = canvasElement.toDataURL('image/jpeg', 0.82);
             const base64Jpeg = snapshotThumb.split(',')[1];
 
             let matchedPackage = 'Paket MBG Lengkap';
