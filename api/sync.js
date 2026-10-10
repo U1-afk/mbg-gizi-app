@@ -243,46 +243,14 @@ export default async function handler(req, res) {
             }
         }
 
-        res.status(200).json(db);
+        const { users: _hidden, ...safeDb } = db; // akun dikelola /api/auth, bukan di sini
+        res.status(200).json(safeDb);
     } else if (req.method === 'POST') {
         const body = req.body || {};
         
         // Support both action payload format and type data format
-        if (body.action === 'add_user' && body.payload) {
-            const p = body.payload;
-            p.nik = sanitizeString(p.nik);
-            p.name = sanitizeString(p.name);
-            p.password = sanitizeString(p.password);
-            p.role = p.role || 'Employee';
-            if (!p.username) {
-                p.username = isNaN(p.nik) ? String(p.nik).toLowerCase() : (p.name ? String(p.name).toLowerCase().replace(/\s+/g, '') : String(p.nik));
-            } else {
-                p.username = sanitizeString(p.username);
-            }
-
-            // Ambil data terbaru dari cloud terlebih dahulu agar akun lain tidak tertimpa!
-            const cloudUsers = await fetchCloudUsers();
-            if (cloudUsers && Array.isArray(cloudUsers)) {
-                for (const cu of cloudUsers) {
-                    if (cu && cu.nik && !db.users.find(u => isUserMatch(u, cu.nik) || (cu.username && isUserMatch(u, cu.username)))) {
-                        if (!cu.username) {
-                            cu.username = isNaN(cu.nik) ? String(cu.nik).toLowerCase() : (cu.name ? String(cu.name).toLowerCase().replace(/\s+/g, '') : String(cu.nik));
-                        }
-                        db.users.push(cu);
-                    }
-                }
-            }
-
-            const existingIdx = db.users.findIndex(u => isUserMatch(u, p.nik) || (p.username && isUserMatch(u, p.username)));
-            if (existingIdx >= 0) {
-                db.users[existingIdx] = { ...db.users[existingIdx], ...p };
-            } else {
-                db.users.push(p);
-            }
-
-            // Simpan permanen ke cloud store
-            await saveCloudUsers(db.users);
-            res.status(200).json({ success: true, user: p, users: db.users });
+        if (body.action === 'add_user' || body.type === 'users') {
+            res.status(410).json({ error: 'moved', message: 'Pendaftaran akun kini melalui /api/auth' });
             return;
         } else if (body.action === 'add_history' && body.payload) {
             const h = body.payload;
@@ -319,11 +287,9 @@ export default async function handler(req, res) {
         } else if (body.type === 'messages' && Array.isArray(body.data)) {
             db.messages = body.data;
             await saveCloudMessages(db.messages);
-        } else if (body.type === 'users' && Array.isArray(body.data)) {
-            db.users = body.data;
-            await saveCloudUsers(db.users);
         }
-        res.status(200).json({ success: true, db });
+        const { users: _hidden2, ...safeDb2 } = db;
+        res.status(200).json({ success: true, db: safeDb2 });
     } else {
         res.status(405).json({ error: 'Method not allowed' });
     }
