@@ -317,30 +317,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (e) {}
 
-        // Sinkronisasi tangguh multi-perangkat (Direct Persistent Cloud Sync Fallback)
-        if (serverUsers.length <= 4) {
-            try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 6000);
-                const cloudRes = await fetch('https://api.restful-api.dev/objects/ff808181a09d98f701a0ce45868a7b64', {
-                    headers: { 'Accept': 'application/json' },
-                    cache: 'no-store',
-                    signal: controller.signal
-                });
-                clearTimeout(timeoutId);
-                if (cloudRes.ok) {
-                    const cData = await cloudRes.json();
-                    if (cData && cData.data && Array.isArray(cData.data.users)) {
-                        for (const cu of cData.data.users) {
-                            if (!serverUsers.find(su => isUserMatch(su, cu.nik) || (cu.username && isUserMatch(su, cu.username)))) {
-                                serverUsers.push(cu);
-                            }
-                        }
-                    }
-                }
-            } catch (err) {}
-        }
-
         const localUsers = getLocalUsers();
         const mergedList = [...DEFAULT_USERS];
 
@@ -520,7 +496,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     const data = JSON.parse(message.payloadString);
                     if (data.action === 'add_user' && data.payload) {
-                        saveLocalUser(data.payload);
+                        // Akun tidak lagi disebarkan lewat MQTT (broker publik) demi keamanan.
                     } else if (data.action === 'add_history' || data.action === 'add_message' || data.action === 'reply_message' || data.action === 'user_reply_message') {
                         if (currentUser) pollSync();
                     }
@@ -577,6 +553,32 @@ document.addEventListener('DOMContentLoaded', () => {
     // ============================================================
     // 5. LOGIN & REGISTER HANDLERS
     // ============================================================
+    // Panggil endpoint autentikasi server (/api/auth). Hasil:
+    //   { ok:true, user }  -> berhasil
+    //   { reject:true, message } -> ditolak server (sandi salah, akun sudah ada, dsb)
+    //   { unavailable:true } -> server/database tidak tersedia (pakai cadangan lokal)
+    async function serverAuth(action, data) {
+        try {
+            const ctrl = new AbortController();
+            const t = setTimeout(() => ctrl.abort(), 12000);
+            const r = await fetch('/api/auth', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action, ...data }),
+                signal: ctrl.signal
+            });
+            clearTimeout(t);
+            let body = {};
+            try { body = await r.json(); } catch (e) {}
+            if (r.ok && body.success) return { ok: true, user: body.user };
+            if (r.status === 404 || r.status === 503 || r.status >= 500) return { unavailable: true, status: r.status };
+            return { reject: true, status: r.status, message: body.message || 'Permintaan ditolak oleh server.' };
+        } catch (e) {
+            return { unavailable: true };
+        }
+    }
+
+
     const loginForm = document.getElementById('login-form');
     const registerForm = document.getElementById('register-form');
     const showRegisterBtn = document.getElementById('show-register');
@@ -614,6 +616,36 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const cleanNik = rawNik.toLowerCase();
+
+            // Autentikasi utama lewat server (database cloud permanen)
+            {
+                const btn = loginForm.querySelector('button[type="submit"]');
+                const origHtml = btn ? btn.innerHTML : '';
+                if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memeriksa Akun...'; }
+                const srv = await serverAuth('login', { identifier: rawNik, password: rawPassword });
+                if (btn) { btn.disabled = false; btn.innerHTML = origHtml; }
+
+                if (srv.ok) {
+                    const su = srv.user;
+                    const isAdm = su.role === 'Admin';
+                    if (selectedRole === 'Admin' && !isAdm) {
+                        customAlert('Akses Ditolak! Akun <strong>' + sanitize(su.name) + '</strong> tidak memiliki hak akses sebagai Administrator.<br>Silakan ubah pilihan <strong>"Masuk Sebagai"</strong> menjadi <strong>"Pengguna"</strong>.');
+                        return;
+                    }
+                    if (selectedRole !== 'Admin' && isAdm) {
+                        customAlert('Akun ini terdaftar sebagai <strong>Administrator</strong>.<br>Silakan ubah pilihan <strong>"Masuk Sebagai"</strong> menjadi <strong>"Administrator"</strong>.');
+                        return;
+                    }
+                    saveLocalUser({ nik: su.nik, username: su.username, name: su.name, role: su.role });
+                    if (isAdm) showAdminPanel(su); else showDashboard(su);
+                    return;
+                }
+                if (srv.reject) {
+                    customAlert(sanitize(srv.message) + (srv.status === 401 ? '<br>Silakan periksa kembali atau klik <strong>Daftar di sini</strong> jika belum punya akun.' : ''));
+                    return;
+                }
+                // srv.unavailable -> lanjut ke mode cadangan lokal di bawah
+            }
 
             // Default Admin Account Fast-path
             if ((cleanNik === 'admin' || cleanNik === 'administrator') && rawPassword === 'sppgunggul') {
@@ -761,58 +793,29 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             try {
-                const users = await getAllUsers();
-                if (users.find(u => isUserMatch(u, nik) || isUserMatch(u, usernameVal))) {
-                    customAlert('NIK atau Username <strong>' + nik + '</strong> sudah terdaftar!<br>Silakan masuk menggunakan akun Anda.');
-                    if (regSubmitBtn) { regSubmitBtn.disabled = false; regSubmitBtn.innerHTML = origRegBtnHtml; }
+const srv = await serverAuth('register', { nik, name, password });
+                let cloudSaved = false;
+
+                if (srv.ok) {
+                    cloudSaved = true;
+                    if (srv.user && srv.user.username) usernameVal = srv.user.username;
+                    saveLocalUser({ nik, username: usernameVal, name, role: 'Employee' });
+                } else if (srv.reject) {
+                    customAlert(sanitize(srv.message));
                     return;
-                }
-
-                const newUser = { nik, username: usernameVal, name, password, role: 'Employee' };
-
-                // 1. Simpan segera ke local storage perangkat ini agar PASTI bisa langsung login di perangkat ini
-                saveLocalUser(newUser);
-
-                // 2. Kirim ke backend Vercel serverless /api/sync untuk disimpan permanen di server & cloud
-                try {
-                    const syncRes = await fetch(API_URL, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ action: 'add_user', payload: newUser })
-                    });
-                    if (syncRes.ok) {
-                        const sData = await syncRes.json();
-                        if (sData && Array.isArray(sData.users)) {
-                            localStorage.setItem('sppg_users_db', JSON.stringify(sData.users));
-                        }
+                } else {
+                    // Server/database tidak tersedia: cadangan lokal (hanya berlaku di perangkat ini)
+                    const users = await getAllUsers();
+                    if (users.find(u => isUserMatch(u, nik) || isUserMatch(u, usernameVal))) {
+                        customAlert('NIK atau Username <strong>' + nik + '</strong> sudah terdaftar!<br>Silakan masuk menggunakan akun Anda.');
+                        return;
                     }
-                } catch (sErr) {
-                    console.warn('API sync warning:', sErr);
+                    saveLocalUser({ nik, username: usernameVal, name, password, role: 'Employee' });
                 }
 
-                // 3. Fallback direct cloud sync jika API sync lambat/offline
-                try {
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 6000);
-                    const allU = [...users, newUser];
-                    await fetch('https://api.restful-api.dev/objects/ff808181a09d98f701a0ce45868a7b64', {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                        body: JSON.stringify({
-                            name: 'MBG_SPPG_USERS_PERSISTENT',
-                            data: { users: allU }
-                        }),
-                        signal: controller.signal
-                    });
-                    clearTimeout(timeoutId);
-                } catch (cErr) {
-                    console.warn('Direct cloud sync fallback:', cErr);
-                }
-
-                // 4. Siarkan via MQTT
-                publishMQTTSync('add_user', newUser);
-
-                customAlert('Pendaftaran Berhasil! 🎉<br>Akun untuk <strong>' + name + '</strong> telah aktif dan tersimpan permanen.<br>Anda sekarang bisa langsung masuk menggunakan <strong>NIK (' + nik + ')</strong> maupun <strong>Username (' + usernameVal + ')</strong>.');
+                customAlert(cloudSaved
+                    ? 'Pendaftaran Berhasil! 🎉<br>Akun untuk <strong>' + name + '</strong> sudah tersimpan permanen di cloud.<br>Anda bisa masuk dari perangkat mana pun menggunakan <strong>NIK (' + nik + ')</strong> maupun <strong>Username (' + usernameVal + ')</strong>.'
+                    : 'Akun <strong>' + name + '</strong> hanya tersimpan di perangkat ini karena server database belum tersambung.<br>Coba daftar ulang nanti agar bisa masuk dari perangkat lain.');
                 registerForm.style.display = 'none';
                 if (loginForm) loginForm.style.display = 'block';
                 registerForm.reset();
