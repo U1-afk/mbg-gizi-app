@@ -2747,8 +2747,8 @@ Kembalikan HANYA format JSON valid tanpa markdown atau backtick dengan struktur:
 
 const modelsToTry = [
     'gemini-3.1-flash-lite',
-    'gemini-3.6-flash',
-    'gemini-flash-latest'
+    'gemini-3.5-flash-lite',
+    'gemini-3.6-flash'
 ];
 
         const requestBody = JSON.stringify({
