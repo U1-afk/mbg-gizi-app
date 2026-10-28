@@ -275,11 +275,7 @@
                 <section id="screen-tdee" class="glass-card hidden-feature hidden">
                     <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap;">
                         <h3 style="margin:0;"><i class="fa-solid fa-calculator" style="color:#d97706;"></i> Kalkulator Kebutuhan Gizi</h3>
-                        <span class="badge-ta badge-ta-2">Kebutuhan Energi (Target 30% MBG)</span>
                     </div>
-                    <p style="font-size:0.86rem; color:var(--text-light); margin-top:0.4rem;">
-                        Perhitungan kebutuhan energi harian dan distribusi zat gizi makro (60% Karbohidrat, 15% Protein, 25% Lemak) serta target 1x Porsi Makan Bergizi Gratis (30% kebutuhan energi harian).
-                    </p>
 
                     <!-- PILIHAN DUAL-MODE: INDIVIDU (SCHOFIELD) VS KELOMPOK (PERMENKES NO. 28 TAHUN 2019) -->
                     <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:0.6rem; margin-top:1rem; background:#f8fafc; padding:0.45rem; border-radius:12px; border:1px solid #e2e8f0;">
@@ -293,10 +289,6 @@
 
                     <!-- TAB 1: 1. Kalkulator Kebutuhan Gizi Individu (Formula Schofield) -->
                     <form id="tdee-calc-form" style="margin-top:1rem;">
-                        <div style="background:#fffbeb; border-left:4px solid #d97706; padding:0.65rem 0.9rem; border-radius:8px; margin-bottom:1rem; font-size:0.83rem; color:#92400e;">
-                            <strong>1. Kalkulator Kebutuhan Gizi Individu (Formula Schofield)</strong><br>
-                            Perhitungan kebutuhan energi spesifik perorangan berdasarkan Berat Badan, Tinggi Badan, Umur, Jenis Kelamin, dan Tingkat Aktivitas Fisik (PAL).
-                        </div>
                         <div class="form-row">
                             <div class="input-group">
                                 <label for="tdee-age">Umur (Tahun)</label>
@@ -337,28 +329,24 @@
 
                     <!-- TAB 2: 2. Kalkulator Kebutuhan Gizi Kelompok (Acuan Permenkes RI No. 28 Tahun 2019) -->
                     <form id="group-calc-form" class="hidden" style="margin-top:1rem;">
-                        <div style="background:#eff6ff; border-left:4px solid #2563eb; padding:0.65rem 0.9rem; border-radius:8px; margin-bottom:1rem; font-size:0.83rem; color:#1e40af;">
-                            <strong>2. Kalkulator Kebutuhan Gizi Kelompok (Acuan Permenkes RI No. 28 Tahun 2019)</strong><br>
-                            Standar Angka Kecukupan Gizi (AKG) harian kelompok usia sasaran SPPG dengan kuota target 1x makan siang MBG sebesar <strong>30%</strong> dari kebutuhan energi harian.
-                        </div>
                         <div class="form-row">
                             <div class="input-group">
                                 <label for="group-jenjang">Jenjang Pendidikan</label>
                                 <select id="group-jenjang" required>
-                                    <option value="TK">1. TK / PAUD</option>
-                                    <option value="SD">2. SD / MI</option>
-                                    <option value="SMP">3. SMP / MTs</option>
-                                    <option value="SMA" selected>4. SMA / MA / SMK</option>
+                                    <option value="TK">TK / PAUD</option>
+                                    <option value="SD">SD / MI</option>
+                                    <option value="SMP">SMP / MTs</option>
+                                    <option value="SMA" selected>SMA / MA / SMK</option>
                                 </select>
                             </div>
                             <div class="input-group">
                                 <label for="group-usia">Kelompok Usia Sasaran SPPG</label>
                                 <select id="group-usia" required>
-                                    <option value="3-5" data-jenjang="TK" data-akg="1400" data-mbg="420">1. 3 - 5 Tahun (TK/PAUD) &rarr; AKG Harian: 1400 kkal | Target 30% MBG: 420 kkal</option>
-                                    <option value="6-9" data-jenjang="SD" data-akg="1650" data-mbg="495">2. 6 - 9 Tahun (SD/MI Kelas 1-3) &rarr; AKG Harian: 1650 kkal | Target 30% MBG: 495 kkal</option>
-                                    <option value="10-12" data-jenjang="SD" data-akg="1950" data-mbg="585">3. 10 - 12 Tahun (SD/MI Kelas 4-6) &rarr; AKG Harian: 1950 kkal | Target 30% MBG: 585 kkal</option>
-                                    <option value="13-15" data-jenjang="SMP" data-akg="2225" data-mbg="668">4. 13 - 15 Tahun (SMP/MTs) &rarr; AKG Harian: 2225 kkal | Target 30% MBG: 668 kkal</option>
-                                    <option value="16-18" data-jenjang="SMA" data-akg="2375" data-mbg="713" selected>5. 16 - 18 Tahun (SMA/MA/SMK) &rarr; AKG Harian: 2375 kkal | Target 30% MBG: 713 kkal</option>
+                                    <option value="3-5" data-jenjang="TK" data-akg="1400" data-mbg="420">3 - 5 Tahun</option>
+                                    <option value="6-9" data-jenjang="SD" data-akg="1650" data-mbg="495">6 - 9 Tahun</option>
+                                    <option value="10-12" data-jenjang="SD" data-akg="1950" data-mbg="585">10 - 12 Tahun</option>
+                                    <option value="13-15" data-jenjang="SMP" data-akg="2225" data-mbg="668">13 - 15 Tahun</option>
+                                    <option value="16-18" data-jenjang="SMA" data-akg="2375" data-mbg="713" selected>16 - 18 Tahun</option>
                                 </select>
                             </div>
                         </div>
@@ -419,9 +407,6 @@
                             <p style="font-size: 0.84rem; color: var(--text-light); margin-top: 0.3rem;">
                                 Tentukan porsi gramasi bahan makanan olahan matang secara manual untuk menghitung total kandungan nutrisi terhadap target aktif.
                             </p>
-                            <div id="manual-calc-active-target" style="margin-top:0.55rem; padding:0.55rem 0.85rem; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; font-size:0.8rem; color:#166534;">
-                                🎯 <strong>Acuan Target Aktif (30% MBG):</strong> <span id="manual-target-summary-text">734 kkal | Karbohidrat (60%): 110 g | Protein (15%): 28 g | Lemak (25%): 20 g — Mode Individu (Formula Schofield)</span>
-                            </div>
                         </div>
 
                         <form id="nutrition-form">
