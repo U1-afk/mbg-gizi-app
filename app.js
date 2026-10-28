@@ -1275,11 +1275,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (modeBadgeEl) {
             if (targetState.mode === 'kelompok') {
-                modeBadgeEl.innerHTML = '<span style="display:inline-block; background:#dbeafe; color:#1e40af; font-size:0.76rem; font-weight:700; padding:0.25rem 0.75rem; border-radius:20px; border:1px solid #93c5fd;">' +
+                modeBadgeEl.innerHTML = '<span style="display:inline-block; background:#ECFDF5; color:#064E3B; font-size:0.76rem; font-weight:700; padding:0.25rem 0.75rem; border-radius:20px; border:1px solid #A7F3D0;">' +
                     '2. Kalkulator Kebutuhan Gizi Kelompok (Acuan Permenkes RI No. 28 Tahun 2019) — ' + sanitize(targetState.groupLabel || '') +
                     '</span>';
             } else {
-                modeBadgeEl.innerHTML = '<span style="display:inline-block; background:#fef3c7; color:#b45309; font-size:0.76rem; font-weight:700; padding:0.25rem 0.75rem; border-radius:20px; border:1px solid #fde68a;">' +
+                modeBadgeEl.innerHTML = '<span style="display:inline-block; background:#ECFDF5; color:#064E3B; font-size:0.76rem; font-weight:700; padding:0.25rem 0.75rem; border-radius:20px; border:1px solid #A7F3D0;">' +
                     '1. Kalkulator Kebutuhan Gizi Individu (Formula Schofield)' +
                     '</span>';
             }
@@ -1316,9 +1316,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (formIndividu) formIndividu.classList.add('hidden');
             if (formKelompok) formKelompok.classList.remove('hidden');
             if (btnKelompok) {
-                btnKelompok.style.border = '2px solid #2563eb';
-                btnKelompok.style.background = '#eff6ff';
-                btnKelompok.style.color = '#1d4ed8';
+                btnKelompok.style.border = '2px solid #10B981';
+                btnKelompok.style.background = '#ECFDF5';
+                btnKelompok.style.color = '#059669';
             }
             if (btnIndividu) {
                 btnIndividu.style.border = '1.5px solid transparent';
@@ -1329,9 +1329,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (formKelompok) formKelompok.classList.add('hidden');
             if (formIndividu) formIndividu.classList.remove('hidden');
             if (btnIndividu) {
-                btnIndividu.style.border = '2px solid #d97706';
-                btnIndividu.style.background = '#fffbeb';
-                btnIndividu.style.color = '#b45309';
+                btnIndividu.style.border = '2px solid #10B981';
+                btnIndividu.style.background = '#ECFDF5';
+                btnIndividu.style.color = '#059669';
             }
             if (btnKelompok) {
                 btnKelompok.style.border = '1.5px solid transparent';
@@ -1498,7 +1498,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         badge.style.display = 'block';
                         badge.innerHTML = '✨ <strong>' + sanitize(jsonRes.data.name) + ' (' + jsonRes.data.gram + 'g)</strong>: ' +
                             jsonRes.data.kal + ' kcal | Protein ' + jsonRes.data.pro + 'g | Karbo ' + jsonRes.data.kar + 'g | Lemak ' + jsonRes.data.lem + 'g ' +
-                            '<span style="font-size:0.75rem; color:#6b21a8; font-style:italic;">(' + sanitize(jsonRes.data.source) + ')</span>';
+                            '<span style="font-size:0.75rem; color:#047857; font-style:italic;">(' + sanitize(jsonRes.data.source) + ')</span>';
                     }
                     showToast('Data gizi ' + foodName + ' berhasil ditemukan!');
                 }
@@ -2407,10 +2407,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         '<div style="font-size:0.75rem; color:#64748b;">' + sanitize(it.cat) + '</div>' +
                     '</td>' +
                     '<td style="padding:0.55rem 0.5rem; text-align:center;">' + it.gram + 'g</td>' +
-                    '<td style="padding:0.55rem 0.5rem; text-align:center; font-weight:700; color:#d97706;">' + Math.round(it.kal) + ' kcal</td>' +
-                    '<td style="padding:0.55rem 0.5rem; text-align:center; color:#2563eb; font-weight:600;">' + it.pro.toFixed(1) + 'g</td>' +
-                    '<td style="padding:0.55rem 0.5rem; text-align:center; color:#059669;">' + it.kar.toFixed(1) + 'g</td>' +
-                    '<td style="padding:0.55rem 0.5rem; text-align:center; color:#7c3aed;">' + it.lem.toFixed(1) + 'g</td>' +
+                    '<td style="padding:0.55rem 0.5rem; text-align:center; font-weight:700; color:#059669;">' + Math.round(it.kal) + ' kcal</td>' +
+                    '<td style="padding:0.55rem 0.5rem; text-align:center; color:#059669; font-weight:600;">' + it.pro.toFixed(1) + 'g</td>' +
+                    '<td style="padding:0.55rem 0.5rem; text-align:center; color:#059669; font-weight:600;">' + it.kar.toFixed(1) + 'g</td>' +
+                    '<td style="padding:0.55rem 0.5rem; text-align:center; color:#059669; font-weight:600;">' + it.lem.toFixed(1) + 'g</td>' +
                 '</tr>';
             });
 
@@ -2431,7 +2431,7 @@ document.addEventListener('DOMContentLoaded', () => {
             let itemsSummary = computedItems.map(it => 
                 '<div style="display:flex; justify-content:space-between; margin-bottom:0.25rem; font-size:0.83rem; border-bottom:1px dashed #e2e8f0; padding-bottom:0.25rem;">' +
                     '<span><strong>' + sanitize(it.name) + '</strong> (' + it.gram + 'g)</span>' +
-                    '<span style="color:#d97706; font-weight:700;">' + Math.round(it.kal) + ' kcal | P:' + it.pro.toFixed(1) + 'g | K:' + it.kar.toFixed(1) + 'g | L:' + it.lem.toFixed(1) + 'g</span>' +
+                    '<span style="color:#059669; font-weight:700;">' + Math.round(it.kal) + ' kcal | P:' + it.pro.toFixed(1) + 'g | K:' + it.kar.toFixed(1) + 'g | L:' + it.lem.toFixed(1) + 'g</span>' +
                 '</div>'
             ).join('');
 
@@ -3359,13 +3359,13 @@ const modelsToTry = [
 
                 itemsTableHtml += '<tr style="border-bottom:1px dashed rgba(0,0,0,0.08);">' +
                     '<td style="padding:0.5rem 0;">' +
-                        '<span style="font-size:0.75rem; color:#2563eb; font-weight:700; display:block;">' + it.category + '</span>' +
+                        '<span style="font-size:0.75rem; color:#059669; font-weight:700; display:block;">' + it.category + '</span>' +
                         '<strong>' + it.name + '</strong> <span style="font-size:0.75rem; color:var(--text-light);">(' + it.gram + 'g)</span>' +
                         '<div style="font-size:0.72rem; color:var(--text-light); margin-top:2px;">Karbo: ' + it.kar + 'g | Lemak: ' + it.lem + 'g</div>' +
                     '</td>' +
                     '<td style="text-align:center;">' + sourceBadge + '</td>' +
                     '<td style="text-align:right; font-weight:700; color:var(--text-main);">' + it.kal + ' kcal</td>' +
-                    '<td style="text-align:right; font-weight:700; color:#1d4ed8;">' + it.pro.toFixed(1) + 'g</td>' +
+                    '<td style="text-align:right; font-weight:700; color:#059669;">' + it.pro.toFixed(1) + 'g</td>' +
                 '</tr>';
             });
             itemsTableHtml += '</table>';
