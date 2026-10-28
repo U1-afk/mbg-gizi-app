@@ -21,15 +21,17 @@ window.currentStudentProfile = {
 };
 
 window.currentTargetNutrition = {
+    mode: 'individu',
+    modeLabel: '1. Kalkulator Kebutuhan Gizi Individu (Formula Schofield)',
     bmr: 1578,
     tdee: 2446,
-    mbgTargetKal: 807,
+    mbgTargetKal: 734,
     targetKarbo: 367,
     targetPro: 92,
     targetLem: 68,
-    mbgTargetKar: 121,
-    mbgTargetPro: 30,
-    mbgTargetLem: 22
+    mbgTargetKar: 110.1,
+    mbgTargetPro: 27.5,
+    mbgTargetLem: 20.4
 };
 
 window.currentMealIntake = {
@@ -302,18 +304,81 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {}
     }
 
-    async function getAllUsers() {
-        let serverUsers = [];
+    const CLOUD_USERS_OBJECT_URL = 'https://api.restful-api.dev/objects/ff808181a09d98f701a0ce45868a7b64';
+
+    async function fetchDirectCloudUsers() {
         try {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 6000);
-            const res = await fetch(API_URL, { cache: 'no-store', signal: controller.signal });
+            const res = await fetch(CLOUD_USERS_OBJECT_URL, { cache: 'no-store', signal: controller.signal });
             clearTimeout(timeoutId);
             if (res.ok) {
-                const data = await res.json();
-                if (data && Array.isArray(data.users)) {
-                    serverUsers = data.users;
+                const obj = await res.json();
+                if (obj && obj.data && Array.isArray(obj.data.users)) {
+                    return obj.data.users;
                 }
+            }
+        } catch (e) {}
+        return [];
+    }
+
+    async function saveDirectCloudUser(newUser) {
+        try {
+            const currentCloud = await fetchDirectCloudUsers();
+            const merged = [...DEFAULT_USERS];
+            const addOrUpdate = (u) => {
+                if (!u || (!u.nik && !u.username)) return;
+                if (!u.username) {
+                    u.username = isNaN(u.nik) ? String(u.nik).toLowerCase() : (u.name ? String(u.name).toLowerCase().replace(/\s+/g, '') : String(u.nik));
+                }
+                const idx = merged.findIndex(item => isUserMatch(item, u.nik) || (u.username && isUserMatch(item, u.username)));
+                if (idx >= 0) merged[idx] = { ...merged[idx], ...u };
+                else merged.push(u);
+            };
+            currentCloud.forEach(addOrUpdate);
+            addOrUpdate(newUser);
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 7000);
+            const res = await fetch(CLOUD_USERS_OBJECT_URL, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify({
+                    name: 'MBG_SPPG_USERS_PERSISTENT',
+                    data: { users: merged, updatedAt: Date.now() }
+                }),
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+            return res.ok;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    async function getAllUsers() {
+        let serverUsers = [];
+        let directCloudUsers = [];
+        try {
+            const [syncRes, cloudList] = await Promise.allSettled([
+                (async () => {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 6000);
+                    const res = await fetch(API_URL, { cache: 'no-store', signal: controller.signal });
+                    clearTimeout(timeoutId);
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data && Array.isArray(data.users)) return data.users;
+                    }
+                    return [];
+                })(),
+                fetchDirectCloudUsers()
+            ]);
+            if (syncRes.status === 'fulfilled' && Array.isArray(syncRes.value)) {
+                serverUsers = syncRes.value;
+            }
+            if (cloudList.status === 'fulfilled' && Array.isArray(cloudList.value)) {
+                directCloudUsers = cloudList.value;
             }
         } catch (e) {}
 
@@ -335,6 +400,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         localUsers.forEach(mergeUser);
         serverUsers.forEach(mergeUser);
+        directCloudUsers.forEach(mergeUser);
 
         // Simpan pembaruan ke local storage perangkat ini
         try {
@@ -496,7 +562,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     const data = JSON.parse(message.payloadString);
                     if (data.action === 'add_user' && data.payload) {
-                        // Akun tidak lagi disebarkan lewat MQTT (broker publik) demi keamanan.
+                        saveLocalUser(data.payload);
                     } else if (data.action === 'add_history' || data.action === 'add_message' || data.action === 'reply_message' || data.action === 'user_reply_message') {
                         if (currentUser) pollSync();
                     }
@@ -640,11 +706,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (isAdm) showAdminPanel(su); else showDashboard(su);
                     return;
                 }
-                if (srv.reject) {
-                    customAlert(sanitize(srv.message) + (srv.status === 401 ? '<br>Silakan periksa kembali atau klik <strong>Daftar di sini</strong> jika belum punya akun.' : ''));
-                    return;
-                }
-                // srv.unavailable -> lanjut ke mode cadangan lokal di bawah
+                // Jika server /api/auth belum menemukan akun (misal baru disinkronkan via /api/sync atau cloud),
+                // lanjutkan pemeriksaan ke database cloud gabungan (getAllUsers) sebelum menolak login.
             }
 
             // Default Admin Account Fast-path
@@ -793,29 +856,42 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             try {
-const srv = await serverAuth('register', { nik, name, password });
+                const newUserRecord = { nik, username: usernameVal, name, password, role: 'Employee' };
+                const srv = await serverAuth('register', { nik, name, password });
                 let cloudSaved = false;
 
                 if (srv.ok) {
                     cloudSaved = true;
-                    if (srv.user && srv.user.username) usernameVal = srv.user.username;
-                    saveLocalUser({ nik, username: usernameVal, name, role: 'Employee' });
-                } else if (srv.reject) {
+                    if (srv.user && srv.user.username) {
+                        usernameVal = srv.user.username;
+                        newUserRecord.username = usernameVal;
+                    }
+                    saveLocalUser(newUserRecord);
+                    // Sinkronkan juga ke /api/sync & Cloud Store agar terjamin di semua perangkat
+                    publishSync('add_user', newUserRecord);
+                    saveDirectCloudUser(newUserRecord);
+                } else if (srv.reject && srv.status === 409) {
                     customAlert(sanitize(srv.message));
                     return;
                 } else {
-                    // Server/database tidak tersedia: cadangan lokal (hanya berlaku di perangkat ini)
+                    // Fallback ke Cloud Database langsung + /api/sync
                     const users = await getAllUsers();
                     if (users.find(u => isUserMatch(u, nik) || isUserMatch(u, usernameVal))) {
                         customAlert('NIK atau Username <strong>' + nik + '</strong> sudah terdaftar!<br>Silakan masuk menggunakan akun Anda.');
                         return;
                     }
-                    saveLocalUser({ nik, username: usernameVal, name, password, role: 'Employee' });
+                    saveLocalUser(newUserRecord);
+                    const [syncOk, directCloudOk] = await Promise.all([
+                        publishSync('add_user', newUserRecord).then(() => true).catch(() => false),
+                        saveDirectCloudUser(newUserRecord)
+                    ]);
+                    cloudSaved = !!(syncOk || directCloudOk);
                 }
 
-                customAlert(cloudSaved
-                    ? 'Pendaftaran Berhasil! 🎉<br>Akun untuk <strong>' + name + '</strong> sudah tersimpan permanen di cloud.<br>Anda bisa masuk dari perangkat mana pun menggunakan <strong>NIK (' + nik + ')</strong> maupun <strong>Username (' + usernameVal + ')</strong>.'
-                    : 'Akun <strong>' + name + '</strong> hanya tersimpan di perangkat ini karena server database belum tersambung.<br>Coba daftar ulang nanti agar bisa masuk dari perangkat lain.');
+                customAlert(
+                    'Pendaftaran Berhasil! 🎉<br>Akun untuk <strong>' + name + '</strong> telah tersimpan secara terpusat di Cloud.<br>' +
+                    'Anda dapat langsung login dari perangkat/HP mana saja menggunakan <strong>NIK (' + nik + ')</strong> atau <strong>Username (' + usernameVal + ')</strong>.'
+                );
                 registerForm.style.display = 'none';
                 if (loginForm) loginForm.style.display = 'block';
                 registerForm.reset();
@@ -1116,41 +1192,192 @@ const srv = await serverAuth('register', { nik, name, password });
     }
     window.calculateBMR = calculateBMR;
 
-    // Helper Fungsi Perhitungan Kebutuhan Energi & Makronutrien Harian (Standar MBG 60:15:25)
+    // Helper Fungsi Perhitungan Dekomposisi Makronutrien (60% Karbohidrat, 15% Protein, 25% Lemak)
+    function decomposeMacronutrients(energyKcal) {
+        const e = parseFloat(energyKcal) || 0;
+        return {
+            // Rumus Standar:
+            // Karbohidrat (60%) = (Target Energi * 0.60) / 4 gram
+            // Protein (15%) = (Target Energi * 0.15) / 4 gram
+            // Lemak (25%) = (Target Energi * 0.25) / 9 gram
+            karbo: parseFloat(((e * 0.60) / 4).toFixed(1)),
+            pro: parseFloat(((e * 0.15) / 4).toFixed(1)),
+            lem: parseFloat(((e * 0.25) / 9).toFixed(1))
+        };
+    }
+    window.decomposeMacronutrients = decomposeMacronutrients;
+
+    // Helper Fungsi Perhitungan Kebutuhan Energi & Makronutrien Harian (Standar MBG 30% & 60:15:25)
     function calculateDailyEnergyAndMacro(bmr, activity = 1.55) {
-        // TEE / Kebutuhan Energi Harian = BMR * Faktor Aktivitas (PAL 1,55)
+        // TEE / Kebutuhan Energi Harian = BMR * Faktor Aktivitas (PAL)
         const tee = Math.round(bmr * activity);
-        // Target 1x Porsi MBG = 33% kebutuhan energi harian
-        const mbgTarget = Math.round(tee * 0.33);
+        // Target 1x Porsi MBG = 30% (0.30) dari total kebutuhan energi harian
+        const mbgTarget = Math.round(tee * 0.30);
 
-        // Pembagian Makronutrien Harian (Karbo 60% @ 4 kkal/g, Protein 15% @ 4 kkal/g, Lemak 25% @ 9 kkal/g):
-        const targetKarbo = Math.round((tee * 0.60) / 4);
-        const targetPro = Math.round((tee * 0.15) / 4);
-        const targetLem = Math.round((tee * 0.25) / 9);
-
-        // Target Makronutrien 1x Porsi MBG (33% porsi makan siang):
-        const mbgTargetKar = Math.round((mbgTarget * 0.60) / 4);
-        const mbgTargetPro = Math.round((mbgTarget * 0.15) / 4);
-        const mbgTargetLem = Math.round((mbgTarget * 0.25) / 9);
+        // Pembagian Makronutrien Harian (60% Karbo, 15% Protein, 25% Lemak):
+        const dailyMacros = decomposeMacronutrients(tee);
+        // Pembagian Makronutrien 1x Porsi MBG (30% kebutuhan energi harian):
+        const mbgMacros = decomposeMacronutrients(mbgTarget);
 
         return {
             bmr: Math.round(bmr),
             tee: tee,
             tdee: tee,
             mbgTargetKal: mbgTarget,
-            targetKarbo: targetKarbo,
-            targetPro: targetPro,
-            targetLem: targetLem,
-            mbgTargetKar: mbgTargetKar,
-            mbgTargetPro: mbgTargetPro,
-            mbgTargetLem: mbgTargetLem
+            targetKarbo: dailyMacros.karbo,
+            targetPro: dailyMacros.pro,
+            targetLem: dailyMacros.lem,
+            mbgTargetKar: mbgMacros.karbo,
+            mbgTargetPro: mbgMacros.pro,
+            mbgTargetLem: mbgMacros.lem
         };
     }
     window.calculateDailyEnergyAndMacro = calculateDailyEnergyAndMacro;
 
+    // Helper untuk merender kartu hasil kalkulator gizi & menyinkronkan ke Kalkulator Gizi Manual di bawahnya
+    function renderTargetNutritionResult(targetState) {
+        const tdeeTotalEl = document.getElementById('val-tdee-total');
+        const bmrTotalEl = document.getElementById('val-bmr-total');
+        const bmrWrapperEl = document.getElementById('lbl-bmr-wrapper');
+        const mbgTargetEl = document.getElementById('val-mbg-target');
+        const targetKarboEl = document.getElementById('val-target-karbo');
+        const targetProEl = document.getElementById('val-target-pro');
+        const targetLemEl = document.getElementById('val-target-lem');
+        const dailyKarboSubEl = document.getElementById('val-daily-karbo-sub');
+        const dailyProSubEl = document.getElementById('val-daily-pro-sub');
+        const dailyLemSubEl = document.getElementById('val-daily-lem-sub');
+        const modeBadgeEl = document.getElementById('tdee-mode-badge');
+        const manualSummaryEl = document.getElementById('manual-target-summary-text');
+        const tdeeCard = document.getElementById('tdee-result-card');
+
+        if (tdeeTotalEl) tdeeTotalEl.textContent = targetState.tdee.toLocaleString('id-ID') + ' kcal/hari';
+        if (bmrWrapperEl) {
+            if (targetState.mode === 'kelompok') {
+                bmrWrapperEl.style.display = 'none';
+            } else {
+                bmrWrapperEl.style.display = 'inline';
+                if (bmrTotalEl) bmrTotalEl.textContent = Math.round(targetState.bmr).toLocaleString('id-ID');
+            }
+        }
+        if (mbgTargetEl) mbgTargetEl.textContent = targetState.mbgTargetKal.toLocaleString('id-ID') + ' kcal';
+
+        // Tampilkan gramatur makronutrien dari Target Energi MBG (30%):
+        // Karbohidrat (60%) = (Target Energi MBG * 0.60) / 4 gram
+        // Protein (15%) = (Target Energi MBG * 0.15) / 4 gram
+        // Lemak (25%) = (Target Energi MBG * 0.25) / 9 gram
+        if (targetKarboEl) targetKarboEl.textContent = targetState.mbgTargetKar + ' g';
+        if (targetProEl) targetProEl.textContent = targetState.mbgTargetPro + ' g';
+        if (targetLemEl) targetLemEl.textContent = targetState.mbgTargetLem + ' g';
+
+        if (dailyKarboSubEl) dailyKarboSubEl.textContent = '(Harian: ' + targetState.targetKarbo + ' g)';
+        if (dailyProSubEl) dailyProSubEl.textContent = '(Harian: ' + targetState.targetPro + ' g)';
+        if (dailyLemSubEl) dailyLemSubEl.textContent = '(Harian: ' + targetState.targetLem + ' g)';
+
+        if (modeBadgeEl) {
+            if (targetState.mode === 'kelompok') {
+                modeBadgeEl.innerHTML = '<span style="display:inline-block; background:#dbeafe; color:#1e40af; font-size:0.76rem; font-weight:700; padding:0.25rem 0.75rem; border-radius:20px; border:1px solid #93c5fd;">' +
+                    '2. Kalkulator Kebutuhan Gizi Kelompok (Acuan Permenkes RI No. 28 Tahun 2019) — ' + sanitize(targetState.groupLabel || '') +
+                    '</span>';
+            } else {
+                modeBadgeEl.innerHTML = '<span style="display:inline-block; background:#fef3c7; color:#b45309; font-size:0.76rem; font-weight:700; padding:0.25rem 0.75rem; border-radius:20px; border:1px solid #fde68a;">' +
+                    '1. Kalkulator Kebutuhan Gizi Individu (Formula Schofield)' +
+                    '</span>';
+            }
+        }
+
+        if (manualSummaryEl) {
+            const descMode = targetState.mode === 'kelompok'
+                ? 'Mode Kelompok (Permenkes No. 28/2019: ' + (targetState.groupLabel || '') + ')'
+                : 'Mode Individu (Formula Schofield)';
+            manualSummaryEl.textContent =
+                targetState.mbgTargetKal + ' kkal | Karbohidrat (60%): ' + targetState.mbgTargetKar + ' g | Protein (15%): ' +
+                targetState.mbgTargetPro + ' g | Lemak (25%): ' + targetState.mbgTargetLem + ' g — ' + descMode;
+        }
+
+        if (tdeeCard) tdeeCard.classList.remove('hidden');
+
+        // Otomatis sinkronkan sebagai acuan target aktif pada Kalkulator Gizi Manual di bawahnya & Dashboard Evaluasi
+        if (window.calculateNutrition) {
+            window.calculateNutrition(false, true);
+        }
+        updateIntegratedDashboard();
+    }
+
     // ============================================================
-    // 7. KALKULATOR KEBUTUHAN ENERGI & GIZI
+    // 7. KALKULATOR KEBUTUHAN ENERGI & GIZI (DUAL-MODE: INDIVIDU & KELOMPOK)
     // ============================================================
+    window.switchTdeeMode = function(mode) {
+        const btnIndividu = document.getElementById('tab-btn-individu');
+        const btnKelompok = document.getElementById('tab-btn-kelompok');
+        const formIndividu = document.getElementById('tdee-calc-form');
+        const formKelompok = document.getElementById('group-calc-form');
+
+        if (mode === 'kelompok') {
+            if (formIndividu) formIndividu.classList.add('hidden');
+            if (formKelompok) formKelompok.classList.remove('hidden');
+            if (btnKelompok) {
+                btnKelompok.style.border = '2px solid #2563eb';
+                btnKelompok.style.background = '#eff6ff';
+                btnKelompok.style.color = '#1d4ed8';
+            }
+            if (btnIndividu) {
+                btnIndividu.style.border = '1.5px solid transparent';
+                btnIndividu.style.background = 'transparent';
+                btnIndividu.style.color = '#475569';
+            }
+        } else {
+            if (formKelompok) formKelompok.classList.add('hidden');
+            if (formIndividu) formIndividu.classList.remove('hidden');
+            if (btnIndividu) {
+                btnIndividu.style.border = '2px solid #d97706';
+                btnIndividu.style.background = '#fffbeb';
+                btnIndividu.style.color = '#b45309';
+            }
+            if (btnKelompok) {
+                btnKelompok.style.border = '1.5px solid transparent';
+                btnKelompok.style.background = 'transparent';
+                btnKelompok.style.color = '#475569';
+            }
+        }
+    };
+
+    // Sinkronisasi Cerdas 2 Arah antara Dropdown 1 (Jenjang Pendidikan) & Dropdown 2 (Kelompok Usia Sasaran SPPG)
+    const groupJenjangSelect = document.getElementById('group-jenjang');
+    const groupUsiaSelect = document.getElementById('group-usia');
+
+    const SPPG_GROUP_STANDARDS = {
+        '3-5':   { jenjang: 'TK',  jenjangLabel: 'TK / PAUD',    usiaLabel: '3 - 5 Tahun (TK/PAUD)',          akg: 1400, mbg: 420 },
+        '6-9':   { jenjang: 'SD',  jenjangLabel: 'SD / MI',      usiaLabel: '6 - 9 Tahun (SD/MI Kelas 1-3)',  akg: 1650, mbg: 495 },
+        '10-12': { jenjang: 'SD',  jenjangLabel: 'SD / MI',      usiaLabel: '10 - 12 Tahun (SD/MI Kelas 4-6)',akg: 1950, mbg: 585 },
+        '13-15': { jenjang: 'SMP', jenjangLabel: 'SMP / MTs',    usiaLabel: '13 - 15 Tahun (SMP/MTs)',        akg: 2225, mbg: 668 },
+        '16-18': { jenjang: 'SMA', jenjangLabel: 'SMA / MA / SMK',usiaLabel: '16 - 18 Tahun (SMA/MA/SMK)',    akg: 2375, mbg: 713 }
+    };
+
+    if (groupJenjangSelect && groupUsiaSelect) {
+        groupJenjangSelect.addEventListener('change', () => {
+            const selectedJenjang = groupJenjangSelect.value;
+            const currentUsia = groupUsiaSelect.value;
+            const currentMeta = SPPG_GROUP_STANDARDS[currentUsia];
+
+            // Jika kelompok usia saat ini sudah sesuai jenjang (misal SD punya 6-9 dan 10-12), pertahankan;
+            // jika belum sesuai, otomatis pilih kelompok usia default untuk jenjang tersebut.
+            if (!currentMeta || currentMeta.jenjang !== selectedJenjang) {
+                if (selectedJenjang === 'TK') groupUsiaSelect.value = '3-5';
+                else if (selectedJenjang === 'SD') groupUsiaSelect.value = '6-9';
+                else if (selectedJenjang === 'SMP') groupUsiaSelect.value = '13-15';
+                else if (selectedJenjang === 'SMA') groupUsiaSelect.value = '16-18';
+            }
+        });
+
+        groupUsiaSelect.addEventListener('change', () => {
+            const selectedUsia = groupUsiaSelect.value;
+            const meta = SPPG_GROUP_STANDARDS[selectedUsia];
+            if (meta && groupJenjangSelect.value !== meta.jenjang) {
+                groupJenjangSelect.value = meta.jenjang;
+            }
+        });
+    }
+
     const tdeeCalcForm = document.getElementById('tdee-calc-form');
     if (tdeeCalcForm) {
         tdeeCalcForm.addEventListener('submit', (e) => {
@@ -1164,43 +1391,64 @@ const srv = await serverAuth('register', { nik, name, password });
             // BMR Formula (Schofield & Mifflin-St Jeor)
             const bmr = calculateBMR(age, gender, weight, height);
             const energyReq = calculateDailyEnergyAndMacro(bmr, activity);
-            const tdee = energyReq.tdee;
-            const mbgTarget = energyReq.mbgTargetKal;
-            const targetKarbo = energyReq.targetKarbo;
-            const targetPro = energyReq.targetPro;
-            const targetLem = energyReq.targetLem;
 
             // Save to State
             window.currentTargetNutrition = {
+                mode: 'individu',
+                modeLabel: '1. Kalkulator Kebutuhan Gizi Individu (Formula Schofield)',
                 bmr: Math.round(bmr),
-                tdee: tdee,
-                mbgTargetKal: mbgTarget,
-                targetKarbo: targetKarbo,
-                targetPro: targetPro,
-                targetLem: targetLem,
+                tdee: energyReq.tdee,
+                mbgTargetKal: energyReq.mbgTargetKal,
+                targetKarbo: energyReq.targetKarbo,
+                targetPro: energyReq.targetPro,
+                targetLem: energyReq.targetLem,
                 mbgTargetKar: energyReq.mbgTargetKar,
                 mbgTargetPro: energyReq.mbgTargetPro,
                 mbgTargetLem: energyReq.mbgTargetLem
             };
 
-            const tdeeTotalEl = document.getElementById('val-tdee-total');
-            const bmrTotalEl = document.getElementById('val-bmr-total');
-            const mbgTargetEl = document.getElementById('val-mbg-target');
-            const targetKarboEl = document.getElementById('val-target-karbo');
-            const targetProEl = document.getElementById('val-target-pro');
-            const targetLemEl = document.getElementById('val-target-lem');
-            const tdeeCard = document.getElementById('tdee-result-card');
+            renderTargetNutritionResult(window.currentTargetNutrition);
+            showToast('Kebutuhan Energi Individu (Schofield - Target 30% MBG) berhasil dihitung!');
+        });
+    }
 
-            if (tdeeTotalEl) tdeeTotalEl.textContent = tdee.toLocaleString('id-ID') + ' kcal/hari';
-            if (bmrTotalEl) bmrTotalEl.textContent = Math.round(bmr).toLocaleString('id-ID');
-            if (mbgTargetEl) mbgTargetEl.textContent = mbgTarget.toLocaleString('id-ID') + ' kcal';
-            if (targetKarboEl) targetKarboEl.textContent = targetKarbo + ' g';
-            if (targetProEl) targetProEl.textContent = targetPro + ' g';
-            if (targetLemEl) targetLemEl.textContent = targetLem + ' g';
-            if (tdeeCard) tdeeCard.classList.remove('hidden');
+    const groupCalcForm = document.getElementById('group-calc-form');
+    if (groupCalcForm) {
+        groupCalcForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const usiaKey = groupUsiaSelect ? groupUsiaSelect.value : '16-18';
+            const std = SPPG_GROUP_STANDARDS[usiaKey] || SPPG_GROUP_STANDARDS['16-18'];
 
-            showToast('Kebutuhan Energi berhasil dihitung!');
-            updateIntegratedDashboard();
+            // Sinkronkan dropdown jenjang jika belum sinkron
+            if (groupJenjangSelect && groupJenjangSelect.value !== std.jenjang) {
+                groupJenjangSelect.value = std.jenjang;
+            }
+
+            const akgHarian = std.akg;
+            // Target 1x Makan MBG = tepat 30% (0.30) dari AKG Harian
+            const mbgTarget = Math.round(akgHarian * 0.30); // 420, 495, 585, 668, 713 kkal
+            const dailyMacros = decomposeMacronutrients(akgHarian);
+            const mbgMacros = decomposeMacronutrients(mbgTarget);
+
+            window.currentTargetNutrition = {
+                mode: 'kelompok',
+                modeLabel: '2. Kalkulator Kebutuhan Gizi Kelompok (Acuan Permenkes RI No. 28 Tahun 2019)',
+                groupKey: usiaKey,
+                groupLabel: std.usiaLabel,
+                jenjangLabel: std.jenjangLabel,
+                bmr: 0,
+                tdee: akgHarian,
+                mbgTargetKal: mbgTarget,
+                targetKarbo: dailyMacros.karbo,
+                targetPro: dailyMacros.pro,
+                targetLem: dailyMacros.lem,
+                mbgTargetKar: mbgMacros.karbo,
+                mbgTargetPro: mbgMacros.pro,
+                mbgTargetLem: mbgMacros.lem
+            };
+
+            renderTargetNutritionResult(window.currentTargetNutrition);
+            showToast('Target Gizi Kelompok (' + std.usiaLabel + ' — ' + mbgTarget + ' kkal) ditetapkan sebagai acuan aktif!');
         });
     }
 
@@ -1288,11 +1536,11 @@ const srv = await serverAuth('register', { nik, name, password });
         if (uStatus) uStatus.textContent = prof.status.split('(')[0];
         if (uTarget) uTarget.textContent = tgt.mbgTargetKal + ' kcal (1x MBG)';
 
-        // 1x Porsi MBG Target (33% porsi makan siang)
-        const targetKal = tgt.mbgTargetKal || 807;
-        const targetPro = tgt.mbgTargetPro || Math.round((targetKal * 0.15) / 4) || 30;
-        const targetKar = tgt.mbgTargetKar || Math.round((targetKal * 0.60) / 4) || 121;
-        const targetLem = tgt.mbgTargetLem || Math.round((targetKal * 0.25) / 9) || 22;
+        // 1x Porsi MBG Target (30% kebutuhan energi harian, rasio 60% Karbo : 15% Protein : 25% Lemak)
+        const targetKal = tgt.mbgTargetKal || 734;
+        const targetKar = tgt.mbgTargetKar || parseFloat(((targetKal * 0.60) / 4).toFixed(1)) || 110.1;
+        const targetPro = tgt.mbgTargetPro || parseFloat(((targetKal * 0.15) / 4).toFixed(1)) || 27.5;
+        const targetLem = tgt.mbgTargetLem || parseFloat(((targetKal * 0.25) / 9).toFixed(1)) || 20.4;
 
         const currentKal = intake.kalori || 0;
         const currentPro = intake.protein || 0;
@@ -2176,7 +2424,8 @@ const srv = await serverAuth('register', { nik, name, password });
 
         // Tampilkan dialog ringkasan jika kalkulasi manual dan TIDAK silent
         if (!isFromAIScan && !silent) {
-            const targetMBG = (window.currentTargetNutrition && window.currentTargetNutrition.mbgTargetKal) || 807;
+            const tgtObj = window.currentTargetNutrition || {};
+            const targetMBG = tgtObj.mbgTargetKal || 734;
             const pctKal = Math.round((totalKalori / targetMBG) * 100);
 
             let itemsSummary = computedItems.map(it => 
@@ -2472,37 +2721,47 @@ const srv = await serverAuth('register', { nik, name, password });
     // BASIS DATA PANGAN RESMI (pangan.json / TKPI KEMENKES RI)
     // =========================================================================
     const _EMBEDDED_PANGAN_DATA = [
-      {"id":"sayur_bayam_01","nama":"sayur bayam","aliases":["sayur bayam","sayur bayam bening","bayam bening","bayam","bayam rebus"],"kategori":"Sayuran","kalori":20,"protein":1.6,"lemak":0.3,"karbohidrat":3.5,"bdd":100,"sumber":"TKPI Kemenkes RI"},
-      {"id":"sayur_bayam_tumis_02","nama":"tumis bayam","aliases":["tumis bayam","cah bayam","bayam goreng"],"kategori":"Sayuran","kalori":34,"protein":1.8,"lemak":1.5,"karbohidrat":3.5,"bdd":100,"sumber":"TKPI Kemenkes RI"},
-      {"id":"sayur_buncis_01","nama":"tumis buncis","aliases":["tumis buncis","buncis","cah buncis","buncis wortel"],"kategori":"Sayuran","kalori":45,"protein":1.8,"lemak":2.2,"karbohidrat":5.5,"bdd":100,"sumber":"TKPI Kemenkes RI"},
-      {"id":"sayur_capcay_01","nama":"sayur capcay","aliases":["capcay","cap cay","sayur capcay","tumis capcay"],"kategori":"Sayuran","kalori":48,"protein":1.8,"lemak":2.5,"karbohidrat":6.0,"bdd":100,"sumber":"TKPI Kemenkes RI"},
-      {"id":"sayur_lodeh_01","nama":"sayur lodeh","aliases":["sayur lodeh","lodeh"],"kategori":"Sayuran","kalori":70,"protein":2.0,"lemak":4.5,"karbohidrat":6.0,"bdd":100,"sumber":"TKPI Kemenkes RI"},
-      {"id":"sayur_sop_01","nama":"sayur sop","aliases":["sayur sop","sop sayur","sup sayur","sop","sup"],"kategori":"Sayuran","kalori":25,"protein":1.3,"lemak":0.5,"karbohidrat":4.5,"bdd":100,"sumber":"TKPI Kemenkes RI"},
-      {"id":"sayur_kangkung_01","nama":"tumis kangkung","aliases":["tumis kangkung","cah kangkung","kangkung"],"kategori":"Sayuran","kalori":28,"protein":2.2,"lemak":0.8,"karbohidrat":3.8,"bdd":100,"sumber":"TKPI Kemenkes RI"},
-      {"id":"sayur_labu_01","nama":"tumis labu siam","aliases":["tumis labu siam","labu siam","labu","jipang"],"kategori":"Sayuran","kalori":24,"protein":1.0,"lemak":0.4,"karbohidrat":4.5,"bdd":100,"sumber":"TKPI Kemenkes RI"},
-      {"id":"sayur_asem_01","nama":"sayur asem","aliases":["sayur asem","sayur asam","asem","asam"],"kategori":"Sayuran","kalori":28,"protein":1.2,"lemak":0.4,"karbohidrat":5.5,"bdd":100,"sumber":"TKPI Kemenkes RI"},
-      {"id":"sayur_wortel_01","nama":"wortel rebus","aliases":["wortel rebus","wortel","stik wortel"],"kategori":"Sayuran","kalori":35,"protein":1.0,"lemak":0.3,"karbohidrat":8.0,"bdd":100,"sumber":"TKPI Kemenkes RI"},
-      {"id":"karbo_nasi_putih_01","nama":"nasi putih","aliases":["nasi putih","nasi putih pulen","nasi"],"kategori":"Karbohidrat","kalori":130,"protein":2.7,"lemak":0.3,"karbohidrat":28.7,"bdd":100,"sumber":"TKPI Kemenkes RI"},
-      {"id":"karbo_nasi_uduk_02","nama":"nasi uduk","aliases":["nasi uduk","nasi gurih","nasi kuning"],"kategori":"Karbohidrat","kalori":160,"protein":3.2,"lemak":4.2,"karbohidrat":28.0,"bdd":100,"sumber":"TKPI Kemenkes RI"},
-      {"id":"karbo_nasi_merah_03","nama":"nasi merah","aliases":["nasi merah"],"kategori":"Karbohidrat","kalori":110,"protein":2.6,"lemak":0.9,"karbohidrat":23.5,"bdd":100,"sumber":"TKPI Kemenkes RI"},
-      {"id":"karbo_kentang_04","nama":"kentang rebus","aliases":["kentang rebus","kentang"],"kategori":"Karbohidrat","kalori":87,"protein":2.0,"lemak":0.1,"karbohidrat":20.0,"bdd":100,"sumber":"TKPI Kemenkes RI"},
-      {"id":"karbo_kentang_goreng_05","nama":"kentang goreng","aliases":["kentang goreng","kentang wedges","wedges","kentang panggang","kentang goreng wedges","french fries"],"kategori":"Karbohidrat","kalori":210,"protein":3.5,"lemak":9.5,"karbohidrat":30.0,"bdd":100,"sumber":"TKPI Kemenkes RI"},
-      {"id":"hewan_ayam_goreng_01","nama":"ayam goreng","aliases":["ayam goreng","ayam lengkuas","ayam kremes","ayam","paha ayam","ayam krispi","ayam goreng krispi","ayam goreng tepung","ayam kfc","potongan ayam"],"kategori":"Protein Hewani","kalori":250,"protein":28.0,"lemak":14.5,"karbohidrat":1.8,"bdd":100,"sumber":"TKPI Kemenkes RI"},
-      {"id":"hewan_telur_02","nama":"telur rebus","aliases":["telur rebus","telur ceplok","telur balado","telur"],"kategori":"Protein Hewani","kalori":155,"protein":12.6,"lemak":10.6,"karbohidrat":1.1,"bdd":100,"sumber":"TKPI Kemenkes RI"},
-      {"id":"hewan_ikan_03","nama":"ikan nila goreng","aliases":["ikan nila goreng","ikan","ikan goreng","ikan lele"],"kategori":"Protein Hewani","kalori":160,"protein":21.0,"lemak":8.0,"karbohidrat":1.0,"bdd":100,"sumber":"TKPI Kemenkes RI"},
-      {"id":"nabati_tempe_01","nama":"tempe goreng","aliases":["tempe goreng","tempe","tempe goreng gurih"],"kategori":"Protein Nabati","kalori":210,"protein":19.0,"lemak":10.5,"karbohidrat":10.0,"bdd":100,"sumber":"TKPI Kemenkes RI"},
-      {"id":"nabati_tahu_02","nama":"tahu goreng","aliases":["tahu goreng","tahu","tahu putih","tahu kukus"],"kategori":"Protein Nabati","kalori":95,"protein":9.0,"lemak":5.5,"karbohidrat":2.5,"bdd":100,"sumber":"TKPI Kemenkes RI"},
-      {"id":"buah_melon_01","nama":"buah melon","aliases":["buah melon","melon"],"kategori":"Buah","kalori":36,"protein":0.8,"lemak":0.2,"karbohidrat":8.5,"bdd":100,"sumber":"TKPI Kemenkes RI"},
-      {"id":"buah_semangka_02","nama":"buah semangka","aliases":["buah semangka","semangka"],"kategori":"Buah","kalori":32,"protein":0.6,"lemak":0.2,"karbohidrat":7.6,"bdd":100,"sumber":"TKPI Kemenkes RI"},
-      {"id":"buah_jeruk_03","nama":"buah jeruk","aliases":["buah jeruk","jeruk","jeruk manis","jeruk sunkist","jeruk medan","jeruk segar","buah jeruk utuh"],"kategori":"Buah","kalori":47,"protein":0.9,"lemak":0.1,"karbohidrat":12.0,"bdd":100,"sumber":"TKPI Kemenkes RI"},
-      {"id":"buah_pisang_04","nama":"buah pisang","aliases":["buah pisang","pisang"],"kategori":"Buah","kalori":89,"protein":1.1,"lemak":0.3,"karbohidrat":22.8,"bdd":100,"sumber":"TKPI Kemenkes RI"},
-      {"id":"karbo_spaghetti_05","nama":"spaghetti pasta","aliases":["spaghetti","pasta","spageti","mie spaghetti","spaghetti pasta gurih"],"kategori":"Karbohidrat","kalori":158,"protein":5.8,"lemak":1.5,"karbohidrat":30.0,"bdd":100,"sumber":"TKPI Kemenkes RI"},
-      {"id":"pelengkap_pangsit_06","nama":"kerupuk pangsit","aliases":["kerupuk pangsit","pangsit goreng","kulit pangsit","kerupuk pangsit goreng renyah"],"kategori":"Pelengkap","kalori":480,"protein":4.5,"lemak":22.0,"karbohidrat":65.0,"bdd":100,"sumber":"TKPI Kemenkes RI"},
-      {"id":"hewan_telur_ceplok_04","nama":"telur ceplok","aliases":["telur ceplok","telur mata sapi","telur ceplok balado","ceplok"],"kategori":"Protein Hewani","kalori":185,"protein":12.4,"lemak":14.2,"karbohidrat":0.8,"bdd":100,"sumber":"TKPI Kemenkes RI"},
-      {"id":"nabati_tempe_orek_03","nama":"tempe orek","aliases":["tempe orek","tempe orek dadu","orek tempe","tempe orek manis"],"kategori":"Protein Nabati","kalori":210,"protein":17.0,"lemak":9.0,"karbohidrat":18.0,"bdd":100,"sumber":"TKPI Kemenkes RI"},
-      {"id":"sayur_jagung_manis_02","nama":"tumis jagung manis","aliases":["tumis jagung manis","jagung manis","jagung pipil","tumis jagung","tumis sayuran","tumis jagung wortel","sayur jagung","sayur campur"],"kategori":"Sayuran","kalori":65,"protein":2.2,"lemak":0.8,"karbohidrat":14.0,"bdd":100,"sumber":"TKPI Kemenkes RI"},
-      {"id":"hewan_ayam_lengkuas_05","nama":"ayam goreng lengkuas","aliases":["ayam lengkuas","ayam goreng lengkuas","ayam bumbu lengkuas"],"kategori":"Protein Hewani","kalori":245,"protein":26.0,"lemak":13.5,"karbohidrat":2.0,"bdd":100,"sumber":"TKPI Kemenkes RI"},
-      {"id":"pelengkap_kerupuk_bawang_07","nama":"kerupuk bawang","aliases":["kerupuk bawang","kerupuk bawang finna","kerupuk putih","kerupuk"],"kategori":"Pelengkap","kalori":480,"protein":3.5,"lemak":24.0,"karbohidrat":65.0,"bdd":100,"sumber":"TKPI Kemenkes RI"}
+      {"id": "sayur_bayam_01", "nama": "sayur bayam", "aliases": ["sayur bayam", "sayur bayam bening", "sayur bening bayam", "bayam bening", "bayam", "bayam rebus"], "kategori": "Sayuran", "kondisi": "Matang / Siap Saji", "kalori": 20, "protein": 1.6, "lemak": 0.3, "karbohidrat": 3.5, "bdd": 100, "sumber": "TKPI Kemenkes RI (Olahan Matang)"},
+      {"id": "sayur_bayam_tumis_02", "nama": "tumis bayam", "aliases": ["tumis bayam", "cah bayam", "bayam tumis"], "kategori": "Sayuran", "kondisi": "Matang / Siap Saji", "kalori": 34, "protein": 1.8, "lemak": 1.5, "karbohidrat": 3.5, "bdd": 100, "sumber": "TKPI Kemenkes RI (Olahan Matang)"},
+      {"id": "sayur_buncis_01", "nama": "tumis buncis", "aliases": ["tumis buncis", "tumis buncis hijau", "buncis", "cah buncis", "buncis wortel", "buncis rebus"], "kategori": "Sayuran", "kondisi": "Matang / Siap Saji", "kalori": 45, "protein": 1.8, "lemak": 2.2, "karbohidrat": 5.5, "bdd": 100, "sumber": "TKPI Kemenkes RI (Olahan Matang)"},
+      {"id": "sayur_capcay_01", "nama": "sayur capcay", "aliases": ["capcay", "cap cay", "sayur capcay", "sayur capcay wortel", "tumis capcay"], "kategori": "Sayuran", "kondisi": "Matang / Siap Saji", "kalori": 48, "protein": 1.8, "lemak": 2.5, "karbohidrat": 6.0, "bdd": 100, "sumber": "TKPI Kemenkes RI (Olahan Matang)"},
+      {"id": "sayur_lodeh_01", "nama": "sayur lodeh", "aliases": ["sayur lodeh", "lodeh"], "kategori": "Sayuran", "kondisi": "Matang / Siap Saji", "kalori": 70, "protein": 2.0, "lemak": 4.5, "karbohidrat": 6.0, "bdd": 100, "sumber": "TKPI Kemenkes RI (Olahan Matang)"},
+      {"id": "sayur_sop_01", "nama": "sayur sop", "aliases": ["sayur sop", "sayur sop wortel kol", "sop sayur", "sup sayur", "sop", "sup"], "kategori": "Sayuran", "kondisi": "Matang / Siap Saji", "kalori": 25, "protein": 1.3, "lemak": 0.5, "karbohidrat": 4.5, "bdd": 100, "sumber": "TKPI Kemenkes RI (Olahan Matang)"},
+      {"id": "sayur_kangkung_01", "nama": "tumis kangkung", "aliases": ["tumis kangkung", "cah kangkung", "kangkung", "kangkung rebus"], "kategori": "Sayuran", "kondisi": "Matang / Siap Saji", "kalori": 28, "protein": 2.2, "lemak": 0.8, "karbohidrat": 3.8, "bdd": 100, "sumber": "TKPI Kemenkes RI (Olahan Matang)"},
+      {"id": "sayur_labu_01", "nama": "tumis labu siam", "aliases": ["tumis labu siam", "labu siam", "labu", "jipang", "sayur labu siam"], "kategori": "Sayuran", "kondisi": "Matang / Siap Saji", "kalori": 24, "protein": 1.0, "lemak": 0.4, "karbohidrat": 4.5, "bdd": 100, "sumber": "TKPI Kemenkes RI (Olahan Matang)"},
+      {"id": "sayur_asem_01", "nama": "sayur asem", "aliases": ["sayur asem", "sayur asam", "asem", "asam"], "kategori": "Sayuran", "kondisi": "Matang / Siap Saji", "kalori": 28, "protein": 1.2, "lemak": 0.4, "karbohidrat": 5.5, "bdd": 100, "sumber": "TKPI Kemenkes RI (Olahan Matang)"},
+      {"id": "sayur_wortel_01", "nama": "wortel rebus", "aliases": ["wortel rebus", "wortel", "stik wortel"], "kategori": "Sayuran", "kondisi": "Matang / Siap Saji", "kalori": 35, "protein": 1.0, "lemak": 0.3, "karbohidrat": 8.0, "bdd": 100, "sumber": "TKPI Kemenkes RI (Olahan Matang)"},
+      {"id": "sayur_lalapan_01", "nama": "lalapan sayur", "aliases": ["lalapan timun kol", "lalapan", "timun", "mentimun", "selada"], "kategori": "Sayuran", "kondisi": "Siap Saji", "kalori": 15, "protein": 0.7, "lemak": 0.1, "karbohidrat": 3.0, "bdd": 100, "sumber": "TKPI Kemenkes RI (Siap Saji)"},
+      {"id": "karbo_nasi_putih_01", "nama": "nasi putih", "aliases": ["nasi putih", "nasi putih pulen", "nasi"], "kategori": "Karbohidrat", "kondisi": "Matang / Siap Saji", "kalori": 130, "protein": 2.7, "lemak": 0.3, "karbohidrat": 28.7, "bdd": 100, "sumber": "TKPI Kemenkes RI (Olahan Matang)"},
+      {"id": "karbo_nasi_uduk_02", "nama": "nasi uduk", "aliases": ["nasi uduk", "nasi gurih"], "kategori": "Karbohidrat", "kondisi": "Matang / Siap Saji", "kalori": 160, "protein": 3.2, "lemak": 4.2, "karbohidrat": 28.0, "bdd": 100, "sumber": "TKPI Kemenkes RI (Olahan Matang)"},
+      {"id": "karbo_nasi_kuning_03", "nama": "nasi kuning", "aliases": ["nasi kuning", "nasi kunyit"], "kategori": "Karbohidrat", "kondisi": "Matang / Siap Saji", "kalori": 150, "protein": 3.0, "lemak": 2.5, "karbohidrat": 30.0, "bdd": 100, "sumber": "TKPI Kemenkes RI (Olahan Matang)"},
+      {"id": "karbo_nasi_merah_03", "nama": "nasi merah", "aliases": ["nasi merah", "nasi beras merah"], "kategori": "Karbohidrat", "kondisi": "Matang / Siap Saji", "kalori": 110, "protein": 2.6, "lemak": 0.9, "karbohidrat": 23.5, "bdd": 100, "sumber": "TKPI Kemenkes RI (Olahan Matang)"},
+      {"id": "karbo_kentang_04", "nama": "kentang rebus", "aliases": ["kentang rebus", "kentang kukus", "kentang"], "kategori": "Karbohidrat", "kondisi": "Matang / Siap Saji", "kalori": 87, "protein": 2.0, "lemak": 0.1, "karbohidrat": 20.0, "bdd": 100, "sumber": "TKPI Kemenkes RI (Olahan Matang)"},
+      {"id": "karbo_kentang_goreng_05", "nama": "kentang goreng", "aliases": ["kentang goreng", "kentang wedges", "wedges", "kentang panggang", "kentang goreng wedges", "french fries"], "kategori": "Karbohidrat", "kondisi": "Matang / Siap Saji", "kalori": 210, "protein": 3.5, "lemak": 9.5, "karbohidrat": 30.0, "bdd": 100, "sumber": "TKPI Kemenkes RI (Olahan Matang)"},
+      {"id": "karbo_mie_goreng_06", "nama": "mie goreng", "aliases": ["mie goreng", "mi goreng", "bihun goreng", "kwetiau goreng"], "kategori": "Karbohidrat", "kondisi": "Matang / Siap Saji", "kalori": 175, "protein": 4.0, "lemak": 5.5, "karbohidrat": 28.0, "bdd": 100, "sumber": "TKPI Kemenkes RI (Olahan Matang)"},
+      {"id": "hewan_ayam_goreng_01", "nama": "ayam goreng", "aliases": ["ayam goreng", "ayam goreng kremes", "ayam kremes", "ayam", "paha ayam", "ayam krispi", "ayam goreng krispi", "ayam goreng tepung", "ayam kfc", "potongan ayam"], "kategori": "Protein Hewani", "kondisi": "Matang / Siap Saji", "kalori": 250, "protein": 28.0, "lemak": 14.5, "karbohidrat": 1.8, "bdd": 100, "sumber": "TKPI Kemenkes RI (Olahan Matang)"},
+      {"id": "hewan_ayam_lengkuas_05", "nama": "ayam goreng lengkuas", "aliases": ["ayam lengkuas", "ayam goreng lengkuas", "ayam bumbu lengkuas"], "kategori": "Protein Hewani", "kondisi": "Matang / Siap Saji", "kalori": 245, "protein": 26.0, "lemak": 13.5, "karbohidrat": 2.0, "bdd": 100, "sumber": "TKPI Kemenkes RI (Olahan Matang)"},
+      {"id": "hewan_telur_02", "nama": "telur rebus", "aliases": ["telur rebus", "telur ayam rebus", "telur"], "kategori": "Protein Hewani", "kondisi": "Matang / Siap Saji", "kalori": 155, "protein": 12.6, "lemak": 10.6, "karbohidrat": 1.1, "bdd": 100, "sumber": "TKPI Kemenkes RI (Olahan Matang)"},
+      {"id": "hewan_telur_balado_06", "nama": "telur balado", "aliases": ["telur balado", "telur rebus balado", "telur sambal balado"], "kategori": "Protein Hewani", "kondisi": "Matang / Siap Saji", "kalori": 175, "protein": 11.5, "lemak": 12.5, "karbohidrat": 4.0, "bdd": 100, "sumber": "TKPI Kemenkes RI (Olahan Matang)"},
+      {"id": "hewan_telur_ceplok_04", "nama": "telur ceplok", "aliases": ["telur ceplok", "telur mata sapi", "telur ceplok balado", "ceplok"], "kategori": "Protein Hewani", "kondisi": "Matang / Siap Saji", "kalori": 185, "protein": 12.4, "lemak": 14.2, "karbohidrat": 0.8, "bdd": 100, "sumber": "TKPI Kemenkes RI (Olahan Matang)"},
+      {"id": "hewan_telur_dadar_07", "nama": "telur dadar", "aliases": ["telur dadar", "omelet telur"], "kategori": "Protein Hewani", "kondisi": "Matang / Siap Saji", "kalori": 190, "protein": 11.0, "lemak": 15.5, "karbohidrat": 1.5, "bdd": 100, "sumber": "TKPI Kemenkes RI (Olahan Matang)"},
+      {"id": "hewan_ikan_03", "nama": "ikan nila goreng", "aliases": ["ikan nila goreng", "ikan", "ikan goreng", "ikan lele", "ikan lele goreng"], "kategori": "Protein Hewani", "kondisi": "Matang / Siap Saji", "kalori": 160, "protein": 21.0, "lemak": 8.0, "karbohidrat": 1.0, "bdd": 100, "sumber": "TKPI Kemenkes RI (Olahan Matang)"},
+      {"id": "hewan_udang_08", "nama": "udang masak balado", "aliases": ["udang masak balado", "udang masak kuah", "udang", "udang goreng"], "kategori": "Protein Hewani", "kondisi": "Matang / Siap Saji", "kalori": 106, "protein": 21.0, "lemak": 1.0, "karbohidrat": 1.0, "bdd": 100, "sumber": "TKPI Kemenkes RI (Olahan Matang)"},
+      {"id": "hewan_daging_sapi_09", "nama": "daging sapi olahan", "aliases": ["daging sapi", "rendang sapi", "rendang", "semur daging"], "kategori": "Protein Hewani", "kondisi": "Matang / Siap Saji", "kalori": 260, "protein": 26.0, "lemak": 16.0, "karbohidrat": 3.0, "bdd": 100, "sumber": "TKPI Kemenkes RI (Olahan Matang)"},
+      {"id": "nabati_tempe_01", "nama": "tempe goreng", "aliases": ["tempe goreng", "tempe", "tempe goreng gurih"], "kategori": "Protein Nabati", "kondisi": "Matang / Siap Saji", "kalori": 210, "protein": 19.0, "lemak": 10.5, "karbohidrat": 10.0, "bdd": 100, "sumber": "TKPI Kemenkes RI (Olahan Matang)"},
+      {"id": "nabati_tempe_orek_03", "nama": "tempe orek", "aliases": ["tempe orek", "tempe orek dadu", "tempe orek dadu manis", "orek tempe", "tempe orek manis", "tempe bacem"], "kategori": "Protein Nabati", "kondisi": "Matang / Siap Saji", "kalori": 210, "protein": 17.0, "lemak": 9.0, "karbohidrat": 18.0, "bdd": 100, "sumber": "TKPI Kemenkes RI (Olahan Matang)"},
+      {"id": "nabati_tahu_02", "nama": "tahu goreng", "aliases": ["tahu goreng", "tahu goreng gurih", "tahu", "tahu kuning"], "kategori": "Protein Nabati", "kondisi": "Matang / Siap Saji", "kalori": 95, "protein": 9.0, "lemak": 5.5, "karbohidrat": 2.5, "bdd": 100, "sumber": "TKPI Kemenkes RI (Olahan Matang)"},
+      {"id": "nabati_tahu_kukus_04", "nama": "tahu kukus", "aliases": ["tahu kukus", "tahu putih", "tahu rebus"], "kategori": "Protein Nabati", "kondisi": "Matang / Siap Saji", "kalori": 80, "protein": 8.0, "lemak": 4.5, "karbohidrat": 2.0, "bdd": 100, "sumber": "TKPI Kemenkes RI (Olahan Matang)"},
+      {"id": "buah_melon_01", "nama": "buah melon", "aliases": ["buah melon", "buah melon segar", "melon"], "kategori": "Buah", "kondisi": "Siap Saji", "kalori": 36, "protein": 0.8, "lemak": 0.2, "karbohidrat": 8.5, "bdd": 100, "sumber": "TKPI Kemenkes RI (Siap Saji)"},
+      {"id": "buah_semangka_02", "nama": "buah semangka", "aliases": ["buah semangka", "buah semangka merah segar", "semangka"], "kategori": "Buah", "kondisi": "Siap Saji", "kalori": 32, "protein": 0.6, "lemak": 0.2, "karbohidrat": 7.6, "bdd": 100, "sumber": "TKPI Kemenkes RI (Siap Saji)"},
+      {"id": "buah_jeruk_03", "nama": "buah jeruk", "aliases": ["buah jeruk", "buah jeruk segar utuh", "jeruk", "jeruk manis", "jeruk sunkist", "jeruk medan", "jeruk segar", "buah jeruk utuh"], "kategori": "Buah", "kondisi": "Siap Saji", "kalori": 47, "protein": 0.9, "lemak": 0.1, "karbohidrat": 12.0, "bdd": 100, "sumber": "TKPI Kemenkes RI (Siap Saji)"},
+      {"id": "buah_pisang_04", "nama": "buah pisang", "aliases": ["buah pisang", "buah pisang ambon segar", "pisang", "pisang ambon"], "kategori": "Buah", "kondisi": "Siap Saji", "kalori": 89, "protein": 1.1, "lemak": 0.3, "karbohidrat": 22.8, "bdd": 100, "sumber": "TKPI Kemenkes RI (Siap Saji)"},
+      {"id": "buah_kelengkeng_05", "nama": "buah kelengkeng", "aliases": ["buah kelengkeng", "buah kelengkeng segar", "kelengkeng", "lengkeng"], "kategori": "Buah", "kondisi": "Siap Saji", "kalori": 60, "protein": 1.3, "lemak": 0.1, "karbohidrat": 15.1, "bdd": 100, "sumber": "TKPI Kemenkes RI (Siap Saji)"},
+      {"id": "karbo_spaghetti_05", "nama": "spaghetti pasta", "aliases": ["spaghetti", "pasta", "spageti", "mie spaghetti", "spaghetti pasta gurih"], "kategori": "Karbohidrat", "kondisi": "Matang / Siap Saji", "kalori": 158, "protein": 5.8, "lemak": 1.5, "karbohidrat": 30.0, "bdd": 100, "sumber": "TKPI Kemenkes RI (Olahan Matang)"},
+      {"id": "pelengkap_pangsit_06", "nama": "kerupuk pangsit", "aliases": ["kerupuk pangsit", "pangsit goreng", "kulit pangsit", "kerupuk pangsit goreng renyah"], "kategori": "Pelengkap", "kondisi": "Matang / Siap Saji", "kalori": 480, "protein": 4.5, "lemak": 22.0, "karbohidrat": 65.0, "bdd": 100, "sumber": "TKPI Kemenkes RI (Olahan Matang)"},
+      {"id": "sayur_jagung_manis_02", "nama": "tumis jagung manis", "aliases": ["tumis jagung manis", "jagung manis", "jagung pipil", "tumis jagung", "tumis sayuran", "tumis jagung wortel", "sayur jagung", "sayur campur"], "kategori": "Sayuran", "kondisi": "Matang / Siap Saji", "kalori": 65, "protein": 2.2, "lemak": 0.8, "karbohidrat": 14.0, "bdd": 100, "sumber": "TKPI Kemenkes RI (Olahan Matang)"},
+      {"id": "pelengkap_kerupuk_bawang_07", "nama": "kerupuk bawang", "aliases": ["kerupuk bawang", "kerupuk bawang finna", "kerupuk putih", "kerupuk"], "kategori": "Pelengkap", "kondisi": "Matang / Siap Saji", "kalori": 480, "protein": 3.5, "lemak": 24.0, "karbohidrat": 65.0, "bdd": 100, "sumber": "TKPI Kemenkes RI (Olahan Matang)"},
+      {"id": "minuman_susu_uht_01", "nama": "susu uht", "aliases": ["susu uht", "susu kotak", "susu segar", "susu"], "kategori": "Pelengkap", "kondisi": "Siap Saji", "kalori": 65, "protein": 3.2, "lemak": 3.5, "karbohidrat": 4.8, "bdd": 100, "sumber": "TKPI Kemenkes RI (Siap Saji)"}
     ];
 
     let _panganDatabase = _EMBEDDED_PANGAN_DATA;
@@ -2590,6 +2849,7 @@ const srv = await serverAuth('register', { nik, name, password });
         for (const cand of candidates) {
             const candNorm = cand.phrase.toLowerCase().replace(/[\(\)\[\]\.,\/#!$%\^&\*;:{}=\-_`~?]/g, ' ').replace(/\s+/g, ' ').trim();
             if (candNorm.length < 3) continue;
+            if (raw.includes('bayam') && candNorm.includes('ayam') && !candNorm.includes('bayam')) continue;
             const pattern = new RegExp('\\b' + candNorm.replace(/\s+/g, '\\s+') + '\\b', 'i');
             if (pattern.test(raw)) {
                 return cand.item;
@@ -3083,11 +3343,10 @@ const modelsToTry = [
                 cGram.value = otherItems.reduce((acc, o) => acc + o.gram, 0);
             }
 
-            // Susun Tabel Rincian Menu dengan Pemisahan Keyakinan & Sumber Gizi
+            // Susun Tabel Rincian Menu & Sumber Data Gizi
             let itemsTableHtml = '<table style="width:100%; border-collapse:collapse; margin-top:0.6rem; font-size:0.84rem;">' +
                 '<tr style="border-bottom:1.5px solid rgba(0,0,0,0.1); text-align:left; color:var(--text-light);">' +
                     '<th style="padding:0.4rem 0;">Komposisi Makanan</th>' +
-                    '<th style="text-align:center;">Keyakinan Model</th>' +
                     '<th style="text-align:center;">Sumber Data Gizi</th>' +
                     '<th style="text-align:right;">Kalori</th>' +
                     '<th style="text-align:right;">Protein</th>' +
@@ -3098,18 +3357,11 @@ const modelsToTry = [
                     ? '<span style="background:#dcfce7; color:#15803d; border:1px solid #86efac; padding:0.2rem 0.5rem; border-radius:6px; font-weight:700; font-size:0.75rem; display:inline-block;">✓ Data Database</span>'
                     : '<span style="background:#fef3c7; color:#b45309; border:1px solid #fde68a; padding:0.2rem 0.5rem; border-radius:6px; font-weight:700; font-size:0.75rem; display:inline-block;">⚠ Estimasi AI</span>';
 
-                const detConfText = Math.round(it.detConf * 100) + '%';
-                const nutConfText = (it.sourceType === 'DATABASE') ? 'Basis TKPI Kemenkes' : 'Estimasi Gizi: ' + Math.round(it.nutConf * 100) + '%';
-
                 itemsTableHtml += '<tr style="border-bottom:1px dashed rgba(0,0,0,0.08);">' +
                     '<td style="padding:0.5rem 0;">' +
                         '<span style="font-size:0.75rem; color:#2563eb; font-weight:700; display:block;">' + it.category + '</span>' +
                         '<strong>' + it.name + '</strong> <span style="font-size:0.75rem; color:var(--text-light);">(' + it.gram + 'g)</span>' +
                         '<div style="font-size:0.72rem; color:var(--text-light); margin-top:2px;">Karbo: ' + it.kar + 'g | Lemak: ' + it.lem + 'g</div>' +
-                    '</td>' +
-                    '<td style="text-align:center;">' +
-                        '<div style="font-size:0.78rem; font-weight:700; color:#1e293b;">Deteksi: ' + detConfText + '</div>' +
-                        '<div style="font-size:0.72rem; color:#64748b;">' + nutConfText + '</div>' +
                     '</td>' +
                     '<td style="text-align:center;">' + sourceBadge + '</td>' +
                     '<td style="text-align:right; font-weight:700; color:var(--text-main);">' + it.kal + ' kcal</td>' +
@@ -3119,7 +3371,7 @@ const modelsToTry = [
             itemsTableHtml += '</table>';
 
             // Kotak Ringkasan Total Nutrisi
-            const targetMBG = (window.currentTargetNutrition && window.currentTargetNutrition.mbgTargetKal) || 807;
+            const targetMBG = (window.currentTargetNutrition && window.currentTargetNutrition.mbgTargetKal) || 734;
             const pctKal = Math.round((totalKal / targetMBG) * 100);
 
             const nutritionSummaryBox = 

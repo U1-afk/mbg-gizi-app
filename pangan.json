@@ -2,373 +2,747 @@
   {
     "id": "sayur_bayam_01",
     "nama": "sayur bayam",
-    "aliases": ["sayur bayam", "sayur bayam bening", "bayam bening", "bayam", "bayam rebus"],
+    "aliases": [
+      "sayur bayam",
+      "sayur bayam bening",
+      "sayur bening bayam",
+      "bayam bening",
+      "bayam",
+      "bayam rebus"
+    ],
     "kategori": "Sayuran",
+    "kondisi": "Matang / Siap Saji",
     "kalori": 20,
     "protein": 1.6,
     "lemak": 0.3,
     "karbohidrat": 3.5,
     "bdd": 100,
-    "sumber": "Tabel Komposisi Pangan Indonesia (TKPI) Kemenkes RI"
+    "sumber": "TKPI Kemenkes RI (Olahan Matang)"
   },
   {
     "id": "sayur_bayam_tumis_02",
     "nama": "tumis bayam",
-    "aliases": ["tumis bayam", "cah bayam", "bayam goreng"],
+    "aliases": [
+      "tumis bayam",
+      "cah bayam",
+      "bayam tumis"
+    ],
     "kategori": "Sayuran",
+    "kondisi": "Matang / Siap Saji",
     "kalori": 34,
     "protein": 1.8,
     "lemak": 1.5,
     "karbohidrat": 3.5,
     "bdd": 100,
-    "sumber": "TKPI Kemenkes RI"
+    "sumber": "TKPI Kemenkes RI (Olahan Matang)"
   },
   {
     "id": "sayur_buncis_01",
     "nama": "tumis buncis",
-    "aliases": ["tumis buncis", "buncis", "cah buncis", "buncis wortel"],
+    "aliases": [
+      "tumis buncis",
+      "tumis buncis hijau",
+      "buncis",
+      "cah buncis",
+      "buncis wortel",
+      "buncis rebus"
+    ],
     "kategori": "Sayuran",
+    "kondisi": "Matang / Siap Saji",
     "kalori": 45,
     "protein": 1.8,
     "lemak": 2.2,
     "karbohidrat": 5.5,
     "bdd": 100,
-    "sumber": "TKPI Kemenkes RI"
+    "sumber": "TKPI Kemenkes RI (Olahan Matang)"
   },
   {
     "id": "sayur_capcay_01",
     "nama": "sayur capcay",
-    "aliases": ["capcay", "cap cay", "sayur capcay", "tumis capcay"],
+    "aliases": [
+      "capcay",
+      "cap cay",
+      "sayur capcay",
+      "sayur capcay wortel",
+      "tumis capcay"
+    ],
     "kategori": "Sayuran",
+    "kondisi": "Matang / Siap Saji",
     "kalori": 48,
     "protein": 1.8,
     "lemak": 2.5,
     "karbohidrat": 6.0,
     "bdd": 100,
-    "sumber": "TKPI Kemenkes RI"
+    "sumber": "TKPI Kemenkes RI (Olahan Matang)"
   },
   {
     "id": "sayur_lodeh_01",
     "nama": "sayur lodeh",
-    "aliases": ["sayur lodeh", "lodeh"],
+    "aliases": [
+      "sayur lodeh",
+      "lodeh"
+    ],
     "kategori": "Sayuran",
+    "kondisi": "Matang / Siap Saji",
     "kalori": 70,
     "protein": 2.0,
     "lemak": 4.5,
     "karbohidrat": 6.0,
     "bdd": 100,
-    "sumber": "TKPI Kemenkes RI"
+    "sumber": "TKPI Kemenkes RI (Olahan Matang)"
   },
   {
     "id": "sayur_sop_01",
     "nama": "sayur sop",
-    "aliases": ["sayur sop", "sop sayur", "sup sayur", "sop", "sup"],
+    "aliases": [
+      "sayur sop",
+      "sayur sop wortel kol",
+      "sop sayur",
+      "sup sayur",
+      "sop",
+      "sup"
+    ],
     "kategori": "Sayuran",
+    "kondisi": "Matang / Siap Saji",
     "kalori": 25,
     "protein": 1.3,
     "lemak": 0.5,
     "karbohidrat": 4.5,
     "bdd": 100,
-    "sumber": "TKPI Kemenkes RI"
+    "sumber": "TKPI Kemenkes RI (Olahan Matang)"
   },
   {
     "id": "sayur_kangkung_01",
     "nama": "tumis kangkung",
-    "aliases": ["tumis kangkung", "cah kangkung", "kangkung"],
+    "aliases": [
+      "tumis kangkung",
+      "cah kangkung",
+      "kangkung",
+      "kangkung rebus"
+    ],
     "kategori": "Sayuran",
+    "kondisi": "Matang / Siap Saji",
     "kalori": 28,
     "protein": 2.2,
     "lemak": 0.8,
     "karbohidrat": 3.8,
     "bdd": 100,
-    "sumber": "TKPI Kemenkes RI"
+    "sumber": "TKPI Kemenkes RI (Olahan Matang)"
   },
   {
     "id": "sayur_labu_01",
     "nama": "tumis labu siam",
-    "aliases": ["tumis labu siam", "labu siam", "labu", "jipang"],
+    "aliases": [
+      "tumis labu siam",
+      "labu siam",
+      "labu",
+      "jipang",
+      "sayur labu siam"
+    ],
     "kategori": "Sayuran",
+    "kondisi": "Matang / Siap Saji",
     "kalori": 24,
     "protein": 1.0,
     "lemak": 0.4,
     "karbohidrat": 4.5,
     "bdd": 100,
-    "sumber": "TKPI Kemenkes RI"
+    "sumber": "TKPI Kemenkes RI (Olahan Matang)"
   },
   {
     "id": "sayur_asem_01",
     "nama": "sayur asem",
-    "aliases": ["sayur asem", "sayur asam", "asem", "asam"],
+    "aliases": [
+      "sayur asem",
+      "sayur asam",
+      "asem",
+      "asam"
+    ],
     "kategori": "Sayuran",
+    "kondisi": "Matang / Siap Saji",
     "kalori": 28,
     "protein": 1.2,
     "lemak": 0.4,
     "karbohidrat": 5.5,
     "bdd": 100,
-    "sumber": "TKPI Kemenkes RI"
+    "sumber": "TKPI Kemenkes RI (Olahan Matang)"
   },
   {
     "id": "sayur_wortel_01",
     "nama": "wortel rebus",
-    "aliases": ["wortel rebus", "wortel", "stik wortel"],
+    "aliases": [
+      "wortel rebus",
+      "wortel",
+      "stik wortel"
+    ],
     "kategori": "Sayuran",
+    "kondisi": "Matang / Siap Saji",
     "kalori": 35,
     "protein": 1.0,
     "lemak": 0.3,
     "karbohidrat": 8.0,
     "bdd": 100,
-    "sumber": "TKPI Kemenkes RI"
+    "sumber": "TKPI Kemenkes RI (Olahan Matang)"
+  },
+  {
+    "id": "sayur_lalapan_01",
+    "nama": "lalapan sayur",
+    "aliases": [
+      "lalapan timun kol",
+      "lalapan",
+      "timun",
+      "mentimun",
+      "selada"
+    ],
+    "kategori": "Sayuran",
+    "kondisi": "Siap Saji",
+    "kalori": 15,
+    "protein": 0.7,
+    "lemak": 0.1,
+    "karbohidrat": 3.0,
+    "bdd": 100,
+    "sumber": "TKPI Kemenkes RI (Siap Saji)"
   },
   {
     "id": "karbo_nasi_putih_01",
     "nama": "nasi putih",
-    "aliases": ["nasi putih", "nasi putih pulen", "nasi"],
+    "aliases": [
+      "nasi putih",
+      "nasi putih pulen",
+      "nasi"
+    ],
     "kategori": "Karbohidrat",
+    "kondisi": "Matang / Siap Saji",
     "kalori": 130,
     "protein": 2.7,
     "lemak": 0.3,
     "karbohidrat": 28.7,
     "bdd": 100,
-    "sumber": "TKPI Kemenkes RI"
+    "sumber": "TKPI Kemenkes RI (Olahan Matang)"
   },
   {
     "id": "karbo_nasi_uduk_02",
     "nama": "nasi uduk",
-    "aliases": ["nasi uduk", "nasi gurih", "nasi kuning"],
+    "aliases": [
+      "nasi uduk",
+      "nasi gurih"
+    ],
     "kategori": "Karbohidrat",
+    "kondisi": "Matang / Siap Saji",
     "kalori": 160,
     "protein": 3.2,
     "lemak": 4.2,
     "karbohidrat": 28.0,
     "bdd": 100,
-    "sumber": "TKPI Kemenkes RI"
+    "sumber": "TKPI Kemenkes RI (Olahan Matang)"
+  },
+  {
+    "id": "karbo_nasi_kuning_03",
+    "nama": "nasi kuning",
+    "aliases": [
+      "nasi kuning",
+      "nasi kunyit"
+    ],
+    "kategori": "Karbohidrat",
+    "kondisi": "Matang / Siap Saji",
+    "kalori": 150,
+    "protein": 3.0,
+    "lemak": 2.5,
+    "karbohidrat": 30.0,
+    "bdd": 100,
+    "sumber": "TKPI Kemenkes RI (Olahan Matang)"
   },
   {
     "id": "karbo_nasi_merah_03",
     "nama": "nasi merah",
-    "aliases": ["nasi merah"],
+    "aliases": [
+      "nasi merah",
+      "nasi beras merah"
+    ],
     "kategori": "Karbohidrat",
+    "kondisi": "Matang / Siap Saji",
     "kalori": 110,
     "protein": 2.6,
     "lemak": 0.9,
     "karbohidrat": 23.5,
     "bdd": 100,
-    "sumber": "TKPI Kemenkes RI"
+    "sumber": "TKPI Kemenkes RI (Olahan Matang)"
   },
   {
     "id": "karbo_kentang_04",
     "nama": "kentang rebus",
-    "aliases": ["kentang rebus", "kentang"],
+    "aliases": [
+      "kentang rebus",
+      "kentang kukus",
+      "kentang"
+    ],
     "kategori": "Karbohidrat",
+    "kondisi": "Matang / Siap Saji",
     "kalori": 87,
     "protein": 2.0,
     "lemak": 0.1,
     "karbohidrat": 20.0,
     "bdd": 100,
-    "sumber": "TKPI Kemenkes RI"
+    "sumber": "TKPI Kemenkes RI (Olahan Matang)"
   },
   {
     "id": "karbo_kentang_goreng_05",
     "nama": "kentang goreng",
-    "aliases": ["kentang goreng", "kentang wedges", "wedges", "kentang panggang", "kentang goreng wedges", "french fries"],
+    "aliases": [
+      "kentang goreng",
+      "kentang wedges",
+      "wedges",
+      "kentang panggang",
+      "kentang goreng wedges",
+      "french fries"
+    ],
     "kategori": "Karbohidrat",
+    "kondisi": "Matang / Siap Saji",
     "kalori": 210,
     "protein": 3.5,
     "lemak": 9.5,
     "karbohidrat": 30.0,
     "bdd": 100,
-    "sumber": "TKPI Kemenkes RI"
+    "sumber": "TKPI Kemenkes RI (Olahan Matang)"
+  },
+  {
+    "id": "karbo_mie_goreng_06",
+    "nama": "mie goreng",
+    "aliases": [
+      "mie goreng",
+      "mi goreng",
+      "bihun goreng",
+      "kwetiau goreng"
+    ],
+    "kategori": "Karbohidrat",
+    "kondisi": "Matang / Siap Saji",
+    "kalori": 175,
+    "protein": 4.0,
+    "lemak": 5.5,
+    "karbohidrat": 28.0,
+    "bdd": 100,
+    "sumber": "TKPI Kemenkes RI (Olahan Matang)"
   },
   {
     "id": "hewan_ayam_goreng_01",
     "nama": "ayam goreng",
-    "aliases": ["ayam goreng", "ayam lengkuas", "ayam kremes", "ayam", "paha ayam", "ayam krispi", "ayam goreng krispi", "ayam goreng tepung", "ayam kfc", "potongan ayam"],
+    "aliases": [
+      "ayam goreng",
+      "ayam goreng kremes",
+      "ayam kremes",
+      "ayam",
+      "paha ayam",
+      "ayam krispi",
+      "ayam goreng krispi",
+      "ayam goreng tepung",
+      "ayam kfc",
+      "potongan ayam"
+    ],
     "kategori": "Protein Hewani",
+    "kondisi": "Matang / Siap Saji",
     "kalori": 250,
     "protein": 28.0,
     "lemak": 14.5,
     "karbohidrat": 1.8,
     "bdd": 100,
-    "sumber": "TKPI Kemenkes RI"
-  },
-  {
-    "id": "hewan_telur_02",
-    "nama": "telur rebus",
-    "aliases": ["telur rebus", "telur ceplok", "telur balado", "telur"],
-    "kategori": "Protein Hewani",
-    "kalori": 155,
-    "protein": 12.6,
-    "lemak": 10.6,
-    "karbohidrat": 1.1,
-    "bdd": 100,
-    "sumber": "TKPI Kemenkes RI"
-  },
-  {
-    "id": "hewan_ikan_03",
-    "nama": "ikan nila goreng",
-    "aliases": ["ikan nila goreng", "ikan", "ikan goreng", "ikan lele"],
-    "kategori": "Protein Hewani",
-    "kalori": 160,
-    "protein": 21.0,
-    "lemak": 8.0,
-    "karbohidrat": 1.0,
-    "bdd": 100,
-    "sumber": "TKPI Kemenkes RI"
-  },
-  {
-    "id": "nabati_tempe_01",
-    "nama": "tempe goreng",
-    "aliases": ["tempe goreng", "tempe", "tempe goreng gurih"],
-    "kategori": "Protein Nabati",
-    "kalori": 210,
-    "protein": 19.0,
-    "lemak": 10.5,
-    "karbohidrat": 10.0,
-    "bdd": 100,
-    "sumber": "TKPI Kemenkes RI"
-  },
-  {
-    "id": "nabati_tahu_02",
-    "nama": "tahu goreng",
-    "aliases": ["tahu goreng", "tahu", "tahu putih", "tahu kukus"],
-    "kategori": "Protein Nabati",
-    "kalori": 95,
-    "protein": 9.0,
-    "lemak": 5.5,
-    "karbohidrat": 2.5,
-    "bdd": 100,
-    "sumber": "TKPI Kemenkes RI"
-  },
-  {
-    "id": "buah_melon_01",
-    "nama": "buah melon",
-    "aliases": ["buah melon", "melon"],
-    "kategori": "Buah",
-    "kalori": 36,
-    "protein": 0.8,
-    "lemak": 0.2,
-    "karbohidrat": 8.5,
-    "bdd": 100,
-    "sumber": "TKPI Kemenkes RI"
-  },
-  {
-    "id": "buah_semangka_02",
-    "nama": "buah semangka",
-    "aliases": ["buah semangka", "semangka"],
-    "kategori": "Buah",
-    "kalori": 32,
-    "protein": 0.6,
-    "lemak": 0.2,
-    "karbohidrat": 7.6,
-    "bdd": 100,
-    "sumber": "TKPI Kemenkes RI"
-  },
-  {
-    "id": "buah_jeruk_03",
-    "nama": "buah jeruk",
-    "aliases": ["buah jeruk", "jeruk", "jeruk manis", "jeruk sunkist", "jeruk medan", "jeruk segar", "buah jeruk utuh"],
-    "kategori": "Buah",
-    "kalori": 47,
-    "protein": 0.9,
-    "lemak": 0.1,
-    "karbohidrat": 12.0,
-    "bdd": 100,
-    "sumber": "TKPI Kemenkes RI"
-  },
-  {
-    "id": "buah_pisang_04",
-    "nama": "buah pisang",
-    "aliases": ["buah pisang", "pisang"],
-    "kategori": "Buah",
-    "kalori": 89,
-    "protein": 1.1,
-    "lemak": 0.3,
-    "karbohidrat": 22.8,
-    "bdd": 100,
-    "sumber": "TKPI Kemenkes RI"
-  },
-  {
-    "id": "karbo_spaghetti_05",
-    "nama": "spaghetti pasta",
-    "aliases": ["spaghetti", "pasta", "spageti", "mie spaghetti", "spaghetti pasta gurih"],
-    "kategori": "Karbohidrat",
-    "kalori": 158,
-    "protein": 5.8,
-    "lemak": 1.5,
-    "karbohidrat": 30.0,
-    "bdd": 100,
-    "sumber": "TKPI Kemenkes RI"
-  },
-  {
-    "id": "pelengkap_pangsit_06",
-    "nama": "kerupuk pangsit",
-    "aliases": ["kerupuk pangsit", "pangsit goreng", "kulit pangsit", "kerupuk pangsit goreng renyah"],
-    "kategori": "Pelengkap",
-    "kalori": 480,
-    "protein": 4.5,
-    "lemak": 22.0,
-    "karbohidrat": 65.0,
-    "bdd": 100,
-    "sumber": "TKPI Kemenkes RI"
-  },
-  {
-    "id": "hewan_telur_ceplok_04",
-    "nama": "telur ceplok",
-    "aliases": ["telur ceplok", "telur mata sapi", "telur ceplok balado", "ceplok"],
-    "kategori": "Protein Hewani",
-    "kalori": 185,
-    "protein": 12.4,
-    "lemak": 14.2,
-    "karbohidrat": 0.8,
-    "bdd": 100,
-    "sumber": "TKPI Kemenkes RI"
-  },
-  {
-    "id": "nabati_tempe_orek_03",
-    "nama": "tempe orek",
-    "aliases": ["tempe orek", "tempe orek dadu", "orek tempe", "tempe orek manis"],
-    "kategori": "Protein Nabati",
-    "kalori": 210,
-    "protein": 17.0,
-    "lemak": 9.0,
-    "karbohidrat": 18.0,
-    "bdd": 100,
-    "sumber": "TKPI Kemenkes RI"
-  },
-  {
-    "id": "sayur_jagung_manis_02",
-    "nama": "tumis jagung manis",
-    "aliases": ["tumis jagung manis", "jagung manis", "jagung pipil", "tumis jagung", "tumis sayuran", "tumis jagung wortel", "sayur jagung", "sayur campur"],
-    "kategori": "Sayuran",
-    "kalori": 65,
-    "protein": 2.2,
-    "lemak": 0.8,
-    "karbohidrat": 14.0,
-    "bdd": 100,
-    "sumber": "TKPI Kemenkes RI"
+    "sumber": "TKPI Kemenkes RI (Olahan Matang)"
   },
   {
     "id": "hewan_ayam_lengkuas_05",
     "nama": "ayam goreng lengkuas",
-    "aliases": ["ayam lengkuas", "ayam goreng lengkuas", "ayam bumbu lengkuas"],
+    "aliases": [
+      "ayam lengkuas",
+      "ayam goreng lengkuas",
+      "ayam bumbu lengkuas"
+    ],
     "kategori": "Protein Hewani",
+    "kondisi": "Matang / Siap Saji",
     "kalori": 245,
     "protein": 26.0,
     "lemak": 13.5,
     "karbohidrat": 2.0,
     "bdd": 100,
-    "sumber": "TKPI Kemenkes RI"
+    "sumber": "TKPI Kemenkes RI (Olahan Matang)"
+  },
+  {
+    "id": "hewan_telur_02",
+    "nama": "telur rebus",
+    "aliases": [
+      "telur rebus",
+      "telur ayam rebus",
+      "telur"
+    ],
+    "kategori": "Protein Hewani",
+    "kondisi": "Matang / Siap Saji",
+    "kalori": 155,
+    "protein": 12.6,
+    "lemak": 10.6,
+    "karbohidrat": 1.1,
+    "bdd": 100,
+    "sumber": "TKPI Kemenkes RI (Olahan Matang)"
+  },
+  {
+    "id": "hewan_telur_balado_06",
+    "nama": "telur balado",
+    "aliases": [
+      "telur balado",
+      "telur rebus balado",
+      "telur sambal balado"
+    ],
+    "kategori": "Protein Hewani",
+    "kondisi": "Matang / Siap Saji",
+    "kalori": 175,
+    "protein": 11.5,
+    "lemak": 12.5,
+    "karbohidrat": 4.0,
+    "bdd": 100,
+    "sumber": "TKPI Kemenkes RI (Olahan Matang)"
+  },
+  {
+    "id": "hewan_telur_ceplok_04",
+    "nama": "telur ceplok",
+    "aliases": [
+      "telur ceplok",
+      "telur mata sapi",
+      "telur ceplok balado",
+      "ceplok"
+    ],
+    "kategori": "Protein Hewani",
+    "kondisi": "Matang / Siap Saji",
+    "kalori": 185,
+    "protein": 12.4,
+    "lemak": 14.2,
+    "karbohidrat": 0.8,
+    "bdd": 100,
+    "sumber": "TKPI Kemenkes RI (Olahan Matang)"
+  },
+  {
+    "id": "hewan_telur_dadar_07",
+    "nama": "telur dadar",
+    "aliases": [
+      "telur dadar",
+      "omelet telur"
+    ],
+    "kategori": "Protein Hewani",
+    "kondisi": "Matang / Siap Saji",
+    "kalori": 190,
+    "protein": 11.0,
+    "lemak": 15.5,
+    "karbohidrat": 1.5,
+    "bdd": 100,
+    "sumber": "TKPI Kemenkes RI (Olahan Matang)"
+  },
+  {
+    "id": "hewan_ikan_03",
+    "nama": "ikan nila goreng",
+    "aliases": [
+      "ikan nila goreng",
+      "ikan",
+      "ikan goreng",
+      "ikan lele",
+      "ikan lele goreng"
+    ],
+    "kategori": "Protein Hewani",
+    "kondisi": "Matang / Siap Saji",
+    "kalori": 160,
+    "protein": 21.0,
+    "lemak": 8.0,
+    "karbohidrat": 1.0,
+    "bdd": 100,
+    "sumber": "TKPI Kemenkes RI (Olahan Matang)"
+  },
+  {
+    "id": "hewan_udang_08",
+    "nama": "udang masak balado",
+    "aliases": [
+      "udang masak balado",
+      "udang masak kuah",
+      "udang",
+      "udang goreng"
+    ],
+    "kategori": "Protein Hewani",
+    "kondisi": "Matang / Siap Saji",
+    "kalori": 106,
+    "protein": 21.0,
+    "lemak": 1.0,
+    "karbohidrat": 1.0,
+    "bdd": 100,
+    "sumber": "TKPI Kemenkes RI (Olahan Matang)"
+  },
+  {
+    "id": "hewan_daging_sapi_09",
+    "nama": "daging sapi olahan",
+    "aliases": [
+      "daging sapi",
+      "rendang sapi",
+      "rendang",
+      "semur daging"
+    ],
+    "kategori": "Protein Hewani",
+    "kondisi": "Matang / Siap Saji",
+    "kalori": 260,
+    "protein": 26.0,
+    "lemak": 16.0,
+    "karbohidrat": 3.0,
+    "bdd": 100,
+    "sumber": "TKPI Kemenkes RI (Olahan Matang)"
+  },
+  {
+    "id": "nabati_tempe_01",
+    "nama": "tempe goreng",
+    "aliases": [
+      "tempe goreng",
+      "tempe",
+      "tempe goreng gurih"
+    ],
+    "kategori": "Protein Nabati",
+    "kondisi": "Matang / Siap Saji",
+    "kalori": 210,
+    "protein": 19.0,
+    "lemak": 10.5,
+    "karbohidrat": 10.0,
+    "bdd": 100,
+    "sumber": "TKPI Kemenkes RI (Olahan Matang)"
+  },
+  {
+    "id": "nabati_tempe_orek_03",
+    "nama": "tempe orek",
+    "aliases": [
+      "tempe orek",
+      "tempe orek dadu",
+      "tempe orek dadu manis",
+      "orek tempe",
+      "tempe orek manis",
+      "tempe bacem"
+    ],
+    "kategori": "Protein Nabati",
+    "kondisi": "Matang / Siap Saji",
+    "kalori": 210,
+    "protein": 17.0,
+    "lemak": 9.0,
+    "karbohidrat": 18.0,
+    "bdd": 100,
+    "sumber": "TKPI Kemenkes RI (Olahan Matang)"
+  },
+  {
+    "id": "nabati_tahu_02",
+    "nama": "tahu goreng",
+    "aliases": [
+      "tahu goreng",
+      "tahu goreng gurih",
+      "tahu",
+      "tahu kuning"
+    ],
+    "kategori": "Protein Nabati",
+    "kondisi": "Matang / Siap Saji",
+    "kalori": 95,
+    "protein": 9.0,
+    "lemak": 5.5,
+    "karbohidrat": 2.5,
+    "bdd": 100,
+    "sumber": "TKPI Kemenkes RI (Olahan Matang)"
+  },
+  {
+    "id": "nabati_tahu_kukus_04",
+    "nama": "tahu kukus",
+    "aliases": [
+      "tahu kukus",
+      "tahu putih",
+      "tahu rebus"
+    ],
+    "kategori": "Protein Nabati",
+    "kondisi": "Matang / Siap Saji",
+    "kalori": 80,
+    "protein": 8.0,
+    "lemak": 4.5,
+    "karbohidrat": 2.0,
+    "bdd": 100,
+    "sumber": "TKPI Kemenkes RI (Olahan Matang)"
+  },
+  {
+    "id": "buah_melon_01",
+    "nama": "buah melon",
+    "aliases": [
+      "buah melon",
+      "buah melon segar",
+      "melon"
+    ],
+    "kategori": "Buah",
+    "kondisi": "Siap Saji",
+    "kalori": 36,
+    "protein": 0.8,
+    "lemak": 0.2,
+    "karbohidrat": 8.5,
+    "bdd": 100,
+    "sumber": "TKPI Kemenkes RI (Siap Saji)"
+  },
+  {
+    "id": "buah_semangka_02",
+    "nama": "buah semangka",
+    "aliases": [
+      "buah semangka",
+      "buah semangka merah segar",
+      "semangka"
+    ],
+    "kategori": "Buah",
+    "kondisi": "Siap Saji",
+    "kalori": 32,
+    "protein": 0.6,
+    "lemak": 0.2,
+    "karbohidrat": 7.6,
+    "bdd": 100,
+    "sumber": "TKPI Kemenkes RI (Siap Saji)"
+  },
+  {
+    "id": "buah_jeruk_03",
+    "nama": "buah jeruk",
+    "aliases": [
+      "buah jeruk",
+      "buah jeruk segar utuh",
+      "jeruk",
+      "jeruk manis",
+      "jeruk sunkist",
+      "jeruk medan",
+      "jeruk segar",
+      "buah jeruk utuh"
+    ],
+    "kategori": "Buah",
+    "kondisi": "Siap Saji",
+    "kalori": 47,
+    "protein": 0.9,
+    "lemak": 0.1,
+    "karbohidrat": 12.0,
+    "bdd": 100,
+    "sumber": "TKPI Kemenkes RI (Siap Saji)"
+  },
+  {
+    "id": "buah_pisang_04",
+    "nama": "buah pisang",
+    "aliases": [
+      "buah pisang",
+      "buah pisang ambon segar",
+      "pisang",
+      "pisang ambon"
+    ],
+    "kategori": "Buah",
+    "kondisi": "Siap Saji",
+    "kalori": 89,
+    "protein": 1.1,
+    "lemak": 0.3,
+    "karbohidrat": 22.8,
+    "bdd": 100,
+    "sumber": "TKPI Kemenkes RI (Siap Saji)"
+  },
+  {
+    "id": "buah_kelengkeng_05",
+    "nama": "buah kelengkeng",
+    "aliases": [
+      "buah kelengkeng",
+      "buah kelengkeng segar",
+      "kelengkeng",
+      "lengkeng"
+    ],
+    "kategori": "Buah",
+    "kondisi": "Siap Saji",
+    "kalori": 60,
+    "protein": 1.3,
+    "lemak": 0.1,
+    "karbohidrat": 15.1,
+    "bdd": 100,
+    "sumber": "TKPI Kemenkes RI (Siap Saji)"
+  },
+  {
+    "id": "karbo_spaghetti_05",
+    "nama": "spaghetti pasta",
+    "aliases": [
+      "spaghetti",
+      "pasta",
+      "spageti",
+      "mie spaghetti",
+      "spaghetti pasta gurih"
+    ],
+    "kategori": "Karbohidrat",
+    "kondisi": "Matang / Siap Saji",
+    "kalori": 158,
+    "protein": 5.8,
+    "lemak": 1.5,
+    "karbohidrat": 30.0,
+    "bdd": 100,
+    "sumber": "TKPI Kemenkes RI (Olahan Matang)"
+  },
+  {
+    "id": "pelengkap_pangsit_06",
+    "nama": "kerupuk pangsit",
+    "aliases": [
+      "kerupuk pangsit",
+      "pangsit goreng",
+      "kulit pangsit",
+      "kerupuk pangsit goreng renyah"
+    ],
+    "kategori": "Pelengkap",
+    "kondisi": "Matang / Siap Saji",
+    "kalori": 480,
+    "protein": 4.5,
+    "lemak": 22.0,
+    "karbohidrat": 65.0,
+    "bdd": 100,
+    "sumber": "TKPI Kemenkes RI (Olahan Matang)"
+  },
+  {
+    "id": "sayur_jagung_manis_02",
+    "nama": "tumis jagung manis",
+    "aliases": [
+      "tumis jagung manis",
+      "jagung manis",
+      "jagung pipil",
+      "tumis jagung",
+      "tumis sayuran",
+      "tumis jagung wortel",
+      "sayur jagung",
+      "sayur campur"
+    ],
+    "kategori": "Sayuran",
+    "kondisi": "Matang / Siap Saji",
+    "kalori": 65,
+    "protein": 2.2,
+    "lemak": 0.8,
+    "karbohidrat": 14.0,
+    "bdd": 100,
+    "sumber": "TKPI Kemenkes RI (Olahan Matang)"
   },
   {
     "id": "pelengkap_kerupuk_bawang_07",
     "nama": "kerupuk bawang",
-    "aliases": ["kerupuk bawang", "kerupuk bawang finna", "kerupuk putih", "kerupuk"],
+    "aliases": [
+      "kerupuk bawang",
+      "kerupuk bawang finna",
+      "kerupuk putih",
+      "kerupuk"
+    ],
     "kategori": "Pelengkap",
+    "kondisi": "Matang / Siap Saji",
     "kalori": 480,
     "protein": 3.5,
     "lemak": 24.0,
     "karbohidrat": 65.0,
     "bdd": 100,
-    "sumber": "TKPI Kemenkes RI"
+    "sumber": "TKPI Kemenkes RI (Olahan Matang)"
+  },
+  {
+    "id": "minuman_susu_uht_01",
+    "nama": "susu uht",
+    "aliases": [
+      "susu uht",
+      "susu kotak",
+      "susu segar",
+      "susu"
+    ],
+    "kategori": "Pelengkap",
+    "kondisi": "Siap Saji",
+    "kalori": 65,
+    "protein": 3.2,
+    "lemak": 3.5,
+    "karbohidrat": 4.8,
+    "bdd": 100,
+    "sumber": "TKPI Kemenkes RI (Siap Saji)"
   }
 ]
