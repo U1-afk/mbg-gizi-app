@@ -243,15 +243,44 @@ export default async function handler(req, res) {
             }
         }
 
-        const { users: _hidden, ...safeDb } = db; // akun dikelola /api/auth, bukan di sini
-        res.status(200).json(safeDb);
+        res.status(200).json(db);
     } else if (req.method === 'POST') {
         const body = req.body || {};
         
         // Support both action payload format and type data format
-        if (body.action === 'add_user' || body.type === 'users') {
-            res.status(410).json({ error: 'moved', message: 'Pendaftaran akun kini melalui /api/auth' });
-            return;
+        if (body.action === 'add_user' && body.payload) {
+            const u = body.payload;
+            const cleanNik = sanitizeString(String(u.nik || '').trim());
+            const cleanUsername = sanitizeString(String(u.username || cleanNik).trim().toLowerCase().replace(/\s+/g, ''));
+            const cleanName = sanitizeString(String(u.name || cleanNik).trim());
+            const cleanPassword = String(u.password || '').trim();
+            if (cleanNik) {
+                const cloudUsers = await fetchCloudUsers();
+                if (cloudUsers && cloudUsers.length > 0) {
+                    for (const cUser of cloudUsers) {
+                        if (!db.users.find(item => isUserMatch(item, cUser.nik))) {
+                            db.users.push(cUser);
+                        }
+                    }
+                }
+                const existingIdx = db.users.findIndex(item => isUserMatch(item, cleanNik) || (cleanUsername && isUserMatch(item, cleanUsername)));
+                const userObj = {
+                    nik: cleanNik,
+                    username: cleanUsername,
+                    name: cleanName,
+                    password: cleanPassword,
+                    role: u.role || 'Employee'
+                };
+                if (existingIdx >= 0) {
+                    db.users[existingIdx] = { ...db.users[existingIdx], ...userObj };
+                } else {
+                    db.users.push(userObj);
+                }
+                await saveCloudUsers(db.users);
+            }
+        } else if (body.type === 'users' && Array.isArray(body.data)) {
+            db.users = body.data;
+            await saveCloudUsers(db.users);
         } else if (body.action === 'add_history' && body.payload) {
             const h = body.payload;
             h.user = sanitizeString(h.user);
@@ -288,8 +317,7 @@ export default async function handler(req, res) {
             db.messages = body.data;
             await saveCloudMessages(db.messages);
         }
-        const { users: _hidden2, ...safeDb2 } = db;
-        res.status(200).json({ success: true, db: safeDb2 });
+        res.status(200).json({ success: true, db });
     } else {
         res.status(405).json({ error: 'Method not allowed' });
     }

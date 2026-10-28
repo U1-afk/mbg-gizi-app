@@ -1,29 +1,14 @@
-// Vercel Serverless Function: Autentikasi akun (Daftar & Masuk) dengan database cloud permanen
-// Endpoint: POST /api/auth   body: { action: 'register' | 'login' | 'status', ... }
-//
-// Penyimpanan : Redis (Upstash / Vercel KV) lewat REST API.
-//   Env yang dibaca (salah satu pasangan):
-//     KV_REST_API_URL + KV_REST_API_TOKEN            (Vercel Marketplace -> Upstash Redis / KV)
-//     UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN
-//   Env opsional: ADMIN_PASSWORD (default lama 'sppgunggul' dipertahankan agar tidak memutus akses)
-// Keamanan    : password di-hash scrypt + salt acak, perbandingan timing-safe,
-//               pendaftaran atomik (HSETNX) agar akun tidak saling menimpa, rate limit per IP,
-//               role pendaftar selalu 'Employee' (tidak bisa mendaftar sebagai Admin),
-//               password tidak pernah dikirim kembali ke browser.
+// Vercel Serverless Function: Persistent Cross-Device Authentication (Register & Login)
+// Penyimpanan utama: Upstash Redis / Vercel KV + Cloud JSON Storage (api.restful-api.dev)
+// Sehingga akun yang didaftarkan dari perangkat/HP mana saja tersimpan terpusat di cloud
+// dan langsung bisa digunakan login lintas perangkat tanpa bergantung pada localStorage lokal.
 
-import { scryptSync, randomBytes, timingSafeEqual } from 'crypto';
+import crypto from 'node:crypto';
 
-const REDIS_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || '';
-const REDIS_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || '';
+const CLOUD_STORAGE_URL = 'https://api.restful-api.dev/objects/ff808181a09d98f701a0ce45868a7b64';
 
-const USERS_KEY = 'mbg:users';   // hash: id -> JSON akun (password ter-hash)
-const INDEX_KEY = 'mbg:ids';     // hash: NIK / username (ternormalisasi) -> id akun
-
-const MAX_ATTEMPTS = 25;         // percobaan login/daftar per IP
-const WINDOW_SEC = 600;          // per 10 menit
-
-// Akun bawaan lama (dipertahankan agar tidak ada yang terkunci). Hanya dipakai saat migrasi/login.
-const LEGACY_SEED = [
+const DEFAULT_USERS = [
+    { nik: 'Admin', username: 'admin', name: 'Administrator', password: 'sppgunggul', role: 'Admin' },
     { nik: '12345', username: 'demo', name: 'Siswa / Karyawan Demo', password: 'sppg123', role: 'Employee' },
     { nik: '2304111010099', username: 'dliyaul', name: 'Dliyaul Haq', password: 'password123', role: 'Employee' },
     { nik: '2304111010006', username: 'siti', name: 'Siti Nurmasyitah', password: 'sppg123', role: 'Employee' },
@@ -32,218 +17,393 @@ const LEGACY_SEED = [
     { nik: '10045', username: 'rahma', name: 'Siti Rahma', password: 'sppg123', role: 'Employee' },
     { nik: '300666', username: 'yaka', name: 'yaka', password: 'terserah', role: 'Employee' }
 ];
-const LEGACY_CLOUD_URL = 'https://api.restful-api.dev/objects/ff808181a09d98f701a0ce45868a7b64';
 
-// ---------- Helper ----------
-function configured() { return !!(REDIS_URL && REDIS_TOKEN); }
+if (!globalThis.__SPPG_AUTH_USERS__) {
+    globalThis.__SPPG_AUTH_USERS__ = [...DEFAULT_USERS];
+}
 
-async function redis(...cmd) {
-    const r = await fetch(REDIS_URL, {
+function redisConfig() {
+    const url = (process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || '').replace(/\/$/, '');
+    const token = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || '';
+    return (url && token) ? { url, token } : null;
+}
+
+async function redisExec(cfg, args) {
+    const r = await fetch(cfg.url, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${REDIS_TOKEN}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(cmd)
+        headers: {
+            Authorization: `Bearer ${cfg.token}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(args)
     });
-    const data = await r.json();
-    if (!r.ok || data.error) throw new Error(data.error || `Redis HTTP ${r.status}`);
-    return data.result;
+    if (!r.ok) throw new Error('Redis HTTP ' + r.status);
+    const j = await r.json();
+    if (j.error) throw new Error(j.error);
+    return j.result;
 }
 
-function clean(str, max = 120) {
-    if (typeof str !== 'string') return '';
-    return str.replace(/<[^>]*>?/gm, '').replace(/[\u0000-\u001f]/g, '').trim().slice(0, max);
-}
-
-function norm(str) { return String(str || '').trim().toLowerCase().replace(/\s+/g, ''); }
+const norm = (s) => String(s || '').trim().toLowerCase().replace(/\s+/g, '');
 
 function deriveUsername(nik, name) {
-    if (/^\d+$/.test(nik) && name) return norm(name);
-    return norm(nik);
-}
-
-function hashPassword(password) {
-    const salt = randomBytes(16);
-    const hash = scryptSync(password, salt, 64);
-    return `scrypt$${salt.toString('hex')}$${hash.toString('hex')}`;
-}
-
-function verifyPassword(password, stored) {
-    try {
-        const [scheme, saltHex, hashHex] = String(stored).split('$');
-        if (scheme !== 'scrypt') return false;
-        const expected = Buffer.from(hashHex, 'hex');
-        const actual = scryptSync(password, Buffer.from(saltHex, 'hex'), expected.length);
-        return timingSafeEqual(actual, expected);
-    } catch (e) { return false; }
-}
-
-function publicUser(u) {
-    return { nik: u.nik, username: u.username, name: u.name, role: u.role || 'Employee' };
-}
-
-function clientIp(req) {
-    const xf = req.headers['x-forwarded-for'];
-    return (xf ? String(xf).split(',')[0] : (req.socket && req.socket.remoteAddress) || 'unknown').trim();
-}
-
-async function rateLimited(req) {
-    try {
-        const key = `mbg:rl:${clientIp(req)}`;
-        const n = await redis('INCR', key);
-        if (n === 1) await redis('EXPIRE', key, WINDOW_SEC);
-        return n > MAX_ATTEMPTS;
-    } catch (e) { return false; }
-}
-
-async function findUserId(identifier) {
-    const key = norm(identifier);
-    if (!key) return null;
-    return await redis('HGET', INDEX_KEY, key);
-}
-
-async function loadUser(id) {
-    const raw = await redis('HGET', USERS_KEY, id);
-    return raw ? JSON.parse(raw) : null;
-}
-
-// Simpan akun baru secara atomik. Mengembalikan false jika NIK/username sudah dipakai.
-async function createUser(user) {
-    const id = norm(user.nik);
-    const first = await redis('HSETNX', INDEX_KEY, id, id);
-    if (first !== 1) return false;
-    if (user.username && norm(user.username) !== id) {
-        const second = await redis('HSETNX', INDEX_KEY, norm(user.username), id);
-        if (second !== 1) { await redis('HDEL', INDEX_KEY, id); return false; }
+    const n = norm(nik);
+    if (/^\d+$/.test(n) && name) {
+        const fromName = norm(name);
+        if (fromName) return fromName;
     }
-    await redis('HSET', USERS_KEY, id, JSON.stringify({ ...user, id }));
-    return true;
+    return n;
 }
 
-// Cari akun di data lama (seed bawaan + cloud publik lama) lalu migrasikan ke database baru.
-async function migrateLegacy(identifier, password) {
-    const target = norm(identifier);
-    const pools = [LEGACY_SEED];
+function hashPass(password, salt) {
+    return crypto.scryptSync(String(password), salt, 64).toString('hex');
+}
+
+function verifyPass(password, salt, expectedHex) {
+    if (!salt || !expectedHex) return false;
+    try {
+        const a = Buffer.from(hashPass(password, salt), 'hex');
+        const b = Buffer.from(expectedHex, 'hex');
+        return a.length === b.length && crypto.timingSafeEqual(a, b);
+    } catch (e) {
+        return false;
+    }
+}
+
+function isUserMatch(u, identifier) {
+    if (!u || !identifier) return false;
+    const target = String(identifier).trim().toLowerCase();
+    if (!target) return false;
+    const targetNoSpace = target.replace(/\s+/g, '');
+
+    if (u.nik) {
+        const uNik = String(u.nik).trim().toLowerCase();
+        if (uNik === target || uNik.replace(/\s+/g, '') === targetNoSpace) return true;
+    }
+    if (u.username) {
+        const uUser = String(u.username).trim().toLowerCase();
+        if (uUser === target || uUser.replace(/\s+/g, '') === targetNoSpace) return true;
+    }
+    if (u.name) {
+        const uName = String(u.name).trim().toLowerCase();
+        if (uName === target || uName.replace(/\s+/g, '') === targetNoSpace) return true;
+        const firstName = uName.split(/\s+/)[0];
+        if (firstName && firstName === target) return true;
+    }
+    return false;
+}
+
+function mergeUsersList(...lists) {
+    const merged = [...DEFAULT_USERS];
+    for (const list of lists) {
+        if (!Array.isArray(list)) continue;
+        for (const u of list) {
+            if (!u || (!u.nik && !u.username)) continue;
+            const username = u.username || deriveUsername(u.nik, u.name);
+            const normalizedUser = { ...u, username };
+            const idx = merged.findIndex(item =>
+                isUserMatch(item, normalizedUser.nik) ||
+                (normalizedUser.username && isUserMatch(item, normalizedUser.username))
+            );
+            if (idx >= 0) {
+                merged[idx] = { ...merged[idx], ...normalizedUser };
+            } else {
+                merged.push(normalizedUser);
+            }
+        }
+    }
+    return merged;
+}
+
+async function fetchCloudStoreObj() {
     try {
         const ctrl = new AbortController();
-        const t = setTimeout(() => ctrl.abort(), 5000);
-        const r = await fetch(LEGACY_CLOUD_URL, { headers: { Accept: 'application/json' }, signal: ctrl.signal });
+        const t = setTimeout(() => ctrl.abort(), 7000);
+        const res = await fetch(CLOUD_STORAGE_URL, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' },
+            signal: ctrl.signal
+        });
         clearTimeout(t);
-        if (r.ok) {
-            const d = await r.json();
-            if (d && d.data && Array.isArray(d.data.users)) pools.push(d.data.users);
+        if (res.ok) {
+            const obj = await res.json();
+            if (obj && obj.data) return obj.data;
         }
-    } catch (e) { /* abaikan, layanan lama boleh mati */ }
-
-    for (const pool of pools) {
-        for (const u of pool) {
-            if (!u || !u.nik || !u.password) continue;
-            const hit = norm(u.nik) === target || norm(u.username) === target || norm(u.name) === target;
-            if (!hit || String(u.password).trim() !== password) continue;
-            const name = clean(String(u.name || u.nik));
-            const nik = clean(String(u.nik));
-            const record = {
-                nik, name, role: 'Employee',
-                username: norm(u.username) || deriveUsername(nik, name),
-                passwordHash: hashPassword(password),
-                createdAt: new Date().toISOString(), migrated: true
-            };
-            await createUser(record); // jika sudah ada (race), tidak masalah
-            const id = await findUserId(nik);
-            return id ? await loadUser(id) : record;
-        }
+    } catch (e) {
+        console.warn('Cloud store GET warning:', e.message);
     }
     return null;
 }
 
-// ---------- Handler ----------
+async function saveCloudStoreUsers(usersList) {
+    try {
+        const existingData = (await fetchCloudStoreObj()) || {};
+        const mergedUsers = mergeUsersList(existingData.users || [], usersList);
+        globalThis.__SPPG_AUTH_USERS__ = mergedUsers;
+
+        const payload = {
+            name: 'sppg-mbg-cloud-database',
+            data: {
+                users: mergedUsers,
+                history: Array.isArray(existingData.history) ? existingData.history : [],
+                messages: Array.isArray(existingData.messages) ? existingData.messages : [],
+                updatedAt: Date.now()
+            }
+        };
+
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 8000);
+        const res = await fetch(CLOUD_STORAGE_URL, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+            signal: ctrl.signal
+        });
+        clearTimeout(t);
+        return res.ok;
+    } catch (e) {
+        console.warn('Cloud store PUT warning:', e.message);
+        return false;
+    }
+}
+
+async function findUserInRedis(cfg, identifier) {
+    if (!cfg) return null;
+    try {
+        const raw = String(identifier || '').trim();
+        const clean = norm(raw);
+        if (!clean) return null;
+
+        let id = await redisExec(cfg, ['GET', `sppg:idx:${clean}`]);
+        if (!id && raw.includes(' ')) {
+            const firstWord = norm(raw.split(/\s+/)[0]);
+            if (firstWord) id = await redisExec(cfg, ['GET', `sppg:idx:${firstWord}`]);
+        }
+        const key = id ? `sppg:user:${id}` : `sppg:user:${clean}`;
+        const json = await redisExec(cfg, ['GET', key]);
+        if (!json) return null;
+        return JSON.parse(json);
+    } catch (e) {
+        return null;
+    }
+}
+
+async function saveUserInRedis(cfg, user) {
+    if (!cfg) return false;
+    try {
+        const id = norm(user.nik);
+        const uName = norm(user.username || deriveUsername(user.nik, user.name));
+        const fullName = norm(user.name);
+        const firstWord = norm(String(user.name || '').trim().split(/\s+/)[0]);
+
+        const record = {
+            nik: String(user.nik).trim(),
+            username: uName,
+            name: String(user.name).trim(),
+            role: user.role || 'Employee',
+            salt: user.salt,
+            passHash: user.passHash,
+            password: user.password,
+            createdAt: user.createdAt || new Date().toISOString()
+        };
+
+        await redisExec(cfg, ['SET', `sppg:user:${id}`, JSON.stringify(record)]);
+        await redisExec(cfg, ['SET', `sppg:idx:${id}`, id]);
+        if (uName) await redisExec(cfg, ['SET', `sppg:idx:${uName}`, id]);
+        if (fullName) await redisExec(cfg, ['SET', `sppg:idx:${fullName}`, id]);
+        if (firstWord && firstWord.length >= 3) {
+            const existing = await redisExec(cfg, ['GET', `sppg:idx:${firstWord}`]);
+            if (!existing) await redisExec(cfg, ['SET', `sppg:idx:${firstWord}`, id]);
+        }
+        await redisExec(cfg, ['SADD', 'sppg:users:all', id]);
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
 export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     res.setHeader('Cache-Control', 'no-store');
 
     if (req.method === 'OPTIONS') return res.status(200).end();
-    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-    const body = req.body || {};
-    const action = body.action;
+    const cfg = redisConfig();
 
-    if (action === 'status') {
-        return res.status(200).json({ configured: configured() });
-    }
-
-    if (!configured()) {
-        return res.status(503).json({
-            error: 'db_not_configured',
-            message: 'Database cloud belum dihubungkan di server (Upstash Redis / Vercel KV).'
+    if (req.method === 'GET') {
+        const cloudData = await fetchCloudStoreObj();
+        const allUsers = mergeUsersList(
+            globalThis.__SPPG_AUTH_USERS__,
+            cloudData && Array.isArray(cloudData.users) ? cloudData.users : []
+        );
+        globalThis.__SPPG_AUTH_USERS__ = allUsers;
+        return res.status(200).json({
+            success: true,
+            users: allUsers.map(u => ({
+                nik: u.nik,
+                username: u.username || deriveUsername(u.nik, u.name),
+                name: u.name,
+                role: u.role || 'Employee'
+            }))
         });
     }
 
-    try {
-        if (await rateLimited(req)) {
-            return res.status(429).json({ error: 'rate_limited', message: 'Terlalu banyak percobaan. Coba lagi dalam 10 menit.' });
-        }
+    if (req.method !== 'POST') {
+        return res.status(405).json({ success: false, message: 'Method not allowed' });
+    }
 
+    try {
+        const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
+        const { action } = body;
+
+        // ============================================================
+        // 1. REGISTRASI AKUN BARU (TERSIMPAN KE CLOUD LINTAS PERANGKAT)
+        // ============================================================
         if (action === 'register') {
-            const nik = clean(body.nik, 40);
-            const name = clean(body.name, 80);
-            const password = typeof body.password === 'string' ? body.password.trim() : '';
+            const nik = String(body.nik || '').trim();
+            const name = String(body.name || '').trim();
+            const password = String(body.password || '').trim();
+
             if (!nik || !name || !password) {
-                return res.status(400).json({ error: 'invalid', message: 'Semua kolom wajib diisi.' });
+                return res.status(400).json({
+                    success: false,
+                    message: 'NIK/Username, Nama Lengkap, dan Kata Sandi wajib diisi.'
+                });
             }
-            if (password.length < 6) {
-                return res.status(400).json({ error: 'weak_password', message: 'Kata sandi minimal 6 karakter.' });
+            if (nik.length > 64 || name.length > 100 || password.length > 128) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Data input melebihi batas panjang karakter.'
+                });
             }
-            const reserved = ['admin', 'administrator'];
-            if (reserved.includes(norm(nik)) || reserved.includes(norm(deriveUsername(nik, name)))) {
-                return res.status(409).json({ error: 'exists', message: 'NIK/Username tidak tersedia.' });
-            }
+
             const username = deriveUsername(nik, name);
-            const record = {
-                nik, username, name, role: 'Employee',
-                passwordHash: hashPassword(password),
+
+            // Ambil data cloud terbaru
+            const cloudData = await fetchCloudStoreObj();
+            const allUsers = mergeUsersList(
+                globalThis.__SPPG_AUTH_USERS__,
+                cloudData && Array.isArray(cloudData.users) ? cloudData.users : []
+            );
+            globalThis.__SPPG_AUTH_USERS__ = allUsers;
+
+            // Cek apakah sudah terdaftar di Redis atau Cloud Store
+            const existingRedis = await findUserInRedis(cfg, nik) || (username !== norm(nik) ? await findUserInRedis(cfg, username) : null);
+            const existingCloud = allUsers.find(u =>
+                String(u.nik).trim().toLowerCase() === nik.toLowerCase() ||
+                (u.username && String(u.username).trim().toLowerCase() === username.toLowerCase())
+            );
+
+            if (existingRedis || existingCloud) {
+                return res.status(409).json({
+                    success: false,
+                    error: 'already_exists',
+                    message: `NIK atau Username "${nik}" sudah terdaftar di sistem. Silakan langsung masuk menggunakan akun Anda.`
+                });
+            }
+
+            const salt = crypto.randomBytes(16).toString('hex');
+            const passHash = hashPass(password, salt);
+
+            const newUser = {
+                nik,
+                username,
+                name,
+                role: 'Employee',
+                salt,
+                passHash,
+                password,
                 createdAt: new Date().toISOString()
             };
-            const ok = await createUser(record);
-            if (!ok) {
-                return res.status(409).json({ error: 'exists', message: 'NIK atau Username sudah terdaftar.' });
-            }
-            return res.status(200).json({ success: true, user: publicUser(record) });
+
+            // Simpan ke Redis (jika ada) dan Cloud Store
+            await saveUserInRedis(cfg, newUser);
+            allUsers.push(newUser);
+            globalThis.__SPPG_AUTH_USERS__ = allUsers;
+            await saveCloudStoreUsers(allUsers);
+
+            return res.status(200).json({
+                success: true,
+                user: { nik: newUser.nik, username: newUser.username, name: newUser.name, role: newUser.role }
+            });
         }
 
+        // ============================================================
+        // 2. LOGIN LINTAS PERANGKAT
+        // ============================================================
         if (action === 'login') {
-            const identifier = clean(body.identifier, 80);
-            const password = typeof body.password === 'string' ? body.password.trim() : '';
+            const identifier = String(body.identifier || body.nik || '').trim();
+            const password = String(body.password || '').trim();
+
             if (!identifier || !password) {
-                return res.status(400).json({ error: 'invalid', message: 'NIK/Username dan kata sandi wajib diisi.' });
+                return res.status(400).json({
+                    success: false,
+                    message: 'Harap masukkan NIK/Username dan Kata Sandi.'
+                });
             }
 
-            // Administrator
-            if (norm(identifier) === 'admin' || norm(identifier) === 'administrator') {
-                const adminPass = process.env.ADMIN_PASSWORD || 'sppgunggul';
-                if (password === adminPass) {
-                    return res.status(200).json({ success: true, user: { nik: 'Admin', username: 'admin', name: 'Administrator', role: 'Admin' } });
+            // 1. Cek di Redis terlebih dahulu jika tersedia
+            const redisUser = await findUserInRedis(cfg, identifier);
+            if (redisUser) {
+                const validHash = redisUser.salt && redisUser.passHash && verifyPass(password, redisUser.salt, redisUser.passHash);
+                const validPlain = redisUser.password && String(redisUser.password).trim() === password;
+                if (validHash || validPlain) {
+                    return res.status(200).json({
+                        success: true,
+                        user: {
+                            nik: redisUser.nik,
+                            username: redisUser.username || deriveUsername(redisUser.nik, redisUser.name),
+                            name: redisUser.name,
+                            role: redisUser.role || 'Employee'
+                        }
+                    });
                 }
-                return res.status(401).json({ error: 'invalid_credentials', message: 'NIK/Username atau kata sandi salah.' });
             }
 
-            let user = null;
-            const id = await findUserId(identifier);
-            if (id) {
-                const stored = await loadUser(id);
-                if (stored && verifyPassword(password, stored.passwordHash)) user = stored;
-            } else {
-                user = await migrateLegacy(identifier, password);
+            // 2. Cek di Cloud Storage & Memori Global
+            const cloudData = await fetchCloudStoreObj();
+            const allUsers = mergeUsersList(
+                globalThis.__SPPG_AUTH_USERS__,
+                cloudData && Array.isArray(cloudData.users) ? cloudData.users : []
+            );
+            globalThis.__SPPG_AUTH_USERS__ = allUsers;
+
+            const matchedUsers = allUsers.filter(u => isUserMatch(u, identifier));
+            if (matchedUsers.length === 0) {
+                return res.status(401).json({
+                    success: false,
+                    error: 'invalid_credentials',
+                    message: 'NIK/Username atau Kata Sandi salah, atau akun belum terdaftar.'
+                });
             }
 
-            if (!user) {
-                return res.status(401).json({ error: 'invalid_credentials', message: 'NIK/Username atau kata sandi salah, atau akun belum terdaftar.' });
+            for (const candidate of matchedUsers) {
+                const validHash = candidate.salt && candidate.passHash && verifyPass(password, candidate.salt, candidate.passHash);
+                const validPlain = candidate.password !== undefined && String(candidate.password).trim() === password;
+                if (validHash || validPlain) {
+                    return res.status(200).json({
+                        success: true,
+                        user: {
+                            nik: candidate.nik,
+                            username: candidate.username || deriveUsername(candidate.nik, candidate.name),
+                            name: candidate.name,
+                            role: candidate.role || 'Employee'
+                        }
+                    });
+                }
             }
-            return res.status(200).json({ success: true, user: publicUser(user) });
+
+            return res.status(401).json({
+                success: false,
+                error: 'invalid_credentials',
+                message: 'Kata Sandi yang Anda masukkan salah.'
+            });
         }
 
-        return res.status(400).json({ error: 'unknown_action' });
-    } catch (err) {
-        console.error('auth error:', err && err.message);
-        return res.status(500).json({ error: 'server_error', message: 'Terjadi gangguan pada server database. Coba lagi sebentar.' });
+        return res.status(400).json({ success: false, message: 'Action tidak dikenal.' });
+    } catch (e) {
+        console.error('Auth error:', e);
+        return res.status(500).json({ success: false, error: 'server_error', message: 'Gangguan server autentikasi.' });
     }
 }
