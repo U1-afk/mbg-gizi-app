@@ -48,11 +48,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // ============================================================
     // POOL MULTI-KUNCI AI GEMINI (Kunci 2 Baru + Kunci 1 Cadangan)
     // ============================================================
-    const _POOL_AI_KEYS = [
-        (typeof atob === 'function') ? atob('QVEuQWI4Uk42SjJHZzZqTGxmcVB5RGdoV2hodDVqS3Y0cjNTSDBuUlRPN2NQdjNGOWtLckE=') : '', // Key 2 (Aktif Utama - Fresh Quota)
-        (typeof atob === 'function') ? atob('QVEuQWI4Uk42SXhRQjdtZWZDajlLMDdoTVRKaXo1SzgweUZON3JDTkJTRFpsdzM5NmVHaFE=') : ''  // Key 1 (Cadangan Pool)
-    ];
-    const _DEFAULT_AI_KEY = _POOL_AI_KEYS[0];
+    // API Key tidak boleh ditanam di frontend (disimpan aman di Environment Variables server Vercel: GEMINI_API_KEY)
+    const _POOL_AI_KEYS = [];
+    const _DEFAULT_AI_KEY = '';
 
     function getAllAvailableAIKeys() {
         const keys = [];
@@ -3149,25 +3147,27 @@ const modelsToTry = [
 
             // Tahap 2: Google Gemini Vision AI
             const activeKey = getCleanAIApiKey();
-            if (!cloudSuccess && activeKey) {
+            if (!cloudSuccess) {
                 if (scanStatusText) scanStatusText.textContent = 'Menganalisis Cerdas dengan Google Gemini AI...';
 
-                // Prioritaskan Panggilan Langsung Google Gemini API
-                try {
-                    const vlmRes = await queryCloudGeminiVLM(base64Jpeg, activeKey);
-                    const vItems = (vlmRes && (vlmRes.items || vlmRes.makanan || vlmRes.food_items)) || [];
-                    if (Array.isArray(vItems) && vItems.length > 0) {
-                        rawDetectedItems = vItems;
-                        matchedPackage = vlmRes.packageName || vlmRes.package_name || 'Menu MBG Terdeteksi';
-                        vlmAnalysisNote = vlmRes.analysis || 'Porsi dan komposisi makanan teranalisis otomatis.';
-                        engineUsedLabel = '✨ Dianalisis Cerdas oleh Google Gemini Vision AI';
-                        cloudSuccess = true;
+                // Panggilan Langsung Google Gemini API hanya jika user mengisi kunci manual
+                if (activeKey) {
+                    try {
+                        const vlmRes = await queryCloudGeminiVLM(base64Jpeg, activeKey);
+                        const vItems = (vlmRes && (vlmRes.items || vlmRes.makanan || vlmRes.food_items)) || [];
+                        if (Array.isArray(vItems) && vItems.length > 0) {
+                            rawDetectedItems = vItems;
+                            matchedPackage = vlmRes.packageName || vlmRes.package_name || 'Menu MBG Terdeteksi';
+                            vlmAnalysisNote = vlmRes.analysis || 'Porsi dan komposisi makanan teranalisis otomatis.';
+                            engineUsedLabel = '✨ Dianalisis Cerdas oleh Google Gemini Vision AI';
+                            cloudSuccess = true;
+                        }
+                    } catch (directErr) {
+                        console.warn('Direct Google API failed, mencoba /api/gemini proxy:', directErr);
                     }
-                } catch (directErr) {
-                    console.warn('Direct Google API failed, mencoba /api/gemini proxy:', directErr);
                 }
 
-                // Fallback ke Vercel Serverless Function /api/gemini
+                // Utamakan Vercel Serverless Function /api/gemini (menggunakan GEMINI_API_KEY aman di server)
                 if (!cloudSuccess) {
                     try {
                         const controller = new AbortController();

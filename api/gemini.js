@@ -18,15 +18,17 @@ export default async function handler(req, res) {
     try {
         const { image, apiKey, action, foodName, gram } = req.body || {};
 
-        const poolKeys = [
-            Buffer.from('QVEuQWI4Uk42SjJHZzZqTGxmcVB5RGdoV2hodDVqS3Y0cjNTSDBuUlRPN2NQdjNGOWtLckE=', 'base64').toString('utf-8'), // Key 2
-            Buffer.from('QVEuQWI4Uk42SXhRQjdtZWZDajlLMDdoTVRKaXo1SzgweUZON3JDTkJTRFpsdzM5NmVHaFE=', 'base64').toString('utf-8')  // Key 1
-        ];
+        // Kunci API hanya diambil dari Environment Variable server (GEMINI_API_KEY) atau input user
         const keysToTry = [];
-        if (apiKey && String(apiKey).trim().length > 10) keysToTry.push(String(apiKey).trim());
-        if (process.env.GEMINI_API_KEY && String(process.env.GEMINI_API_KEY).trim().length > 10) keysToTry.push(String(process.env.GEMINI_API_KEY).trim());
-        for (const pk of poolKeys) {
-            if (!keysToTry.includes(pk)) keysToTry.push(pk);
+        if (process.env.GEMINI_API_KEY) {
+            for (const envKey of String(process.env.GEMINI_API_KEY).split(',')) {
+                const k = envKey.trim();
+                if (k.length > 10 && !keysToTry.includes(k)) keysToTry.push(k);
+            }
+        }
+        if (apiKey && String(apiKey).trim().length > 10) {
+            const uk = String(apiKey).trim();
+            if (!keysToTry.includes(uk)) keysToTry.push(uk);
         }
         const effectiveKey = keysToTry[0];
 
